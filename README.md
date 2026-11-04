@@ -64,9 +64,10 @@ curl -s localhost:8081/api/v1/agent/turn -H 'X-User-Id: u1' -H 'Content-Type: ap
 
 ```
 api/       TurnController (POST /api/v1/agent/turn), 요청·응답, 오류 모양 {"error":{code,message}}
-flow/      TurnService (어느 흐름으로 보낼지), Intent (키워드), OutfitFlow (옷 추천 2단계)
+flow/      TurnService (어느 흐름으로 보낼지), Intent (키워드), OutfitFlow (옷 추천 2단계), FaceFlow (얼굴 확인)
 judge/     OutfitJudge: GeminiOutfitJudge (구조화 출력) / RuleOutfitJudge (규칙) / Fallback, 지시문 Prompts
 tools/     AgentTools: McpAgentTools (Streamable HTTP) / FakeAgentTools, 도구 이름 ToolNames
+assistant/ 개별 기능: GeminiAssistant(도구 선택) / NoAssistant, Gemini가 고르는 도구 AssistantTools
 session/   AgentSession, SessionStore: 메모리 / Redis (30분, 키에 userId 포함)
 ```
 
@@ -76,10 +77,12 @@ session/   AgentSession, SessionStore: 메모리 / Redis (30분, 키에 userId �
 - [x] 개발 중엔 게이트웨이 없이 `X-User-Id` 헤더로 직접 호출
 - [x] Gemini 연결 (Spring AI), 구조화 출력으로 추천·확인 모드 (2026-11-04 실제 키로 확인)
 - [x] MCP 클라이언트 (테스트 안에서 Spring AI MCP 서버에 붙여 확인), 가짜 도구로 1·2단계 완성
-- [ ] mcp-weather, mcp-schedule 나오면 `mcp` 프로필로 붙여 보기
+- [x] mcp-weather, mcp-schedule 나오면 `mcp` 프로필로 붙여 보기 (2026-11-04 진짜 Open-Meteo로 1단계 추천 확인)
 - [ ] 2단계: mcp-clothes-state 준비 전에는 지금 배포된 Gemini 옷 분석 서버를 임시로 사용
 - [x] Redis 세션, 두 벌 비교, "어디야?", 마무리(closet_save·closet_wear)
-- [ ] 개별 기능: Gemini 도구 선택(schedule_add, face_check, helper_*). 지금은 날씨·오늘 일정 읽어 주기만 됨
+- [x] 개별 기능: Gemini 도구 선택(`assistant/`: schedule_add·list·delete, helper_contacts·ask·answer, weather_today). 날씨·오늘 일정·얼굴 확인은 키워드로 바로 처리
+- [x] 얼굴 확인(`FaceFlow`): "얼굴 확인해 줘" → `camera_face` → 사진 한 장 → face_check 결과 문장을 이어 읽기
+- [ ] 실제 Gemini 키로 개별 기능 확인 (일정 등록 날짜 해석, 되묻기, 가족에게 묻기)
 - [ ] 가족에게 묻기용 직전 사진 10분 보관
 
 ## 공통 약속
