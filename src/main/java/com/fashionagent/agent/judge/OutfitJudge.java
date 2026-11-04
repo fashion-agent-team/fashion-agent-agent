@@ -10,7 +10,7 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * 옷 추천 판단. MCP 서버가 준 데이터를 받아 판단·추천합니다(약속 5-1절).
- * 구현은 Gemini({@link GeminiOutfitJudge})와 규칙({@link RuleOutfitJudge}) 두 가지이고 출력 모양이 같습니다.
+ * 구현은 GPT({@link LlmOutfitJudge})와 규칙({@link RuleOutfitJudge}) 두 가지이고 출력 모양이 같습니다.
  */
 public interface OutfitJudge {
 

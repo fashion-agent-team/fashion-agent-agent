@@ -22,17 +22,17 @@ public class JudgeConfig {
     public OutfitJudge outfitJudge(AgentProperties props, ObjectProvider<ChatClient.Builder> chat, JsonMapper json,
             ExecutorService agentExecutor) {
         RuleOutfitJudge rules = new RuleOutfitJudge();
-        if (!"gemini".equals(props.judge())) {
+        if (!props.usesLlm()) {
             log.info("판단: 규칙 (agent.judge=rule)");
             return rules;
         }
         ChatClient.Builder builder = chat.getIfAvailable();
         if (builder == null) {
-            log.warn("agent.judge=gemini인데 Gemini 설정이 없어 규칙으로 판단합니다. GEMINI_API_KEY를 확인하세요.");
+            log.warn("agent.judge=openai인데 GPT 설정이 없어 규칙으로 판단합니다. OPENAI_API_KEY를 확인하세요.");
             return rules;
         }
-        log.info("판단: Gemini (실패하면 규칙)");
-        return new FallbackOutfitJudge(new GeminiOutfitJudge(builder, json), rules, agentExecutor,
+        log.info("판단: GPT (실패하면 규칙)");
+        return new FallbackOutfitJudge(new LlmOutfitJudge(builder, json), rules, agentExecutor,
                 props.judgeTimeout());
     }
 }

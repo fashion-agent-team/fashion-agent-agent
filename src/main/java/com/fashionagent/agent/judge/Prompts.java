@@ -1,6 +1,6 @@
 package com.fashionagent.agent.judge;
 
-/** Gemini에 주는 지시문. 판단 기준은 약속 5-1절과 같아야 합니다(바꾸면 약속 문서도 같이 고치기). */
+/** GPT에 주는 지시문. 판단 기준은 약속 5-1절과 같아야 합니다(바꾸면 약속 문서도 같이 고치기). */
 final class Prompts {
 
     static final String SYSTEM = """

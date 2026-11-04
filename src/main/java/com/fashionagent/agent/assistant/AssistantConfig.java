@@ -20,16 +20,16 @@ public class AssistantConfig {
 
     private static final Logger log = LoggerFactory.getLogger(AssistantConfig.class);
 
-    /** 판단을 Gemini로 할 때(agent.judge=gemini) 개별 기능도 Gemini가 도구를 고릅니다. */
+    /** 판단을 LLM으로 할 때(agent.judge=openai) 개별 기능도 GPT가 도구를 고릅니다. */
     @Bean
     public Assistant assistant(AgentProperties props, ObjectProvider<ChatClient.Builder> chat, AgentTools tools,
             JsonMapper json, ExecutorService agentExecutor, Clock clock) {
-        ChatClient.Builder builder = "gemini".equals(props.judge()) ? chat.getIfAvailable() : null;
+        ChatClient.Builder builder = props.usesLlm() ? chat.getIfAvailable() : null;
         if (builder == null) {
-            log.info("개별 기능: 키워드만 (Gemini 꺼짐)");
+            log.info("개별 기능: 키워드만 (GPT 꺼짐)");
             return new NoAssistant();
         }
-        log.info("개별 기능: Gemini 도구 선택");
-        return new GeminiAssistant(builder, tools, json, agentExecutor, props.judgeTimeout(), clock);
+        log.info("개별 기능: GPT 도구 선택");
+        return new LlmAssistant(builder, tools, json, agentExecutor, props.judgeTimeout(), clock);
     }
 }

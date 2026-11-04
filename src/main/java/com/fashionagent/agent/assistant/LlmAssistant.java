@@ -27,13 +27,13 @@ import com.fashionagent.agent.tools.AgentTools;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Gemini가 {@link AssistantTools}에서 도구를 골라 부르고, 결과를 보고 한두 문장으로 답합니다.
+ * GPT가 {@link AssistantTools}에서 도구를 골라 부르고, 결과를 보고 한두 문장으로 답합니다.
  * 직전 몇 마디를 세션에 두어 "몇 시예요?" → "두 시" 같은 되묻기가 이어집니다.
  * 시간 안에 답하지 못하면 이미 한 일(일정 등록)은 말해 주고, 아니면 다시 말해 달라고 합니다.
  */
-public class GeminiAssistant implements Assistant {
+public class LlmAssistant implements Assistant {
 
-    private static final Logger log = LoggerFactory.getLogger(GeminiAssistant.class);
+    private static final Logger log = LoggerFactory.getLogger(LlmAssistant.class);
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     /** 세션에 남기는 최근 대화 수 (사용자 말 + agent 답 = 2). */
     static final int HISTORY = 6;
@@ -56,7 +56,7 @@ public class GeminiAssistant implements Assistant {
     private final Duration timeout;
     private final Clock clock;
 
-    public GeminiAssistant(ChatClient.Builder builder, AgentTools tools, JsonMapper json, ExecutorService executor,
+    public LlmAssistant(ChatClient.Builder builder, AgentTools tools, JsonMapper json, ExecutorService executor,
             Duration timeout, Clock clock) {
         this.chat = builder.build();
         this.tools = tools;
@@ -76,6 +76,7 @@ public class GeminiAssistant implements Assistant {
         messages.add(new UserMessage(utterance));
 
         String speech;
+        boolean quota = false;
         var future = executor.submit(() -> chat.prompt()
                 .system(SYSTEM.formatted(now()))
                 .messages(messages)
@@ -90,12 +91,18 @@ public class GeminiAssistant implements Assistant {
             speech = null;
         } catch (Exception e) {
             future.cancel(true);
-            log.warn("Gemini 개별 기능 실패: {}", e.toString());
+            quota = isQuotaExceeded(e);
+            log.warn("GPT 개별 기능 실패{}: {}", quota ? "(사용량 초과 429)" : "", rootMessage(e));
             speech = null;
         }
         if (speech == null || speech.isBlank()) {
-            speech = toolbox.addedSummary != null ? toolbox.addedSummary
-                    : "지금은 그 요청을 처리하지 못했어요. 잠시 뒤에 다시 말해 주세요.";
+            if (!toolbox.done.isEmpty()) {
+                speech = String.join(" ", toolbox.done);
+            } else if (quota) {
+                speech = QUOTA_SPEECH;
+            } else {
+                speech = "지금은 그 요청을 처리하지 못했어요. 잠시 뒤에 다시 말해 주세요.";
+            }
         }
         speech = speech.strip();
 
@@ -106,6 +113,32 @@ public class GeminiAssistant implements Assistant {
         }
         Next next = toolbox.neededPhoto || inOutfit ? Next.camera_outfit : Next.listen;
         return new Reply(speech, next);
+    }
+
+    /**
+     * LLM 사용량 초과(429, 크레딧 소진·한도 초과). 2026-11-04 Gemini 무료 등급(하루 20번)에서 실제로 겪었습니다.
+     * 이때는 다시 말해도 안 되니 "잠시 뒤에"라고 하지 않고, LLM 없이 되는 기능을 알려 줍니다.
+     */
+    static final String QUOTA_SPEECH = "지금은 AI 사용량이 다 차서 그 요청은 할 수 없어요. "
+            + "날씨, 오늘 일정, 옷 추천은 계속 쓸 수 있어요.";
+
+    static boolean isQuotaExceeded(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            String m = String.valueOf(t.getMessage());
+            if (m.contains("429") || m.contains("RESOURCE_EXHAUSTED") || m.contains("exceeded your current quota") || m.contains("insufficient_quota") || m.contains("rate_limit")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String rootMessage(Throwable e) {
+        Throwable t = e;
+        while (t.getCause() != null && t.getCause() != t) {
+            t = t.getCause();
+        }
+        String m = String.valueOf(t.getMessage());
+        return t.getClass().getSimpleName() + ": " + (m.length() > 200 ? m.substring(0, 200) : m);
     }
 
     private String now() {

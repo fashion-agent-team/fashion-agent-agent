@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import com.fashionagent.agent.model.AdviceJudgement;
 import com.fashionagent.agent.model.CheckJudgement;
 
-/** Gemini가 실패하거나 시간 안에 답하지 않으면 규칙으로 판단합니다. 사용자는 항상 답을 듣습니다. */
+/** GPT가 실패하거나 시간 안에 답하지 않으면 규칙으로 판단합니다. 사용자는 항상 답을 듣습니다. */
 public class FallbackOutfitJudge implements OutfitJudge {
 
     private static final Logger log = LoggerFactory.getLogger(FallbackOutfitJudge.class);
@@ -49,7 +49,7 @@ public class FallbackOutfitJudge implements OutfitJudge {
             return second.get();
         } catch (Exception e) {
             future.cancel(true);
-            log.warn("Gemini {} 모드 실패, 규칙으로 판단: {}", mode, e.toString());
+            log.warn("GPT {} 모드 실패, 규칙으로 판단: {}", mode, e.toString());
             return second.get();
         }
     }

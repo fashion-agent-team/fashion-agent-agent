@@ -14,15 +14,15 @@ import com.fashionagent.agent.model.Garment;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Gemini로 판단합니다. 구조화 출력(entity)으로 받고, temperature 0.2는 application.yml에서 정합니다.
+ * GPT로 판단합니다. 구조화 출력(entity)으로 받습니다. 모델은 application-openai.yml에서 정합니다.
  * 사진은 넣지 않습니다. clothes_inspect가 돌려준 JSON만 들어갑니다(약속 5-3절).
  */
-public class GeminiOutfitJudge implements OutfitJudge {
+public class LlmOutfitJudge implements OutfitJudge {
 
     private final ChatClient chat;
     private final JsonMapper json;
 
-    public GeminiOutfitJudge(ChatClient.Builder builder, JsonMapper json) {
+    public LlmOutfitJudge(ChatClient.Builder builder, JsonMapper json) {
         this.chat = builder.defaultSystem(Prompts.SYSTEM).build();
         this.json = json;
     }
@@ -39,7 +39,7 @@ public class GeminiOutfitJudge implements OutfitJudge {
                 .call()
                 .entity(AdviceJudgement.class);
         if (out == null || out.speech() == null || out.speech().isBlank()) {
-            throw new IllegalStateException("Gemini 추천 결과가 비었어요.");
+            throw new IllegalStateException("GPT 추천 결과가 비었어요.");
         }
         Set<String> allowed = in.closetCandidates() == null ? Set.of()
                 : in.closetCandidates().valueStream().map(c -> c.path("garmentId").asString("")).collect(Collectors.toSet());
@@ -54,14 +54,14 @@ public class GeminiOutfitJudge implements OutfitJudge {
         input.put("weather", in.weather());
         input.put("events", in.events());
         input.put("advice", in.advice() == null ? null : in.advice().suggestions());
-        input.put("now", in.now().stream().map(GeminiOutfitJudge::forPrompt).toList());
+        input.put("now", in.now().stream().map(LlmOutfitJudge::forPrompt).toList());
         input.put("seenBefore", in.seenBefore());
         CheckJudgement out = chat.prompt()
                 .user(Prompts.CHECK.formatted(json.writeValueAsString(input)))
                 .call()
                 .entity(CheckJudgement.class);
         if (out == null || out.speech() == null || out.speech().isBlank()) {
-            throw new IllegalStateException("Gemini 확인 결과가 비었어요.");
+            throw new IllegalStateException("GPT 확인 결과가 비었어요.");
         }
         Set<String> ids = in.now().stream().map(Garment::id).collect(Collectors.toSet());
         var comparison = in.now().size() >= 2 && out.comparison() != null
@@ -74,7 +74,7 @@ public class GeminiOutfitJudge implements OutfitJudge {
                 out.speech());
     }
 
-    /** Gemini에는 판단에 필요한 값만 (box 좌표 등은 뺌). */
+    /** GPT에는 판단에 필요한 값만 (box 좌표 등은 뺌). */
     private static Map<String, Object> forPrompt(Garment g) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", g.id());

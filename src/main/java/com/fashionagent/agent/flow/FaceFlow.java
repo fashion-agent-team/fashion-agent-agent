@@ -22,7 +22,7 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * 얼굴 확인 (개별 기능, 약속 5-2절). "얼굴 확인해 줘" → 카메라 켜기, 앱이 자동으로 보낸 한 장 → face_check → 안내.
- * face_check가 이미 한국어 문장(notes, note)을 주므로 Gemini 없이 코드로 이어 붙여 바로 답합니다.
+ * face_check가 이미 한국어 문장(notes, note)을 주므로 GPT 없이 코드로 이어 붙여 바로 답합니다.
  */
 @Component
 public class FaceFlow {

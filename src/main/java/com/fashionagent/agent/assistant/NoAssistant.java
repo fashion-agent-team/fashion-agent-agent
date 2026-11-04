@@ -4,7 +4,7 @@ import com.fashionagent.agent.api.Location;
 import com.fashionagent.agent.api.TurnResponse.Next;
 import com.fashionagent.agent.session.AgentSession;
 
-/** Gemini가 꺼져 있을 때 (agent.judge=rule). 키워드로 정해진 기능만 됩니다. */
+/** GPT가 꺼져 있을 때 (agent.judge=rule). 키워드로 정해진 기능만 됩니다. */
 public class NoAssistant implements Assistant {
 
     @Override

@@ -69,7 +69,7 @@ class McpAgentToolsTest {
 
         // 도구가 {"error":...}를 돌려주면 ToolException, userId는 agent가 넣은 값
         assertThatThrownBy(() -> tools.callForUser(ToolNames.SCHEDULE_LIST, "u-real",
-                Map.of("userId", "gemini-made-up", "date", "2026-11-04")))
+                Map.of("userId", "llm-made-up", "date", "2026-11-04")))
                 .isInstanceOf(ToolException.class)
                 .hasMessageContaining("not_found")
                 .hasMessageContaining("u-real");

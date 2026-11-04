@@ -36,10 +36,10 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 진짜 Gemini 대신 "이 도구를 이 값으로 불러라"를 미리 정해 둔 가짜 모델로, 도구 연결을 확인합니다:
- * userId·사진은 agent가 넣는지, 결과가 Gemini에게 돌아가는지, 시간 초과 때 이미 한 일을 말하는지.
+ * 진짜 GPT 대신 "이 도구를 이 값으로 불러라"를 미리 정해 둔 가짜 모델로, 도구 연결을 확인합니다:
+ * userId·사진은 agent가 넣는지, 결과가 GPT에게 돌아가는지, 시간 초과 때 이미 한 일을 말하는지.
  */
-class GeminiAssistantTest {
+class LlmAssistantTest {
 
     private final JsonMapper json = JsonMapper.builder().build();
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
@@ -62,7 +62,7 @@ class GeminiAssistantTest {
         executor.shutdownNow();
     }
 
-    /** 도구를 순서대로 부르고(Gemini 내부 실행처럼), 마지막에 결과를 보고 답을 만드는 가짜 모델. */
+    /** 도구를 순서대로 부르고(GPT 내부 실행처럼), 마지막에 결과를 보고 답을 만드는 가짜 모델. */
     static class ScriptedModel implements ChatModel {
         final List<String[]> steps;
         final Function<List<String>, String> answer;
@@ -102,8 +102,8 @@ class GeminiAssistantTest {
         }
     }
 
-    private GeminiAssistant assistant(ScriptedModel model, Duration timeout) {
-        return new GeminiAssistant(ChatClient.builder(model), tools, json, executor, timeout, clock);
+    private LlmAssistant assistant(ScriptedModel model, Duration timeout) {
+        return new LlmAssistant(ChatClient.builder(model), tools, json, executor, timeout, clock);
     }
 
     @Test
@@ -176,5 +176,53 @@ class GeminiAssistantTest {
                 null, false);
 
         assertThat(reply.speech()).isEqualTo("일정 '면접'을 등록했어요.");
+    }
+
+    @Test
+    void 지운_뒤_답이_늦어도_지운_일정을_말해준다() {
+        var model = new ScriptedModel(List.of(
+                new String[] { "schedule_list", "{\"date\":\"2026-11-06\"}" },
+                new String[] { "schedule_delete", "{\"eventId\":\"e_fake\"}" }), results -> "늦은 답", 2000);
+
+        var reply = assistant(model, Duration.ofMillis(300)).reply(new AgentSession("s6", "u"), "모레 면접 지워 줘",
+                null, false);
+
+        assertThat(reply.speech()).isEqualTo("일정 '면접'을 지웠어요.");
+    }
+
+    @Test
+    void 보낸_뒤_답이_늦어도_보냈다고_말해준다() {
+        var model = new ScriptedModel(List.of(
+                new String[] { "helper_contacts", "{}" },
+                new String[] { "helper_ask", "{\"contactId\":\"h_1\",\"question\":\"이 옷 괜찮아?\"}" }),
+                results -> "늦은 답", 2000);
+        var session = new AgentSession("s7", "u");
+        session.keepPhoto("PHOTO", clock);
+
+        var reply = assistant(model, Duration.ofMillis(300)).reply(session, "엄마한테 물어봐 줘", null, false);
+
+        assertThat(reply.speech()).startsWith("엄마에게 사진과 질문을 보냈어요.");
+    }
+
+    @Test
+    void 사용량_초과면_다시_말해달라고_하지_않는다() {
+        ChatModel quota = new ChatModel() {
+            @Override
+            public ChatResponse call(Prompt prompt) {
+                throw new RuntimeException("Failed to generate content",
+                        new RuntimeException("429 . You exceeded your current quota"));
+            }
+
+            @Override
+            public ChatOptions getOptions() {
+                return ToolCallingChatOptions.builder().build();
+            }
+        };
+        var assistant = new LlmAssistant(ChatClient.builder(quota), tools, json, executor, Duration.ofSeconds(5),
+                clock);
+
+        var reply = assistant.reply(new AgentSession("s8", "u"), "내일 일정 뭐야?", null, false);
+
+        assertThat(reply.speech()).isEqualTo(LlmAssistant.QUOTA_SPEECH);
     }
 }

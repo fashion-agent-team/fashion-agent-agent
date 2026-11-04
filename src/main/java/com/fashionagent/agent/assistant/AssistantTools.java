@@ -1,6 +1,8 @@
 package com.fashionagent.agent.assistant;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.ai.tool.annotation.Tool;
@@ -16,11 +18,11 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 개별 기능에서 Gemini가 고르는 도구. 대화 한 번마다 새로 만듭니다.
+ * 개별 기능에서 GPT가 고르는 도구. 대화 한 번마다 새로 만듭니다.
  *
- * <p>Gemini는 userId, 위치, 사진을 채우지 않습니다. userId는 X-User-Id, 위치는 앱이 보낸 값,
+ * <p>GPT는 userId, 위치, 사진을 채우지 않습니다. userId는 X-User-Id, 위치는 앱이 보낸 값,
  * 사진은 세션에 10분 들고 있는 직전 사진을 이 클래스가 넣습니다(약속 3절, 5-2절, 5-3절).
- * 도구가 실패하면 예외 대신 {"error": {...}} 를 Gemini에 돌려줘서 사용자에게 말로 안내하게 합니다.
+ * 도구가 실패하면 예외 대신 {"error": {...}} 를 GPT에 돌려줘서 사용자에게 말로 안내하게 합니다.
  */
 public class AssistantTools {
 
@@ -30,8 +32,15 @@ public class AssistantTools {
     private final String photo;
     private final JsonMapper json;
 
-    /** 일정을 등록했으면 그 안내 문장. Gemini가 시간 안에 답하지 못해도 이건 말해 줍니다. */
-    String addedSummary;
+    /**
+     * 이미 해 버린 일(일정 등록·삭제, 가족에게 보내기)의 안내 문장. GPT가 도구를 부른 뒤 시간 초과나
+     * 사용량 초과로 마지막 답을 못 만들어도, 사용자가 "처리하지 못했어요"만 듣고 같은 일을 또 시키지 않게 이건 말해 줍니다.
+     */
+    final List<String> done = new ArrayList<>();
+    /** schedule_list에서 본 일정 이름(eventId → title). 지운 뒤 "면접을 지웠어요"라고 말하려고. */
+    private final Map<String, String> eventTitles = new HashMap<>();
+    /** helper_contacts에서 본 이름(contactId → name). */
+    private final Map<String, String> contactNames = new HashMap<>();
     /** 가족에게 물으려 했는데 사진이 없었는지. 그러면 카메라를 켭니다. */
     boolean neededPhoto;
 
@@ -67,7 +76,7 @@ public class AssistantTools {
         String out = call(ToolNames.SCHEDULE_ADD, args, true);
         JsonNode node = json.readTree(out);
         if (node.has("spokenSummary")) {
-            addedSummary = node.path("spokenSummary").asString();
+            done.add(node.path("spokenSummary").asString());
         }
         return out;
     }
@@ -80,20 +89,33 @@ public class AssistantTools {
         if (date != null && !date.isBlank()) {
             args.put("date", date);
         }
-        return call(ToolNames.SCHEDULE_LIST, args, true);
+        String out = call(ToolNames.SCHEDULE_LIST, args, true);
+        for (JsonNode e : json.readTree(out).path("events")) {
+            eventTitles.put(e.path("eventId").asString(""), e.path("title").asString(""));
+        }
+        return out;
     }
 
     @Tool(name = ToolNames.SCHEDULE_DELETE, description = """
             일정을 지웁니다. 먼저 schedule_list로 eventId를 찾고, 어느 일정인지 분명할 때만 부르세요.""")
     public String scheduleDelete(@ToolParam(description = "schedule_list 결과의 eventId") String eventId) {
-        return call(ToolNames.SCHEDULE_DELETE, Map.of("eventId", eventId), true);
+        String out = call(ToolNames.SCHEDULE_DELETE, Map.of("eventId", eventId), true);
+        if (json.readTree(out).path("deleted").asBoolean(false)) {
+            String title = eventTitles.get(eventId);
+            done.add(title == null || title.isBlank() ? "일정을 지웠어요." : "일정 '" + title + "'을 지웠어요.");
+        }
+        return out;
     }
 
     @Tool(name = ToolNames.HELPER_CONTACTS, description = """
             사용자가 등록한 가족·친구 목록(contactId, name, relation)을 가져옵니다. \
             "엄마한테 물어봐 줘"처럼 사람을 부를 때 contactId를 찾으려고 먼저 부릅니다.""")
     public String helperContacts() {
-        return call(ToolNames.HELPER_CONTACTS, Map.of(), true);
+        String out = call(ToolNames.HELPER_CONTACTS, Map.of(), true);
+        for (JsonNode c : json.readTree(out).path("contacts")) {
+            contactNames.put(c.path("contactId").asString(""), c.path("name").asString(""));
+        }
+        return out;
     }
 
     @Tool(name = ToolNames.HELPER_ASK, description = """
@@ -111,6 +133,8 @@ public class AssistantTools {
         JsonNode node = json.readTree(out);
         if (node.has("requestId")) {
             session.lastHelperRequestId = node.path("requestId").asString();
+            String name = node.path("sentTo").asString(contactNames.get(contactId));
+            done.add((name == null || name.isBlank() ? "가족" : name) + "에게 사진과 질문을 보냈어요. 답이 왔는지는 \"답 왔어?\"라고 물어봐 주세요.");
         }
         return out;
     }

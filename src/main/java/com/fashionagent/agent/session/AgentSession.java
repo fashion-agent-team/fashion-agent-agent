@@ -33,7 +33,7 @@ public class AgentSession {
     public long lastPhotoAt;
     /** 가족에게 마지막으로 보낸 질문 id ("엄마 답 왔어?"). */
     public String lastHelperRequestId;
-    /** 개별 기능 대화의 최근 몇 마디. Gemini가 되물은 뒤 이어 듣기 위해. */
+    /** 개별 기능 대화의 최근 몇 마디. GPT가 되물은 뒤 이어 듣기 위해. */
     public List<Said> assistantHistory = new ArrayList<>();
 
     public AgentSession() {

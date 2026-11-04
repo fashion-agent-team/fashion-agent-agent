@@ -132,7 +132,7 @@ class TurnFlowTest {
     }
 
     @Test
-    void Gemini가_꺼져_있으면_개별_기능은_안내만() throws Exception {
+    void GPT가_꺼져_있으면_개별_기능은_안내만() throws Exception {
         JsonNode r = turn("u7", """
                 {"utterance": "토요일 두 시에 결혼식 넣어 줘"}""");
         assertThat(r.path("speech").asString()).contains("오늘 뭐 입지");

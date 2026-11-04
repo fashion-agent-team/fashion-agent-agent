@@ -27,7 +27,7 @@ class IntentTest {
     }
 
     @Test
-    void 일정_등록_삭제_다른_날과_가족에게_묻기는_Gemini로() {
+    void 일정_등록_삭제_다른_날과_가족에게_묻기는_GPT로() {
         assertThat(Intent.of("토요일 두 시에 결혼식 넣어 줘", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("내일 일정 뭐야", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("면접 일정 지워 줘", false)).isEqualTo(Intent.OTHER);
