@@ -90,7 +90,7 @@ public class TurnService {
             for (int i = 0; i < events.size(); i++) {
                 JsonNode e = events.get(i);
                 String start = e.path("start").asString("");
-                String time = start.length() >= 16 ? start.substring(11, 16) : "";
+                String time = spokenTime(start);
                 sb.append(i == 0 ? "" : ", ").append(time).append(" ").append(e.path("title").asString(""));
             }
             sb.append("이에요.");
@@ -98,6 +98,19 @@ public class TurnService {
             return new TurnResponse(session.sessionId, sb.toString(), Next.listen, Result.of("schedule"));
         } catch (ToolException e) {
             return say(session, "지금은 일정을 불러오지 못했어요.", Next.listen);
+        }
+    }
+
+    /** "2026-11-04T14:00:00+09:00" → "오후 2시", 분이 있으면 "오후 2시 30분". */
+    static String spokenTime(String iso) {
+        try {
+            var t = java.time.OffsetDateTime.parse(iso).atZoneSameInstant(java.time.ZoneId.of("Asia/Seoul"));
+            int h = t.getHour();
+            String ampm = h < 12 ? "오전" : "오후";
+            int h12 = h % 12 == 0 ? 12 : h % 12;
+            return ampm + " " + h12 + "시" + (t.getMinute() == 0 ? "" : " " + t.getMinute() + "분");
+        } catch (RuntimeException e) {
+            return "";
         }
     }
 
