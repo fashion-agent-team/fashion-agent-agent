@@ -7,7 +7,7 @@
 ## 한눈에
 
 - 포트: 8081, 엔드포인트: `http://localhost:8081`
-- 기술: Spring Boot, Spring AI (ChatClient + MCP 클라이언트), GPT(OpenAI, 기본 `gpt-5-mini`), Redis(대화 상태)
+- 기술: Spring Boot, Spring AI (ChatClient + MCP 클라이언트), GPT(OpenAI, 기본 `gpt-5.4-mini`), Redis(대화 상태)
 - 상태 확인: `GET /actuator/health`
 
 ## API
@@ -56,7 +56,7 @@ curl -s localhost:8081/api/v1/agent/turn -H 'X-User-Id: u1' -H 'Content-Type: ap
 | `mcp,openai` | 진짜 | GPT (`OPENAI_API_KEY`) | 메모리 | GPT 판단 확인 |
 | `dev`, `prod` | 진짜 | GPT | Redis (`REDIS_HOST`) | Docker Compose |
 
-`SPRING_PROFILES_ACTIVE=mcp ./gradlew bootRun`처럼 켭니다. 판단 모델은 `AGENT_OPENAI_MODEL`(기본 `gpt-5-mini`)입니다. 2026-11-04 Gemini에서 GPT로 바꿨습니다: Gemini 무료 등급은 모델마다 하루 20번이라 도구를 쓰는 대화(한 번에 요청 2~3번) 몇 번이면 막혔고, 팀에 OpenAI 크레딧이 있었습니다. GPT 모델의 속도·판단은 실제 키로 다시 재서 정합니다.
+`SPRING_PROFILES_ACTIVE=mcp ./gradlew bootRun`처럼 켭니다. 판단 모델은 `AGENT_OPENAI_MODEL`(기본 `gpt-5.4-mini`), 생각 정도는 `AGENT_OPENAI_REASONING`(기본 `none`)입니다. 2026-11-04 Gemini에서 GPT로 바꿨습니다: Gemini 무료 등급은 모델마다 하루 20번이라 도구를 쓰는 대화(한 번에 요청 2~3번) 몇 번이면 막혔고, 팀에 OpenAI 크레딧이 있었습니다. 같은 날 실제 키로 모델을 비교했습니다: `gpt-5.4-mini`(none)는 대부분 1~4초, `gpt-5-mini`(low)는 옷 확인이 16~19초로 25초 제한에 빠듯했고, 기본 설정의 `gpt-5-mini`는 25초를 넘었습니다. 자세한 값은 `application-openai.yml` 주석에 있습니다.
 
 키는 `.env`(커밋 안 됨)에 `OPENAI_API_KEY=...`로 두고 `set -a; . ./.env; set +a` 후 실행하면 편합니다. MCP 서버가 아직 안 켜져 있어도 agent는 뜨고, 부를 때 다시 붙습니다. 도구가 실패하면 그 데이터 없이 계속하고, GPT가 실패하거나 25초 안에 답하지 않으면 규칙으로 판단합니다(사용자는 항상 답을 들음). 사용량 초과(429)는 다시 보내지 않고 바로 규칙·안내 문장으로 넘어갑니다. 개별 기능에서 일정을 등록·삭제하거나 가족에게 보낸 뒤 GPT가 실패하면, 이미 한 일은 말해 줍니다.
 

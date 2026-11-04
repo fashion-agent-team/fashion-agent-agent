@@ -225,4 +225,78 @@ class LlmAssistantTest {
 
         assertThat(reply.speech()).isEqualTo(LlmAssistant.QUOTA_SPEECH);
     }
+
+    @Test
+    void 보내_놓고_확인을_묻는_답이면_보냈다고_고쳐_말한다() {
+        // 2026-11-04 실제 GPT: helper_ask를 부르고도 "보내고 싶으면 확인이라고 말해 주세요"라고 답함
+        var model = new ScriptedModel(List.of(
+                new String[] { "helper_contacts", "{}" },
+                new String[] { "helper_ask", "{\"contactId\":\"h_1\",\"question\":\"이 옷 괜찮아?\"}" }),
+                results -> "엄마한테 물어볼게요. 보내고 싶으면 확인이라고 말해 주세요.", 0);
+        var session = new AgentSession("s9", "u");
+        session.keepPhoto("PHOTO", clock);
+
+        var reply = assistant(model, Duration.ofSeconds(5)).reply(session, "엄마한테 물어봐 줘", null, false);
+
+        assertThat(reply.speech()).startsWith("엄마에게 사진과 질문을 보냈어요.").doesNotContain("확인이라고");
+    }
+
+    @Test
+    void 여러_날은_날마다_불러_한_번에_돌려준다() {
+        var model = new ScriptedModel(List.<String[]>of(
+                new String[] { "schedule_list", "{\"date\":\"2026-11-09\",\"endDate\":\"2026-11-11\"}" }),
+                results -> results.get(0), 0);
+
+        var reply = assistant(model, Duration.ofSeconds(5)).reply(new AgentSession("s10", "u"), "다음 주 일정 알려 줘",
+                null, false);
+
+        assertThat(calls).containsExactly("schedule_list {date=2026-11-09, userId=u}",
+                "schedule_list {date=2026-11-10, userId=u}", "schedule_list {date=2026-11-11, userId=u}");
+        assertThat(json.readTree(reply.speech()).path("days")).hasSize(3);
+    }
+
+    @Test
+    void 여러_날은_14일까지만() {
+        var model = new ScriptedModel(List.<String[]>of(
+                new String[] { "schedule_list", "{\"date\":\"2026-11-01\",\"endDate\":\"2026-12-31\"}" }),
+                results -> "목록", 0);
+
+        assistant(model, Duration.ofSeconds(5)).reply(new AgentSession("s11", "u"), "일정 다 알려 줘", null, false);
+
+        assertThat(calls).hasSize(AssistantTools.MAX_LIST_DAYS);
+    }
+
+    @Test
+    void 같은_답이_줄바꿈으로_두_번_오면_한_번만() {
+        assertThat(LlmAssistant.tidy("일정이 없어요.\n일정이 없어요.")).isEqualTo("일정이 없어요.");
+        assertThat(LlmAssistant.tidy("첫 문장이에요.\n\n둘째 문장이에요.")).isEqualTo("첫 문장이에요. 둘째 문장이에요.");
+        assertThat(LlmAssistant.tidy("누구에게 물어볼까요요? 이름을 말해 주세요요")).isEqualTo("누구에게 물어볼까요? 이름을 말해 주세요");
+    }
+
+    @Test
+    void 누구에게_보냈는지_빠지면_넣어_말한다() {
+        var model = new ScriptedModel(List.of(
+                new String[] { "helper_contacts", "{}" },
+                new String[] { "helper_ask", "{\"contactId\":\"h_1\",\"question\":\"이 옷 괜찮아?\"}" }),
+                results -> "보냈어요.", 0);
+        var session = new AgentSession("s12", "u");
+        session.keepPhoto("PHOTO", clock);
+
+        var reply = assistant(model, Duration.ofSeconds(5)).reply(session, "엄마한테 물어봐 줘", null, false);
+
+        assertThat(reply.speech()).startsWith("엄마에게 사진과 질문을 보냈어요.");
+    }
+
+    @Test
+    void 한_일을_제대로_말하면_GPT_답을_그대로() {
+        var model = new ScriptedModel(List.of(
+                new String[] { "schedule_list", "{\"date\":\"2026-11-06\"}" },
+                new String[] { "schedule_delete", "{\"eventId\":\"e_fake\"}" }),
+                results -> "금요일 면접 일정을 삭제했어요.", 0);
+
+        var reply = assistant(model, Duration.ofSeconds(5)).reply(new AgentSession("s13", "u"), "금요일 면접 지워 줘",
+                null, false);
+
+        assertThat(reply.speech()).isEqualTo("금요일 면접 일정을 삭제했어요.");
+    }
 }

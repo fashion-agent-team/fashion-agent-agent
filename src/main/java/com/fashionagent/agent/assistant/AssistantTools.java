@@ -1,5 +1,7 @@
 package com.fashionagent.agent.assistant;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,7 +38,22 @@ public class AssistantTools {
      * 이미 해 버린 일(일정 등록·삭제, 가족에게 보내기)의 안내 문장. GPT가 도구를 부른 뒤 시간 초과나
      * 사용량 초과로 마지막 답을 못 만들어도, 사용자가 "처리하지 못했어요"만 듣고 같은 일을 또 시키지 않게 이건 말해 줍니다.
      */
-    final List<String> done = new ArrayList<>();
+    final List<Done> done = new ArrayList<>();
+
+    /**
+     * 해 버린 일 하나. GPT 답에 {@code mention} 중 하나도 없으면(예: 보내 놓고 "보내려면 확인이라고 말해 주세요")
+     * 답을 믿지 않고 {@code say}를 읽습니다. 2026-11-04 실제 GPT(gpt-5-mini)에서 이런 답이 나왔습니다.
+     */
+    record Done(String say, List<String> mention) {
+        /** mention의 말이 모두 들어 있어야 합니다. "지웠|삭제"처럼 |로 나눈 것은 그중 하나. */
+        boolean mentionedIn(String speech) {
+            return mention.stream().filter(m -> m != null && !m.isBlank())
+                    .allMatch(m -> java.util.Arrays.stream(m.split("\\|")).anyMatch(speech::contains));
+        }
+    }
+
+    /** 한 번에 볼 수 있는 날 수. "이번 주랑 다음 주"(최대 14일)까지. */
+    static final int MAX_LIST_DAYS = 14;
     /** schedule_list에서 본 일정 이름(eventId → title). 지운 뒤 "면접을 지웠어요"라고 말하려고. */
     private final Map<String, String> eventTitles = new HashMap<>();
     /** helper_contacts에서 본 이름(contactId → name). */
@@ -76,19 +93,54 @@ public class AssistantTools {
         String out = call(ToolNames.SCHEDULE_ADD, args, true);
         JsonNode node = json.readTree(out);
         if (node.has("spokenSummary")) {
-            done.add(node.path("spokenSummary").asString());
+            done.add(new Done(node.path("spokenSummary").asString(), List.of("등록|넣었")));
         }
         return out;
     }
 
     @Tool(name = ToolNames.SCHEDULE_LIST, description = """
-            그날의 일정 목록을 가져옵니다. "내일 일정 뭐야?"에 쓰고, 일정을 지우기 전에 eventId를 찾을 때도 씁니다.""")
+            일정 목록을 가져옵니다. "내일 일정 뭐야?"는 date만, "이번 주 일정"·"다음 주 일정"처럼 여러 날은 date와 endDate를 \
+            함께 넣어 한 번에 부르세요(최대 14일). 일정을 지우기 전에 eventId를 찾을 때도 씁니다. \
+            여러 날을 보면 결과는 days(날짜별 events)입니다.""")
     public String scheduleList(
-            @ToolParam(description = "날짜 YYYY-MM-DD. 비우면 오늘", required = false) String date) {
-        Map<String, Object> args = new HashMap<>();
-        if (date != null && !date.isBlank()) {
-            args.put("date", date);
+            @ToolParam(description = "날짜 YYYY-MM-DD. 비우면 오늘", required = false) String date,
+            @ToolParam(description = "여러 날을 볼 때 마지막 날짜 YYYY-MM-DD(포함). 하루만 보면 비움", required = false)
+            String endDate) {
+        LocalDate from;
+        LocalDate to;
+        try {
+            from = date == null || date.isBlank() ? null : LocalDate.parse(date.strip());
+            to = endDate == null || endDate.isBlank() ? from : LocalDate.parse(endDate.strip());
+        } catch (DateTimeParseException e) {
+            return error("bad_date", "날짜는 YYYY-MM-DD 형식이어야 해요.");
         }
+        if (from == null) {
+            // 오늘: 날짜는 서버가 정합니다(Asia/Seoul).
+            return listOne(new HashMap<>());
+        }
+        if (to.isBefore(from)) {
+            LocalDate t = from;
+            from = to;
+            to = t;
+        }
+        if (from.plusDays(MAX_LIST_DAYS - 1).isBefore(to)) {
+            to = from.plusDays(MAX_LIST_DAYS - 1);
+        }
+        if (from.equals(to)) {
+            return listOne(new HashMap<>(Map.of("date", from.toString())));
+        }
+        List<Object> days = new ArrayList<>();
+        for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
+            JsonNode day = json.readTree(listOne(new HashMap<>(Map.of("date", d.toString()))));
+            if (day.has("error")) {
+                return json.writeValueAsString(day);
+            }
+            days.add(day);
+        }
+        return json.writeValueAsString(Map.of("from", from.toString(), "to", to.toString(), "days", days));
+    }
+
+    private String listOne(Map<String, Object> args) {
         String out = call(ToolNames.SCHEDULE_LIST, args, true);
         for (JsonNode e : json.readTree(out).path("events")) {
             eventTitles.put(e.path("eventId").asString(""), e.path("title").asString(""));
@@ -102,7 +154,10 @@ public class AssistantTools {
         String out = call(ToolNames.SCHEDULE_DELETE, Map.of("eventId", eventId), true);
         if (json.readTree(out).path("deleted").asBoolean(false)) {
             String title = eventTitles.get(eventId);
-            done.add(title == null || title.isBlank() ? "일정을 지웠어요." : "일정 '" + title + "'을 지웠어요.");
+            boolean known = title != null && !title.isBlank();
+            // "지웠어요."만 들으면 무엇을 지웠는지 알 수 없어서, 일정 이름이 답에 없으면 이름을 넣어 읽습니다.
+            done.add(new Done(known ? "일정 '" + title + "'을 지웠어요." : "일정을 지웠어요.",
+                    known ? List.of("지웠|삭제", title) : List.of("지웠|삭제")));
         }
         return out;
     }
@@ -134,7 +189,10 @@ public class AssistantTools {
         if (node.has("requestId")) {
             session.lastHelperRequestId = node.path("requestId").asString();
             String name = node.path("sentTo").asString(contactNames.get(contactId));
-            done.add((name == null || name.isBlank() ? "가족" : name) + "에게 사진과 질문을 보냈어요. 답이 왔는지는 \"답 왔어?\"라고 물어봐 주세요.");
+            String who = name == null || name.isBlank() ? "가족" : name;
+            // 누구에게 보냈는지도 답에 있어야 합니다("보냈어요."만 오면 바꿈).
+            done.add(new Done(who + "에게 사진과 질문을 보냈어요. 답이 왔는지는 \"답 왔어?\"라고 물어봐 주세요.",
+                    List.of("보냈", who)));
         }
         return out;
     }

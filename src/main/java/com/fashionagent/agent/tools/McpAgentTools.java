@@ -75,7 +75,8 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
         try {
             return clients.computeIfAbsent(server, s -> connect(url));
         } catch (RuntimeException e) {
-            throw new ToolException(tool, "upstream_failed", server + " 연결 실패: " + e.getMessage(), e);
+            // 서버가 아직 없거나 꺼져 있음. GPT가 "다시 해 볼까요?"가 아니라 "지금은 그 기능을 쓸 수 없어요"라고 말하게 코드를 나눕니다.
+            throw new ToolException(tool, "unavailable", server + " 서버에 연결할 수 없어요(아직 준비 안 됐거나 꺼짐): " + e.getMessage(), e);
         }
     }
 

@@ -40,11 +40,21 @@ public class LlmAssistant implements Assistant {
 
     static final String SYSTEM = """
             당신은 시각장애인을 돕는 음성 비서입니다. 답은 화면 없이 소리로만 전달됩니다.
-            - 한국어 존댓말로 한두 문장, 짧게 답합니다. 목록·기호·이모지·마크다운은 쓰지 않습니다.
+            - "~요"로 끝나는 해요체로 한두 문장, 짧게 답합니다("~습니다"는 쓰지 않음). 목록·기호·이모지·마크다운은 쓰지 않습니다.
             - 필요한 도구를 직접 골라 부릅니다. 도구 결과에 없는 사실은 지어내지 않습니다.
-            - 일정 등록에 날짜나 시각이 빠졌으면 도구를 부르지 말고 그것만 물어봅니다. "두 시"처럼 오전·오후가 없으면 오후로 봅니다(새벽 일정은 드묾).
-            - 가족·친구에게 묻기는 사용자가 분명히 원할 때만 합니다. 누구에게 보낼지 모르면 helper_contacts로 목록을 보고 물어봅니다.
+            - 조회·삭제 요청은 사용자에게 되묻기 전에 먼저 schedule_list로 찾아봅니다. 여러 날("이번 주", "다음 주")은 date와 endDate로 한 번에 봅니다.
+              이번 주는 오늘부터 이번 주 일요일까지, 다음 주는 다음 주 월요일부터 일요일까지입니다.
+            - 요일만 말했는데("토요일 결혼식") 이번 주 그날에 맞는 일정이 없으면 다음 주 같은 요일도 찾아본 뒤에 묻습니다.
+            - 일정 등록에 날짜나 시각이 빠졌으면 도구를 부르지 말고 빠진 것만 짧게 물어봅니다.
+              "두 시"처럼 오전·오후가 없으면 오후로 봅니다(새벽 일정은 드묾). 이 규칙을 사용자에게 설명하지 않습니다.
+            - 일정 이름(title)에는 날짜·시각 말("모레", "다음 주", "두 시")을 넣지 않습니다. 예: "모레 회사 회의" → "회사 회의".
+            - 가족·친구에게 묻기("엄마한테 물어봐 줘", "답 왔어?")는 사용자에게 되묻기 전에 먼저 도구를 부릅니다.
+              1) helper_contacts로 목록을 보고 사용자가 말한 사람(엄마, 친구 이름)의 contactId를 찾습니다.
+              2) 한 사람으로 정해지면 바로 helper_ask로 보냅니다(사진은 agent가 넣음). 정해지지 않을 때만 목록의 이름을 말하며 누구인지 묻습니다.
+              3) "답 왔어?"는 helper_answer를 부릅니다(requestId는 비워도 됨).
+              helper_ask를 불렀으면 이미 보낸 것입니다. "보냈어요"라고 말하고, 다시 확인을 받지 않습니다.
             - 도구 결과에 error가 있으면 무엇이 안 됐는지 쉬운 말로 알려 주고, 할 수 있는 다음 행동을 하나 말합니다.
+              code가 unavailable이면 그 기능을 지금은 쓸 수 없다고 말합니다(바로 다시 해 보자고 하지 않음).
             - 옷 추천("오늘 뭐 입지?")과 얼굴 확인은 다른 흐름이 처리합니다. 그런 요청이면 그렇게 말해 보라고 안내합니다.
             - 시각은 "오후 2시"처럼 말로 읽습니다. ISO 형식이나 id를 읽어 주지 않습니다.
             지금은 %s (Asia/Seoul)입니다.""";
@@ -95,9 +105,17 @@ public class LlmAssistant implements Assistant {
             log.warn("GPT 개별 기능 실패{}: {}", quota ? "(사용량 초과 429)" : "", rootMessage(e));
             speech = null;
         }
+        speech = tidy(speech);
+        final String said = speech;
+        // 해 버린 일을 GPT 답이 말하지 않으면(늦은 답 포함) 그 일을 직접 읽습니다. 사용자가 같은 일을 또 시키지 않게.
+        if (speech != null && !speech.isBlank()
+                && toolbox.done.stream().anyMatch(d -> !d.mentionedIn(said))) {
+            log.warn("GPT 답이 한 일을 말하지 않아 바꿈: {}", speech);
+            speech = null;
+        }
         if (speech == null || speech.isBlank()) {
             if (!toolbox.done.isEmpty()) {
-                speech = String.join(" ", toolbox.done);
+                speech = String.join(" ", toolbox.done.stream().map(AssistantTools.Done::say).toList());
             } else if (quota) {
                 speech = QUOTA_SPEECH;
             } else {
@@ -130,6 +148,25 @@ public class LlmAssistant implements Assistant {
             }
         }
         return false;
+    }
+
+    /**
+     * 소리로 읽을 답 다듬기: 줄바꿈은 띄어쓰기로, 같은 문장이 두 번 나오면 한 번만, 끝의 "요요"는 "요"로.
+     * 2026-11-04 실제 GPT(gpt-5.4-mini)가 같은 답을 줄바꿈으로 두 번 붙여 준 적이 있습니다.
+     */
+    static String tidy(String speech) {
+        if (speech == null) {
+            return null;
+        }
+        String[] lines = speech.strip().split("\\s*\\n+\\s*");
+        List<String> kept = new ArrayList<>();
+        for (String line : lines) {
+            if (!line.isBlank() && !kept.contains(line)) {
+                kept.add(line);
+            }
+        }
+        // 2026-11-04 gpt-5.4-mini가 "물어볼까요요?"처럼 끝의 "요"를 두 번 쓴 적이 있습니다.
+        return String.join(" ", kept).replaceAll("요요(?=[.?!]|\\s|$)", "요");
     }
 
     private static String rootMessage(Throwable e) {
