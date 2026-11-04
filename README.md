@@ -30,15 +30,57 @@
 - 얼룩은 위치보다 할 일(빨기·수선·바꾸기)을 먼저 말하고, 위치는 사용자가 물을 때만.
 - 대화 상태(1단계 추천, 본 옷, 직전 사진 10분)는 Redis에 30분. DB는 쓰지 않습니다.
 
+## 실행하기
+
+Java 21만 있으면 됩니다. 기본 설정은 **서버 없이 혼자 실행**(가짜 도구 + 규칙 판단 + 메모리 세션)이라 다른 레포가 없어도 흐름 전체를 돌려 볼 수 있습니다.
+
+```bash
+./gradlew bootRun                     # http://localhost:8081
+./gradlew test                        # 옷 추천 2단계 전체 + 진짜 MCP 서버 연결 테스트
+```
+
+```bash
+# 1단계: 말로 추천 → sessionId를 받아 둠
+curl -s localhost:8081/api/v1/agent/turn -H 'X-User-Id: u1' -H 'Content-Type: application/json' \
+  -d '{"utterance":"오늘 뭐 입지?"}'
+# 2단계: 앱이 자동 전송한 사진 한 장 (가짜 도구는 내용과 상관없이 "왼쪽 흰 셔츠(얼룩) + 오른쪽 체크 셔츠")
+curl -s localhost:8081/api/v1/agent/turn -H 'X-User-Id: u1' -H 'Content-Type: application/json' \
+  -d '{"sessionId":"<받은 값>","image":"AAAA","imageKind":"outfit"}'
+# "얼룩 어디야?" → 위치, "이걸로 할게" → 기록하고 next=done
+```
+
+| 프로필 | 도구 | 판단 | 세션 | 언제 |
+| --- | --- | --- | --- | --- |
+| (없음) | 가짜 | 규칙 | 메모리 | 혼자 개발 |
+| `mcp` | 진짜 MCP 서버 (`MCP_*_URL`) | 규칙 | 메모리 | mcp-weather 등과 붙여 보기 |
+| `mcp,gemini` | 진짜 | Gemini (`GEMINI_API_KEY`) | 메모리 | Gemini 판단 확인 |
+| `dev`, `prod` | 진짜 | Gemini | Redis (`REDIS_HOST`) | Docker Compose |
+
+`SPRING_PROFILES_ACTIVE=mcp ./gradlew bootRun`처럼 켭니다. 판단 모델은 `AGENT_GEMINI_MODEL`(기본 `gemini-3-flash-preview`)입니다. 2026-11-04 실제 키로 비교했을 때 `gemini-3.5-flash`는 답 하나에 30~70초라 25초 제한을 넘겼고, `gemini-3.5-flash-lite`는 2~3초지만 판단이 틀릴 때가 있었고, `gemini-3-flash-preview`는 판단이 정확하고 대부분 25초 안이었습니다(넘으면 규칙으로 답함).
+
+키는 `.env`(커밋 안 됨)에 `GEMINI_API_KEY=...`로 두고 `set -a; . ./.env; set +a` 후 실행하면 편합니다. MCP 서버가 아직 안 켜져 있어도 agent는 뜨고, 부를 때 다시 붙습니다. 도구가 실패하면 그 데이터 없이 계속하고, Gemini가 실패하거나 25초 안에 답하지 않으면 규칙으로 판단합니다(사용자는 항상 답을 들음).
+
+## 코드 구조
+
+```
+api/       TurnController (POST /api/v1/agent/turn), 요청·응답, 오류 모양 {"error":{code,message}}
+flow/      TurnService (어느 흐름으로 보낼지), Intent (키워드), OutfitFlow (옷 추천 2단계)
+judge/     OutfitJudge: GeminiOutfitJudge (구조화 출력) / RuleOutfitJudge (규칙) / Fallback, 지시문 Prompts
+tools/     AgentTools: McpAgentTools (Streamable HTTP) / FakeAgentTools, 도구 이름 ToolNames
+session/   AgentSession, SessionStore: 메모리 / Redis (30분, 키에 userId 포함)
+```
+
 ## 할 일
 
-- [ ] Spring Boot 뼈대 + `/actuator/health` + Dockerfile
-- [ ] 개발 중엔 게이트웨이 없이 `X-User-Id` 헤더로 직접 호출
-- [ ] Gemini 연결 (Spring AI), 구조화 출력으로 1단계 추천 모드
-- [ ] mcp-weather 연결 (MCP 클라이언트) → 일정은 가짜 JSON으로 1단계 완성
+- [x] Spring Boot 뼈대 + `/actuator/health` + Dockerfile
+- [x] 개발 중엔 게이트웨이 없이 `X-User-Id` 헤더로 직접 호출
+- [x] Gemini 연결 (Spring AI), 구조화 출력으로 추천·확인 모드 (2026-11-04 실제 키로 확인)
+- [x] MCP 클라이언트 (테스트 안에서 Spring AI MCP 서버에 붙여 확인), 가짜 도구로 1·2단계 완성
+- [ ] mcp-weather, mcp-schedule 나오면 `mcp` 프로필로 붙여 보기
 - [ ] 2단계: mcp-clothes-state 준비 전에는 지금 배포된 Gemini 옷 분석 서버를 임시로 사용
-- [ ] Redis 세션, 두 벌 비교, 마무리(closet_save·closet_wear)
-- [ ] 개별 기능: Gemini 도구 선택(schedule_add, face_check, helper_*)
+- [x] Redis 세션, 두 벌 비교, "어디야?", 마무리(closet_save·closet_wear)
+- [ ] 개별 기능: Gemini 도구 선택(schedule_add, face_check, helper_*). 지금은 날씨·오늘 일정 읽어 주기만 됨
+- [ ] 가족에게 묻기용 직전 사진 10분 보관
 
 ## 공통 약속
 
