@@ -1,0 +1,45 @@
+# 기본값은 "서버 없이 혼자 실행": 가짜 도구 + 규칙 판단 + 메모리 세션.
+# Docker Compose(APP_ENV=dev|prod)는 dev·prod 프로필 = MCP + Gemini + Redis.
+# 하나씩 켜려면 mcp, gemini, redis 프로필을 골라 씁니다. 예: SPRING_PROFILES_ACTIVE=mcp (진짜 MCP + 규칙 판단)
+server:
+  port: 8081
+
+spring:
+  application:
+    name: fashion-agent-agent
+  threads:
+    virtual:
+      enabled: true
+  profiles:
+    group:
+      dev: mcp,gemini,redis
+      prod: mcp,gemini,redis
+  ai:
+    model:
+      chat: none          # gemini 프로필에서 google-genai로 켬
+    mcp:
+      client:
+        enabled: false    # MCP 클라이언트는 McpAgentTools가 직접 만듦 (서버가 늦게 켜져도 다시 붙음)
+  jackson:
+    default-property-inclusion: non_null
+
+agent:
+  tools: fake
+  judge: rule
+  session: memory
+  closet-search: false
+  judge-timeout: 25s
+  session-ttl: 30m
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  health:
+    redis:
+      enabled: false
+
+logging:
+  level:
+    com.fashionagent: INFO

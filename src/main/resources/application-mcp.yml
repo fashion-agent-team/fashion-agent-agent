@@ -1,0 +1,10 @@
+# 실제 MCP 서버 호출. 주소는 앱 레포 docs/infra/.env.example과 같은 이름의 환경 변수.
+agent:
+  tools: mcp
+  mcp:
+    weather: ${MCP_WEATHER_URL:http://localhost:8091/mcp}
+    schedule: ${MCP_SCHEDULE_URL:http://localhost:8092/mcp}
+    clothes-state: ${MCP_CLOTHES_STATE_URL:http://localhost:8093/mcp}
+    face-check: ${MCP_FACE_CHECK_URL:http://localhost:8094/mcp}
+    closet: ${MCP_CLOSET_URL:http://localhost:8095/mcp}
+    helper: ${MCP_HELPER_URL:http://localhost:8096/mcp}

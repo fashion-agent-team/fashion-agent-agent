@@ -1,0 +1,15 @@
+# Gemini 판단. 키는 환경 변수로만 (레포에 넣지 않기).
+spring:
+  ai:
+    model:
+      chat: google-genai
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY}
+        chat:
+          options:
+            model: ${GEMINI_MODEL:gemini-3.5-flash}
+            temperature: 0.2
+
+agent:
+  judge: gemini
