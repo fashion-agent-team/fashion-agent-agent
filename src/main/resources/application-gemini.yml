@@ -8,7 +8,10 @@ spring:
         api-key: ${GEMINI_API_KEY}
         chat:
           options:
-            model: ${GEMINI_MODEL:gemini-3.5-flash}
+            # 2026-11-04 실제 키로 비교: gemini-3.5-flash는 답 하나에 30~70초(25초 제한 넘김),
+            # gemini-3.5-flash-lite는 2~3초지만 판단이 틀릴 때가 있음(체크 셔츠가 면접에 낫다고 함),
+            # gemini-3-flash-preview는 판단이 정확하고 대부분 25초 안. 비전 서버의 GEMINI_MODEL과 따로 정함.
+            model: ${AGENT_GEMINI_MODEL:gemini-3-flash-preview}
             temperature: 0.2
 
 agent:
