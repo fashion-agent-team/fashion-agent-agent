@@ -112,6 +112,34 @@ class TurnFlowTest {
     }
 
     @Test
+    void 얼굴_확인_카메라_켜고_사진으로_안내() throws Exception {
+        JsonNode start = turn("u6", """
+                {"utterance": "얼굴 확인해 줘"}""");
+        assertThat(start.path("next").asString()).isEqualTo("camera_face");
+        String sid = start.path("sessionId").asString();
+
+        // 구도가 안 맞으면 그 안내만 하고 카메라 유지
+        JsonNode cut = turn("u6", """
+                {"sessionId": "%s", "image": "CUT...", "imageKind": "face", "autoCaptured": true}""".formatted(sid));
+        assertThat(cut.path("speech").asString()).contains("위쪽에 잘렸어요");
+        assertThat(cut.path("next").asString()).isEqualTo("camera_face");
+
+        JsonNode ok = turn("u6", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "face", "autoCaptured": true}""".formatted(sid));
+        assertThat(ok.path("result").path("type").asString()).isEqualTo("face_check");
+        assertThat(ok.path("speech").asString()).contains("왼쪽 눈썹").contains("앞니");
+        assertThat(ok.path("next").asString()).isEqualTo("listen");
+    }
+
+    @Test
+    void GPT가_꺼져_있으면_개별_기능은_안내만() throws Exception {
+        JsonNode r = turn("u7", """
+                {"utterance": "토요일 두 시에 결혼식 넣어 줘"}""");
+        assertThat(r.path("speech").asString()).contains("오늘 뭐 입지");
+        assertThat(r.path("next").asString()).isEqualTo("listen");
+    }
+
+    @Test
     void health() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));

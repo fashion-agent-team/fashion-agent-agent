@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import com.fashionagent.agent.api.Location;
+import com.fashionagent.agent.assistant.Assistant;
 import com.fashionagent.agent.api.TurnRequest;
 import com.fashionagent.agent.api.TurnResponse;
 import com.fashionagent.agent.api.TurnResponse.Next;
@@ -23,13 +24,20 @@ import tools.jackson.databind.JsonNode;
 public class TurnService {
 
     private final OutfitFlow outfit;
+    private final FaceFlow face;
+    private final Assistant assistant;
     private final AgentTools tools;
     private final SessionStore sessions;
+    private final java.time.Clock clock;
 
-    public TurnService(OutfitFlow outfit, AgentTools tools, SessionStore sessions) {
+    public TurnService(OutfitFlow outfit, FaceFlow face, Assistant assistant, AgentTools tools,
+            SessionStore sessions, java.time.Clock clock) {
         this.outfit = outfit;
+        this.face = face;
+        this.assistant = assistant;
         this.tools = tools;
         this.sessions = sessions;
+        this.clock = clock;
     }
 
     public TurnResponse handle(String userId, TurnRequest req) {
@@ -41,8 +49,10 @@ public class TurnService {
         }
 
         if (req.hasImage()) {
+            // 가족에게 묻기에 쓰려고 직전 사진 한 장만 10분 들고 있습니다.
+            session.keepPhoto(req.image(), clock);
             if ("face".equals(req.imageKind())) {
-                return say(session, "얼굴 확인은 아직 준비 중이에요.", Next.listen);
+                return face.check(session, req.image(), req.faceLandmarks());
             }
             return outfit.check(session, req.image());
         }
@@ -53,10 +63,12 @@ public class TurnService {
             case WHERE -> outfit.where(session);
             case WEATHER -> weather(session, req.location());
             case SCHEDULE -> schedule(session);
-            case FACE -> say(session, "얼굴 확인은 아직 준비 중이에요.", Next.listen);
-            // TODO: 개별 기능(일정 등록, 가족에게 묻기)은 Gemini 도구 선택으로 (README 할 일)
-            case UNKNOWN -> say(session, "아직 그 말은 잘 모르겠어요. \"오늘 뭐 입지?\"라고 말해 보세요.",
-                    inOutfit ? Next.camera_outfit : Next.listen);
+            case FACE -> face.start(session);
+            // 그 밖(일정 등록·삭제, 다른 날 일정, 가족에게 묻기 등)은 GPT가 도구를 고릅니다(약속 5-2절).
+            case OTHER -> {
+                Assistant.Reply r = assistant.reply(session, req.utterance(), req.location(), inOutfit);
+                yield say(session, r.speech(), r.next());
+            }
         };
     }
 

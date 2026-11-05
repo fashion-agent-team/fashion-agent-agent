@@ -10,10 +10,10 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * agent 설정. 기본값은 "서버 없이 혼자 실행" (가짜 도구, 규칙 판단, 메모리 세션)입니다.
  *
  * @param tools        fake: 가짜 도구 / mcp: 실제 MCP 서버 호출
- * @param judge        rule: 규칙으로 판단 / gemini: Gemini로 판단 (실패하면 규칙으로)
+ * @param judge        rule: 규칙으로 판단 / openai: GPT로 판단 (실패하면 규칙으로)
  * @param session      memory: 서버 메모리 / redis: Redis (여러 대 띄울 때)
  * @param closetSearch 옷 추천 1단계에서 closet_search를 부를지 (옷장에 옷이 쌓인 뒤 켬)
- * @param judgeTimeout Gemini 답을 기다리는 시간 (약속: 25초)
+ * @param judgeTimeout GPT 답을 기다리는 시간 (약속: 25초)
  * @param sessionTtl   대화 상태 보관 시간 (약속: 30분)
  * @param mcp          MCP 서버 이름 → 주소 (예: weather → http://localhost:8091/mcp)
  */
@@ -29,5 +29,10 @@ public record AgentProperties(
 
     public AgentProperties {
         mcp = mcp == null ? Map.of() : Map.copyOf(mcp);
+    }
+
+    /** 판단·개별 기능을 LLM(GPT)으로 하는지. */
+    public boolean usesLlm() {
+        return "openai".equals(judge);
     }
 }

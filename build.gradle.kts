@@ -23,7 +23,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
-    implementation("org.springframework.ai:spring-ai-starter-model-google-genai")
+    // 2026-11-04 판단·도구 선택 LLM을 Gemini에서 GPT로 바꿈 (openai 프로필)
+    implementation("org.springframework.ai:spring-ai-starter-model-openai")
     implementation("org.springframework.ai:spring-ai-starter-mcp-client")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

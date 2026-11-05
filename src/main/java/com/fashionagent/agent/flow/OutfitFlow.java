@@ -39,7 +39,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 옷 추천 2단계 (약속 5-1절). 도구를 부르는 순서는 여기 코드로 정해져 있고, Gemini는 판단만 합니다.
+ * 옷 추천 2단계 (약속 5-1절). 도구를 부르는 순서는 여기 코드로 정해져 있고, GPT는 판단만 합니다.
  * <ol>
  * <li>{@link #advise}: weather_today + schedule_list (+ closet_search) → 추천 모드 → next=camera_outfit</li>
  * <li>{@link #check}: 자동 전송된 한 장 → clothes_inspect → 확인 모드 → next=camera_outfit</li>

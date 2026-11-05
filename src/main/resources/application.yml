@@ -1,6 +1,6 @@
 # 기본값은 "서버 없이 혼자 실행": 가짜 도구 + 규칙 판단 + 메모리 세션.
-# Docker Compose(APP_ENV=dev|prod)는 dev·prod 프로필 = MCP + Gemini + Redis.
-# 하나씩 켜려면 mcp, gemini, redis 프로필을 골라 씁니다. 예: SPRING_PROFILES_ACTIVE=mcp (진짜 MCP + 규칙 판단)
+# Docker Compose(APP_ENV=dev|prod)는 dev·prod 프로필 = MCP + GPT + Redis.
+# 하나씩 켜려면 mcp, openai, redis 프로필을 골라 씁니다. 예: SPRING_PROFILES_ACTIVE=mcp (진짜 MCP + 규칙 판단)
 server:
   port: 8081
 
@@ -12,11 +12,24 @@ spring:
       enabled: true
   profiles:
     group:
-      dev: mcp,gemini,redis
-      prod: mcp,gemini,redis
+      dev: mcp,openai,redis
+      prod: mcp,openai,redis
   ai:
     model:
-      chat: none          # gemini 프로필에서 google-genai로 켬
+      chat: none          # openai 프로필에서 openai로 켬
+      embedding: none     # 아래는 안 씀 (OpenAI 스타터가 키 없이 만들다 실패하지 않게 끔)
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+    # Spring AI 기본 재시도는 10번(2초부터 5배씩 늘림)이라, 429(사용량 초과)나 장애 때 25초 제한을 다 쓰고 실패합니다.
+    # 한 번만 다시 해 보고 빨리 규칙 판단·안내 문장으로 넘어갑니다.
+    retry:
+      max-attempts: 2
+      backoff:
+        initial-interval: 1s
+        multiplier: 1
     mcp:
       client:
         enabled: false    # MCP 클라이언트는 McpAgentTools가 직접 만듦 (서버가 늦게 켜져도 다시 붙음)

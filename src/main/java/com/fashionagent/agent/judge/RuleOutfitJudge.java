@@ -18,8 +18,8 @@ import com.fashionagent.agent.model.OutfitCheck.Verdict;
 import tools.jackson.databind.JsonNode;
 
 /**
- * Gemini 없이 판단하는 규칙. 약속 5-1절 "Gemini 판단 기준"을 코드로 옮긴 것입니다.
- * 키 없이 로컬에서 돌릴 때, 그리고 Gemini가 실패하거나 25초 안에 답하지 않을 때 씁니다.
+ * GPT 없이 판단하는 규칙. 약속 5-1절 "판단 기준"을 코드로 옮긴 것입니다.
+ * 키 없이 로컬에서 돌릴 때, 그리고 GPT가 실패하거나 25초 안에 답하지 않을 때 씁니다.
  */
 public class RuleOutfitJudge implements OutfitJudge {
 

@@ -1,0 +1,21 @@
+# GPT(OpenAI)로 판단·개별 기능. 키는 환경 변수로만 (레포에 넣지 않기).
+# 2026-11-04 진행 님 결정: Gemini 무료 등급이 하루 20번이라 막혔고, OpenAI 크레딧이 있어 GPT로 바꿈(Gemini는 agent에서 뺌).
+spring:
+  ai:
+    model:
+      chat: openai
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          # 2026-11-04 실제 키로 같은 대화(일정 등록·되묻기·조회·삭제, 옷 추천 1·2단계)를 모델별로 재서 정함:
+          #   gpt-5-mini(기본 생각 medium): 옷 확인 25초 넘어 규칙 판단으로 떨어짐
+          #   gpt-5-mini + low: 맞게 답함, 도구 3~8초, 옷 확인 16~19초(25초 제한에 빠듯)
+          #   gpt-5.4-mini + none: 맞게 답함, 대부분 1~4초  ← 기본
+          #   gpt-4.1-mini: 빠르지만 얼룩 난 옷의 좌우를 틀리게 말함(제외)
+          # 바꾸려면 AGENT_OPENAI_MODEL, AGENT_OPENAI_REASONING. gpt-5.4-mini는 도구를 쓸 때 none만 받습니다(low면 400).
+          model: ${AGENT_OPENAI_MODEL:gpt-5.4-mini}
+          reasoning-effort: ${AGENT_OPENAI_REASONING:none}
+
+agent:
+  judge: openai
