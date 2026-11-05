@@ -10,6 +10,7 @@ public record TurnRequest(
         String imageKind,
         Boolean autoCaptured,
         Map<String, Object> faceLandmarks,
+        Map<String, Object> mouthBox,
         Location location) {
 
     public boolean hasImage() {

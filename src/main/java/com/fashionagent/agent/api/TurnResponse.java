@@ -8,7 +8,7 @@ import com.fashionagent.agent.model.OutfitCheck;
 public record TurnResponse(String sessionId, String speech, Next next, Result result) {
 
     public enum Next {
-        listen, camera_outfit, camera_face, done
+        listen, camera_outfit, camera_face, camera_teeth, done
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)

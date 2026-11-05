@@ -112,11 +112,16 @@ class TurnFlowTest {
     }
 
     @Test
-    void 얼굴_확인_카메라_켜고_사진으로_안내() throws Exception {
-        JsonNode start = turn("u6", """
+    void 얼굴_확인은_얼굴과_이_중_먼저_묻고_화장을_본다() throws Exception {
+        JsonNode ask = turn("u6", """
                 {"utterance": "얼굴 확인해 줘"}""");
+        assertThat(ask.path("speech").asString()).contains("화장을 볼까요").contains("이를 확인할까요");
+        assertThat(ask.path("next").asString()).isEqualTo("listen");
+        String sid = ask.path("sessionId").asString();
+
+        JsonNode start = turn("u6", """
+                {"sessionId": "%s", "utterance": "얼굴"}""".formatted(sid));
         assertThat(start.path("next").asString()).isEqualTo("camera_face");
-        String sid = start.path("sessionId").asString();
 
         // 구도가 안 맞으면 그 안내만 하고 카메라 유지
         JsonNode cut = turn("u6", """
@@ -126,9 +131,52 @@ class TurnFlowTest {
 
         JsonNode ok = turn("u6", """
                 {"sessionId": "%s", "image": "AAAA", "imageKind": "face", "autoCaptured": true}""".formatted(sid));
-        assertThat(ok.path("result").path("type").asString()).isEqualTo("face_check");
-        assertThat(ok.path("speech").asString()).contains("왼쪽 눈썹").contains("앞니");
+        assertThat(ok.path("result").path("type").asString()).isEqualTo("face_makeup_check");
+        assertThat(ok.path("speech").asString()).contains("왼쪽 눈썹").doesNotContain("앞니");
         assertThat(ok.path("next").asString()).isEqualTo("listen");
+    }
+
+    @Test
+    void 이_라고_답하면_치아를_본다() throws Exception {
+        JsonNode ask = turn("u6t", """
+                {"utterance": "얼굴 확인해 줘"}""");
+        String sid = ask.path("sessionId").asString();
+
+        JsonNode start = turn("u6t", """
+                {"sessionId": "%s", "utterance": "이요"}""".formatted(sid));
+        assertThat(start.path("next").asString()).isEqualTo("camera_teeth");
+        assertThat(start.path("speech").asString()).contains("입 가까이");
+
+        JsonNode cut = turn("u6t", """
+                {"sessionId": "%s", "image": "CUT...", "imageKind": "teeth", "mouthBox": {"x": 0.3, "y": 0.5, "w": 0.4, "h": 0.2}}""".formatted(sid));
+        assertThat(cut.path("speech").asString()).contains("입을 조금 더 벌려");
+        assertThat(cut.path("next").asString()).isEqualTo("camera_teeth");
+
+        JsonNode ok = turn("u6t", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "teeth"}""".formatted(sid));
+        assertThat(ok.path("result").path("type").asString()).isEqualTo("teeth_check");
+        assertThat(ok.path("speech").asString()).contains("앞니").doesNotContain("눈썹");
+    }
+
+    @Test
+    void 처음부터_이_확인을_말하면_묻지_않는다() throws Exception {
+        JsonNode r = turn("u6d", """
+                {"utterance": "이빨에 뭐 꼈는지 봐 줘"}""");
+        assertThat(r.path("next").asString()).isEqualTo("camera_teeth");
+
+        JsonNode m = turn("u6e", """
+                {"utterance": "화장 잘 됐는지 봐 줘"}""");
+        assertThat(m.path("next").asString()).isEqualTo("camera_face");
+    }
+
+    @Test
+    void 얼굴_이_대신_다른_말을_하면_원래_대화로() throws Exception {
+        JsonNode ask = turn("u6f", """
+                {"utterance": "얼굴 확인해 줘"}""");
+        String sid = ask.path("sessionId").asString();
+        JsonNode w = turn("u6f", """
+                {"sessionId": "%s", "utterance": "아니 오늘 날씨 어때?"}""".formatted(sid));
+        assertThat(w.path("speech").asString()).contains("체감");
     }
 
     @Test

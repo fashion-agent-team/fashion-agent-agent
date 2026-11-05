@@ -10,7 +10,8 @@ public final class ToolNames {
     public static final String SCHEDULE_ADD = "schedule_add";
     public static final String SCHEDULE_DELETE = "schedule_delete";
     public static final String CLOTHES_INSPECT = "clothes_inspect";
-    public static final String FACE_CHECK = "face_check";
+    public static final String FACE_MAKEUP_CHECK = "face_makeup_check";
+    public static final String TEETH_CHECK = "teeth_check";
     public static final String CLOSET_SEARCH = "closet_search";
     public static final String CLOSET_SAVE = "closet_save";
     public static final String CLOSET_WEAR = "closet_wear";
@@ -21,7 +22,8 @@ public final class ToolNames {
     /** 도구 이름의 앞부분이 서버 이름입니다. clothes_inspect → clothes-state 처럼 다른 것만 적습니다. */
     private static final Map<String, String> SERVER_OF_PREFIX = Map.of(
             "clothes", "clothes-state",
-            "face", "face-check");
+            "face", "face-check",
+            "teeth", "face-check");
 
     public static String serverOf(String tool) {
         String prefix = tool.substring(0, tool.indexOf('_'));
