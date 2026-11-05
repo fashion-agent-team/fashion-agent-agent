@@ -81,7 +81,7 @@ session/   AgentSession, SessionStore: 메모리 / Redis (30분, 키에 userId �
 - [ ] 2단계: mcp-clothes-state 준비 전에는 지금 배포된 Gemini 옷 분석 서버를 임시로 사용
 - [x] Redis 세션, 두 벌 비교, "어디야?", 마무리(closet_save·closet_wear)
 - [x] 개별 기능: GPT 도구 선택(`assistant/`: schedule_add·list·delete, helper_contacts·ask·answer, weather_today). 날씨·오늘 일정·얼굴 확인은 키워드로 바로 처리
-- [x] 얼굴 확인(`FaceFlow`): "얼굴 확인해 줘" → `camera_face` → 사진 한 장 → face_check 결과 문장을 이어 읽기
+- [x] 얼굴 확인(`FaceFlow`): "얼굴 확인해 줘" → "얼굴 화장을 볼까요, 이를 확인할까요?" → `camera_face` 또는 `camera_teeth` → 사진 한 장 → `face_makeup_check` 또는 `teeth_check` 결과 문장을 이어 읽기 ("이 확인해 줘"처럼 처음부터 말하면 묻지 않음)
 - [x] 실제 키로 일정 등록 날짜 해석("다음 주 토요일 두 시" → 11/14 14:00), 시간 빠지면 되묻기, 다른 날 조회 확인 (2026-11-04, Gemini)
 - [ ] 실제 GPT 키로 다시 확인: 일정 등록·삭제, 되묻기, 가족에게 묻기, 25초 안에 답하는지
 - [x] 가족에게 묻기용 직전 사진 10분 보관

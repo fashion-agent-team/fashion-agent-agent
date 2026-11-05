@@ -33,6 +33,8 @@ public class AgentSession {
     public long lastPhotoAt;
     /** 가족에게 마지막으로 보낸 질문 id ("엄마 답 왔어?"). */
     public String lastHelperRequestId;
+    /** 얼굴 확인에서 "얼굴을 볼까요, 이를 확인할까요?"를 물은 횟수. 0이면 묻지 않은 상태. */
+    public int faceChoiceAsked;
     /** 개별 기능 대화의 최근 몇 마디. GPT가 되물은 뒤 이어 듣기 위해. */
     public List<Said> assistantHistory = new ArrayList<>();
 

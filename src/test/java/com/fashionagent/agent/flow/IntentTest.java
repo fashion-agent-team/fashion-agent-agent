@@ -24,6 +24,10 @@ class IntentTest {
         assertThat(Intent.of("오늘 날씨 어때", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("오늘 일정 뭐야", false)).isEqualTo(Intent.SCHEDULE);
         assertThat(Intent.of("얼굴 확인해 줘", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("이 확인해 줘", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("치아에 뭐 꼈어?", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("화장 봐 줘", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("이쪽 옷 괜찮아?", false)).isNotEqualTo(Intent.FACE);
     }
 
     @Test

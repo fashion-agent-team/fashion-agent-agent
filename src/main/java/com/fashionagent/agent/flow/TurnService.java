@@ -52,9 +52,20 @@ public class TurnService {
             // 가족에게 묻기에 쓰려고 직전 사진 한 장만 10분 들고 있습니다.
             session.keepPhoto(req.image(), clock);
             if ("face".equals(req.imageKind())) {
-                return face.check(session, req.image(), req.faceLandmarks());
+                return face.checkMakeup(session, req.image(), req.faceLandmarks());
+            }
+            if ("teeth".equals(req.imageKind())) {
+                return face.checkTeeth(session, req.image(), req.mouthBox());
             }
             return outfit.check(session, req.image());
+        }
+
+        // "얼굴을 볼까요, 이를 확인할까요?"에 대한 답
+        if (session.faceChoiceAsked > 0) {
+            TurnResponse chosen = face.answerChoice(session, req.utterance());
+            if (chosen != null) {
+                return chosen;
+            }
         }
 
         return switch (Intent.of(req.utterance(), inOutfit)) {
@@ -63,7 +74,7 @@ public class TurnService {
             case WHERE -> outfit.where(session);
             case WEATHER -> weather(session, req.location());
             case SCHEDULE -> schedule(session);
-            case FACE -> face.start(session);
+            case FACE -> face.start(session, req.utterance());
             // 그 밖(일정 등록·삭제, 다른 날 일정, 가족에게 묻기 등)은 GPT가 도구를 고릅니다(약속 5-2절).
             case OTHER -> {
                 Assistant.Reply r = assistant.reply(session, req.utterance(), req.location(), inOutfit);

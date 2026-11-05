@@ -36,7 +36,8 @@ public class FakeAgentTools implements AgentTools {
             case ToolNames.SCHEDULE_ADD -> Map.of("eventId", "e_added", "occasion", "casual",
                     "spokenSummary", "일정 '" + args.get("title") + "'을 등록했어요.");
             case ToolNames.SCHEDULE_DELETE -> Map.of("deleted", true);
-            case ToolNames.FACE_CHECK -> face(String.valueOf(args.get("imageBase64")));
+            case ToolNames.FACE_MAKEUP_CHECK -> makeup(String.valueOf(args.get("imageBase64")));
+            case ToolNames.TEETH_CHECK -> teeth(String.valueOf(args.get("imageBase64")));
             case ToolNames.HELPER_CONTACTS -> Map.of("contacts",
                     List.of(Map.of("contactId", "h_1", "name", "엄마", "relation", "가족")));
             case ToolNames.HELPER_ASK -> Map.of("requestId", "r_fake", "expiresAt", "2026-11-05T09:00:00+09:00",
@@ -91,13 +92,22 @@ public class FakeAgentTools implements AgentTools {
                 "modelVersion", "fake");
     }
 
-    /** 얼굴: "CUT"으로 시작하면 구도 안내, 그 밖에는 눈썹 비대칭 + 이에 낀 것. */
-    private static Map<String, Object> face(String image) {
+    /** 얼굴(화장): "CUT"으로 시작하면 구도 안내, 그 밖에는 눈썹 비대칭. */
+    private static Map<String, Object> makeup(String image) {
         if (image.startsWith("CUT")) {
             return map("framing", "얼굴이 화면 위쪽에 잘렸어요. 폰을 조금 내려 주세요.", "lighting", "ok", "source", "model");
         }
         return map("lighting", "ok",
                 "symmetry", map("ok", false, "notes", List.of("왼쪽 눈썹이 오른쪽보다 조금 짧게 그려졌어요.")),
+                "source", "model");
+    }
+
+    /** 치아: "CUT"으로 시작하면 구도 안내, 그 밖에는 앞니에 낀 것. */
+    private static Map<String, Object> teeth(String image) {
+        if (image.startsWith("CUT")) {
+            return map("framing", "입이 다 보이지 않아요. 입을 조금 더 벌려 주세요.", "lighting", "ok", "source", "model");
+        }
+        return map("lighting", "ok",
                 "teeth", map("foreignObject", true, "confidence", 0.82, "note", "앞니 사이에 뭔가 낀 것 같아요."),
                 "source", "model");
     }

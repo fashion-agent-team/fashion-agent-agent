@@ -35,7 +35,7 @@ public enum Intent {
         if (containsAny(s, OUTFIT_WORDS)) {
             return OUTFIT;
         }
-        if (s.contains("얼굴")) {
+        if (s.contains("얼굴") || s.contains("화장") || FaceFlow.isTeeth(s)) {
             return FACE;
         }
         if (s.contains("날씨")) {
