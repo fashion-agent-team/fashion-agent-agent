@@ -36,7 +36,8 @@ public class FaceFlow {
     static final int MAX_CHOICE_ASKS = 2;
 
     static final String ASK_CHOICE = "얼굴 화장을 볼까요, 이를 확인할까요?";
-    static final String START_MAKEUP = "얼굴 화장을 볼게요. 폰을 얼굴 앞에 들어 주세요. 잘 보이면 자동으로 찍을게요.";
+    /** 앱이 실시간으로 비추며 구도를 안내하고, 잘 잡히면 알아서 판단하므로 사용자는 비추고만 있으면 됨 (박창근 2026-11-05) */
+    static final String START_MAKEUP = "얼굴 화장을 볼게요. 폰을 얼굴 앞에 들고 얼굴을 비춰 주고 계시면 저희가 판단할게요.";
     static final String START_TEETH = "이를 확인할게요. 폰을 입 가까이 대고 '이' 하고 입을 벌려 주세요. 잘 보이면 자동으로 찍을게요.";
 
     /** 처음 말에서 치아를 알아보는 말. "이쪽 옷"처럼 흔한 말과 겹치지 않게 좁게 둡니다. */
