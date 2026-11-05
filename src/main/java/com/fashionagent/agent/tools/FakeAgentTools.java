@@ -94,6 +94,9 @@ public class FakeAgentTools implements AgentTools {
 
     /** 얼굴(화장): "CUT"으로 시작하면 구도 안내, 그 밖에는 눈썹 비대칭. */
     private static Map<String, Object> makeup(String image) {
+        if (image.startsWith("NOFACE")) {
+            throw new ToolException(ToolNames.FACE_MAKEUP_CHECK, "no_landmarks", "얼굴을 찾지 못했어요.");
+        }
         if (image.startsWith("CUT")) {
             return map("framing", "얼굴이 화면 위쪽에 잘렸어요. 폰을 조금 내려 주세요.", "lighting", "ok", "source", "model");
         }

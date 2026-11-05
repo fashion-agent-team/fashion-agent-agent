@@ -129,8 +129,16 @@ class TurnFlowTest {
         assertThat(cut.path("speech").asString()).contains("위쪽에 잘렸어요");
         assertThat(cut.path("next").asString()).isEqualTo("camera_face");
 
+        // 윤곽점을 못 찾으면 카메라를 켠 채 다시 비추게
+        JsonNode noFace = turn("u6", """
+                {"sessionId": "%s", "image": "NOFACE", "imageKind": "face", "autoCaptured": true}""".formatted(sid));
+        assertThat(noFace.path("speech").asString()).contains("얼굴을 찾지 못했어요");
+        assertThat(noFace.path("next").asString()).isEqualTo("camera_face");
+
+        // 멈춘 1초 동안의 여러 장(faceFrames)도 받음
         JsonNode ok = turn("u6", """
-                {"sessionId": "%s", "image": "AAAA", "imageKind": "face", "autoCaptured": true}""".formatted(sid));
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "face", "autoCaptured": true,
+                 "faceFrames": [{"image": "AAAB", "faceLandmarks": {}}, {"image": "AAAC"}]}""".formatted(sid));
         assertThat(ok.path("result").path("type").asString()).isEqualTo("face_makeup_check");
         assertThat(ok.path("speech").asString()).contains("왼쪽 눈썹").doesNotContain("앞니");
         assertThat(ok.path("next").asString()).isEqualTo("listen");

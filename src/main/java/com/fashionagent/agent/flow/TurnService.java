@@ -52,7 +52,7 @@ public class TurnService {
             // 가족에게 묻기에 쓰려고 직전 사진 한 장만 10분 들고 있습니다.
             session.keepPhoto(req.image(), clock);
             if ("face".equals(req.imageKind())) {
-                return face.checkMakeup(session, req.image(), req.faceLandmarks());
+                return face.checkMakeup(session, req.image(), req.faceLandmarks(), req.faceFrames());
             }
             if ("teeth".equals(req.imageKind())) {
                 return face.checkTeeth(session, req.image(), req.mouthBox());
