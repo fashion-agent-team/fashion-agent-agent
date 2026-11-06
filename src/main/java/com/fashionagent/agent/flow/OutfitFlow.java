@@ -122,12 +122,12 @@ public class OutfitFlow {
         return WORN.equals(mode) ? Next.camera_worn : Next.camera_outfit;
     }
 
-    /** "오늘 뭐 입지?" 보여 주는 방식을 모르면 먼저 묻고, 알면 바로 추천합니다. */
-    public TurnResponse start(AgentSession session, Location location, String requestMode) {
-        String mode = parseMode(requestMode);
-        if (mode == null) {
-            mode = session.outfitMode;
-        }
+    /**
+     * "오늘 뭐 입지?" 보여 주는 방식을 매번 먼저 묻습니다. 말에 방식이 있으면("입고 볼게, 뭐 입지?") 바로 추천합니다.
+     * 2026-11-06 진행 님 결정: 기억한 방식을 쓰지 않고 매번 고르게(내려놓고 본 뒤 입고도 보고 싶은 사람이 있어서).
+     */
+    public TurnResponse start(AgentSession session, Location location, String utterance) {
+        String mode = modeFrom(utterance);
         if (mode == null) {
             session.modeAsked = 1;
             session.pendingLocation = location;
@@ -157,7 +157,7 @@ public class OutfitFlow {
         Location at = session.pendingLocation;
         session.pendingLocation = null;
         TurnResponse advice = advise(session, at);
-        return new TurnResponse(advice.sessionId(), "좋아요, 다음부터도 이 방식으로 할게요. " + advice.speech(),
+        return new TurnResponse(advice.sessionId(), "좋아요. " + advice.speech(),
                 advice.next(), advice.result());
     }
 
@@ -169,7 +169,7 @@ public class OutfitFlow {
         sessions.save(session);
         String speech = WORN.equals(mode) ? "입고 한 바퀴 돌면서 볼게요. " + WORN_HINT
                 : "내려놓고 볼게요. " + LAID_HINT;
-        return new TurnResponse(session.sessionId, speech + " 다음부터도 이 방식으로 할게요.", cameraFor(mode),
+        return new TurnResponse(session.sessionId, speech, cameraFor(mode),
                 new Result("outfit_mode", null, null, mode));
     }
 
@@ -421,14 +421,45 @@ public class OutfitFlow {
             return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 보여 주세요.",
                     cameraFor(session.outfitMode), null);
         }
-        boolean recorded = record(session.userId, chosen);
+        boolean recorded = !session.recorded && record(session.userId, chosen);
+        session.recorded = session.recorded || recorded;
         String names = String.join(", ", chosen.stream().map(Garment::label).toList());
-        String speech = "좋아요. " + Korean.josa(names, "으로", "로") + (recorded ? " 기록해 둘게요." : " 정했어요.")
-                + " 잘 다녀오세요.";
+        String picked = "좋아요. " + Korean.josa(names, "으로", "로") + (recorded ? " 기록해 둘게요." : " 정했어요.");
         session.seen = new ArrayList<>();
         session.lastDamage = new ArrayList<>();
+        if (!WORN.equals(session.outfitMode)) {
+            // 2026-11-06 진행 님 요청: 내려놓고 고른 사람에게 입은 모습도 볼지 묻기
+            session.wornOfferAsked = true;
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, picked + " " + OFFER_WORN, Next.listen,
+                    Result.of("outfit_worn_offer"));
+        }
         sessions.save(session);
-        return new TurnResponse(session.sessionId, speech, Next.done, null);
+        return new TurnResponse(session.sessionId, picked + " 잘 다녀오세요.", Next.done, null);
+    }
+
+    static final String OFFER_WORN = "다 입으신 뒤에 입은 모습도 확인해 보실래요? 네 또는 아니요로 말씀해 주세요.";
+    private static final List<String> YES = List.of("네", "응", "좋아", "그래", "볼게", "해줘", "확인", "예");
+    private static final List<String> NO = List.of("아니", "괜찮", "됐어", "안할", "안볼", "싫", "그만", "다음에");
+
+    /** "입은 모습도 확인해 보실래요?"에 대한 답. 알아듣지 못하면 null(원래 대화로). */
+    public TurnResponse answerWornOffer(AgentSession session, String utterance) {
+        session.wornOfferAsked = false;
+        String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        if (NO.stream().anyMatch(s::contains)) {
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, "알겠어요. 잘 다녀오세요.", Next.done, null);
+        }
+        if (YES.stream().anyMatch(s::startsWith) || s.contains("입고") || s.contains("볼게")) {
+            session.outfitMode = WORN;
+            session.wornStep = null;
+            session.wornGarments = new ArrayList<>();
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, "좋아요. " + WORN_HINT, Next.camera_worn,
+                    new Result("outfit_mode", null, null, WORN));
+        }
+        sessions.save(session);
+        return null;
     }
 
     /** 종류마다 가장 잘 맞는 옷 하나 (같으면 나중에 본 옷). bad는 뺍니다. */

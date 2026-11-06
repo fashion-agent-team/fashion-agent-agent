@@ -75,6 +75,14 @@ public class TurnService {
             session.outfitMode = OutfitFlow.parseMode(req.outfitMode());
         }
 
+        // "입은 모습도 확인해 보실래요?"에 대한 답
+        if (session.wornOfferAsked) {
+            TurnResponse answered = outfit.answerWornOffer(session, req.utterance());
+            if (answered != null) {
+                return answered;
+            }
+        }
+
         // "얼굴을 볼까요, 이를 확인할까요?"에 대한 답
         if (session.faceChoiceAsked > 0) {
             TurnResponse chosen = face.answerChoice(session, req.utterance());
@@ -84,7 +92,7 @@ public class TurnService {
         }
 
         return switch (Intent.of(req.utterance(), inOutfit)) {
-            case OUTFIT -> outfit.start(session, req.location(), req.outfitMode());
+            case OUTFIT -> outfit.start(session, req.location(), req.utterance());
             case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
             case FINISH -> outfit.finish(session);
             case WHERE -> outfit.where(session);
@@ -99,7 +107,7 @@ public class TurnService {
                 // GPT가 말뜻을 보고 우리 기능을 고른 경우(키워드에 안 걸린 말). 그 흐름을 그대로 시작합니다.
                 if (r.feature() != null) {
                     yield switch (r.feature()) {
-                        case "outfit" -> outfit.start(session, req.location(), req.outfitMode());
+                        case "outfit" -> outfit.start(session, req.location(), req.utterance());
                         case "face" -> face.start(session, "얼굴 확인");
                         case "teeth" -> face.start(session, "이 확인");
                         case "schedule_today" -> schedule(session);
