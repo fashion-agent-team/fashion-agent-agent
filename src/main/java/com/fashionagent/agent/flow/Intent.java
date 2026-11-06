@@ -8,7 +8,7 @@ import java.util.List;
  * 나머지({@link #OTHER}: 일정 등록·삭제, 다른 날 일정, 가족에게 묻기 등)는 GPT가 도구를 고릅니다.
  */
 public enum Intent {
-    OUTFIT, FINISH, WHERE, WEATHER, SCHEDULE, FACE, OTHER;
+    OUTFIT, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
 
     private static final List<String> FINISH_WORDS = List.of("이걸로", "이거로", "이걸입", "이거입", "됐어", "다됐", "그만",
             "끝낼", "마칠");
@@ -19,6 +19,10 @@ public enum Intent {
     /** "오늘 일정 뭐야?"가 아닌 일정 말(등록·삭제·다른 날)은 GPT로 보냅니다. */
     private static final List<String> SCHEDULE_CHANGE_WORDS = List.of("넣어", "등록", "추가", "잡아", "지워", "삭제",
             "취소", "빼", "내일", "모레", "다음", "요일", "이번주");
+
+    /** "할 줄 아는 거 말해 봐", "기능 설명해 줘" 같은 말. 2026-11-06 진행 님 폰 확인에서 못 알아들었던 말. */
+    private static final List<String> HELP_WORDS = List.of("기능", "할줄", "할수있", "뭐해줄", "뭘해줄", "뭐도와", "뭘도와",
+            "무엇을도와", "뭐할수", "뭘할수", "무엇을할", "능력", "너소개", "자기소개", "사용법", "어떻게써");
 
     /** inOutfitSession: 옷 추천 대화 중인지 (마무리·"어디야?"는 그때만). */
     public static Intent of(String utterance, boolean inOutfitSession) {
@@ -32,6 +36,10 @@ public enum Intent {
         if (inOutfitSession && s.contains("어디")) {
             return WHERE;
         }
+        // 옷 추천 중 "입고 볼게", "내려놓고 볼게"
+        if (inOutfitSession && OutfitFlow.switchFrom(s) != null) {
+            return MODE;
+        }
         if (containsAny(s, OUTFIT_WORDS)) {
             return OUTFIT;
         }
@@ -43,6 +51,9 @@ public enum Intent {
         }
         if ((s.contains("일정") || s.contains("스케줄")) && !containsAny(s, SCHEDULE_CHANGE_WORDS)) {
             return SCHEDULE;
+        }
+        if (containsAny(s, HELP_WORDS)) {
+            return HELP;
         }
         return OTHER;
     }

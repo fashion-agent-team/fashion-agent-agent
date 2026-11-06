@@ -51,13 +51,43 @@ public class TurnService {
         if (req.hasImage()) {
             // 가족에게 묻기에 쓰려고 직전 사진 한 장만 10분 들고 있습니다.
             session.keepPhoto(req.image(), clock);
+            session.checkOffered = false;
             if ("face".equals(req.imageKind())) {
                 return face.checkMakeup(session, req.image(), req.faceLandmarks());
             }
             if ("teeth".equals(req.imageKind())) {
                 return face.checkTeeth(session, req.image(), req.mouthBox());
             }
+            if ("worn".equals(req.imageKind())) {
+                session.outfitMode = OutfitFlow.WORN;
+                return outfit.checkWorn(session, req.image());
+            }
             return outfit.check(session, req.image());
+        }
+
+        // "어떻게 보여 주실래요?"에 대한 답
+        if (session.modeAsked > 0) {
+            TurnResponse chosen = outfit.answerMode(session, req.utterance());
+            if (chosen != null) {
+                return chosen;
+            }
+        }
+        // 앱이 기억한 outfitMode는 쓰지 않습니다. 매번 고릅니다(2026-11-06 진행 님 결정).
+
+        // 말로 추천한 뒤 "봐 드릴까요?"에 대한 답
+        if (session.checkOffered) {
+            TurnResponse answered = outfit.answerCheckOffer(session, req.utterance());
+            if (answered != null) {
+                return answered;
+            }
+        }
+
+        // "입은 모습도 확인해 보실래요?"에 대한 답
+        if (session.wornOfferAsked) {
+            TurnResponse answered = outfit.answerWornOffer(session, req.utterance());
+            if (answered != null) {
+                return answered;
+            }
         }
 
         // "얼굴을 볼까요, 이를 확인할까요?"에 대한 답
@@ -69,15 +99,28 @@ public class TurnService {
         }
 
         return switch (Intent.of(req.utterance(), inOutfit)) {
-            case OUTFIT -> outfit.advise(session, req.location());
+            case OUTFIT -> outfit.start(session, req.location(), req.utterance());
+            case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
             case FINISH -> outfit.finish(session);
             case WHERE -> outfit.where(session);
             case WEATHER -> weather(session, req.location());
             case SCHEDULE -> schedule(session);
             case FACE -> face.start(session, req.utterance());
+            // "할 줄 아는 거 말해 봐": GPT 여부와 상관없이 매번 같은 안내
+            case HELP -> say(session, SmallTalk.CAPABILITIES, Next.listen);
             // 그 밖(일정 등록·삭제, 다른 날 일정, 가족에게 묻기 등)은 GPT가 도구를 고릅니다(약속 5-2절).
             case OTHER -> {
                 Assistant.Reply r = assistant.reply(session, req.utterance(), req.location(), inOutfit);
+                // GPT가 말뜻을 보고 우리 기능을 고른 경우(키워드에 안 걸린 말). 그 흐름을 그대로 시작합니다.
+                if (r.feature() != null) {
+                    yield switch (r.feature()) {
+                        case "outfit" -> outfit.start(session, req.location(), req.utterance());
+                        case "face" -> face.start(session, "얼굴 확인");
+                        case "teeth" -> face.start(session, "이 확인");
+                        case "schedule_today" -> schedule(session);
+                        default -> say(session, r.speech(), r.next());
+                    };
+                }
                 yield say(session, r.speech(), r.next());
             }
         };

@@ -8,11 +8,15 @@ import com.fashionagent.agent.model.OutfitCheck;
 public record TurnResponse(String sessionId, String speech, Next next, Result result) {
 
     public enum Next {
-        listen, camera_outfit, camera_face, camera_teeth, done
+        listen, camera_outfit, camera_worn, camera_face, camera_teeth, done
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record Result(String type, OutfitAdvice outfitAdvice, OutfitCheck outfitCheck) {
+    public record Result(String type, OutfitAdvice outfitAdvice, OutfitCheck outfitCheck, String outfitMode) {
+
+        public Result(String type, OutfitAdvice outfitAdvice, OutfitCheck outfitCheck) {
+            this(type, outfitAdvice, outfitCheck, null);
+        }
 
         public static Result of(String type) {
             return new Result(type, null, null);
