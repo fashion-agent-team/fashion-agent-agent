@@ -191,8 +191,26 @@ class TurnFlowTest {
     void GPT가_꺼져_있으면_개별_기능은_안내만() throws Exception {
         JsonNode r = turn("u7", """
                 {"utterance": "토요일 두 시에 결혼식 넣어 줘"}""");
-        assertThat(r.path("speech").asString()).contains("오늘 뭐 입지");
+        assertThat(r.path("speech").asString()).contains("할 수 없는", "옷 추천");
         assertThat(r.path("next").asString()).isEqualTo("listen");
+    }
+
+    @Test
+    void 할_줄_아는_거를_물으면_기능을_알려준다() throws Exception {
+        JsonNode r = turn("h1", """
+                {"utterance": "너 할 줄 아는 거 말해 봐"}""");
+        assertThat(r.path("speech").asString()).contains("옷을 추천", "날씨", "일정");
+        assertThat(r.path("next").asString()).isEqualTo("listen");
+    }
+
+    @Test
+    void GPT가_꺼져_있어도_인사와_고맙다는_말에는_답한다() throws Exception {
+        assertThat(turn("h2", """
+                {"utterance": "안녕"}""").path("speech").asString()).contains("안녕하세요");
+        assertThat(turn("h2", """
+                {"utterance": "고마워"}""").path("speech").asString()).contains("천만에요");
+        assertThat(turn("h2", """
+                {"utterance": "지금 몇 시야?"}""").path("speech").asString()).contains("지금은", "시");
     }
 
     @Test

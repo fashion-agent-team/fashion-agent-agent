@@ -24,6 +24,16 @@ class IntentTest {
     }
 
     @Test
+    void 할_줄_아는_거() {
+        assertThat(Intent.of("할 줄 아는 거 말해 봐", false)).isEqualTo(Intent.HELP);
+        assertThat(Intent.of("기능 설명해 줘", false)).isEqualTo(Intent.HELP);
+        assertThat(Intent.of("뭐 할 수 있어?", false)).isEqualTo(Intent.HELP);
+        assertThat(Intent.of("뭘 도와줄 수 있어", false)).isEqualTo(Intent.HELP);
+        assertThat(Intent.of("날씨 기능 있어?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("엄마한테 뭐 할 수 있는지 물어봐 줘", false)).isEqualTo(Intent.OTHER);
+    }
+
+    @Test
     void 개별_기능() {
         assertThat(Intent.of("오늘 날씨 어때", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("오늘 일정 뭐야", false)).isEqualTo(Intent.SCHEDULE);

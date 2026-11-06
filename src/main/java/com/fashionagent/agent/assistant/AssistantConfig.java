@@ -27,7 +27,7 @@ public class AssistantConfig {
         ChatClient.Builder builder = props.usesLlm() ? chat.getIfAvailable() : null;
         if (builder == null) {
             log.info("개별 기능: 키워드만 (GPT 꺼짐)");
-            return new NoAssistant();
+            return new NoAssistant(clock);
         }
         log.info("개별 기능: GPT 도구 선택");
         return new LlmAssistant(builder, tools, json, agentExecutor, props.judgeTimeout(), clock);
