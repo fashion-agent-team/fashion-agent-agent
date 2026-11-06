@@ -107,7 +107,7 @@ public class TurnService {
             case SCHEDULE -> schedule(session);
             case FACE -> face.start(session, req.utterance());
             // "할 줄 아는 거 말해 봐": GPT 여부와 상관없이 매번 같은 안내
-            case HELP -> say(session, SmallTalk.CAPABILITIES, inOutfit ? Next.camera_outfit : Next.listen);
+            case HELP -> say(session, SmallTalk.CAPABILITIES, Next.listen);
             // 그 밖(일정 등록·삭제, 다른 날 일정, 가족에게 묻기 등)은 GPT가 도구를 고릅니다(약속 5-2절).
             case OTHER -> {
                 Assistant.Reply r = assistant.reply(session, req.utterance(), req.location(), inOutfit);

@@ -135,7 +135,9 @@ public class LlmAssistant implements Assistant {
         while (session.assistantHistory.size() > HISTORY) {
             session.assistantHistory.remove(0);
         }
-        Next next = toolbox.neededPhoto || inOutfit ? Next.camera_outfit : Next.listen;
+        // 사진이 필요할 때만 카메라. 옷 추천 중이라도 잡담에는 카메라를 다시 켜지 않습니다(2026-11-06 폰 확인).
+        // 단, 옷을 보다가 가족에게 묻기처럼 일을 했으면 보던 카메라를 이어 갑니다.
+        Next next = toolbox.neededPhoto || (inOutfit && !toolbox.done.isEmpty()) ? Next.camera_outfit : Next.listen;
         return new Reply(speech, next, toolbox.feature);
     }
 
