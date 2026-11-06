@@ -41,6 +41,8 @@ public class AgentSession {
     public int modeAsked;
     /** 방식을 물을 때 받은 위치. 답을 들은 뒤 추천에 씁니다. */
     public com.fashionagent.agent.api.Location pendingLocation;
+    /** 말로 추천한 뒤 "봐 드릴까요?"를 물었는지. */
+    public boolean checkOffered;
     /** 내려놓고 고른 뒤 "입은 모습도 확인해 보실래요?"를 물었는지. */
     public boolean wornOfferAsked;
     /** 이번 대화에서 고른 옷을 옷장에 기록했는지. 입은 모습까지 본 뒤 또 기록하지 않게. */

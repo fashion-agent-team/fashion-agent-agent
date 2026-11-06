@@ -40,11 +40,16 @@ class TurnFlowTest {
         // 1단계: 말로 추천
         JsonNode advice = turn("u1", """
                 {"utterance": "내려놓고 볼게, 오늘 뭐 입지?", "location": {"lat": 37.5, "lon": 127.0}}""");
-        assertThat(advice.path("next").asString()).isEqualTo("camera_outfit");
+        assertThat(advice.path("next").asString()).isEqualTo("listen");
         assertThat(advice.path("result").path("type").asString()).isEqualTo("outfit_advice");
-        assertThat(advice.path("speech").asString()).contains("면접").contains("겉옷").contains("펼쳐 놓고");
-        assertThat(advice.path("result").path("outfitMode").asString()).isEqualTo("laid");
+        assertThat(advice.path("speech").asString()).contains("면접").contains("겉옷").endsWith("봐 드릴까요?");
         String sid = advice.path("sessionId").asString();
+
+        // "봐 드릴까요?" → 네 → 말에 있던 방식(내려놓기)으로 바로 카메라
+        JsonNode camera = turn("u1", """
+                {"sessionId": "%s", "utterance": "네 봐 줘"}""".formatted(sid));
+        assertThat(camera.path("next").asString()).isEqualTo("camera_outfit");
+        assertThat(camera.path("speech").asString()).contains("펼쳐 놓고");
 
         // 2단계: 두 벌 나란히 → 비교 + 얼룩은 할 일 중심, 위치는 말하지 않음
         JsonNode check = turn("u1", """
@@ -246,11 +251,16 @@ class TurnFlowTest {
 
     @Test
     void 방식을_모르면_먼저_묻고_입고_한_바퀴를_앞_옆_뒤로_본다() throws Exception {
-        JsonNode ask = turn("w1", """
+        JsonNode offer = turn("w1", """
                 {"utterance": "오늘 뭐 입지?"}""");
+        assertThat(offer.path("next").asString()).isEqualTo("listen");
+        assertThat(offer.path("speech").asString()).contains("봐 드릴까요");
+        String sid = offer.path("sessionId").asString();
+
+        JsonNode ask = turn("w1", """
+                {"sessionId": "%s", "utterance": "응"}""".formatted(sid));
         assertThat(ask.path("next").asString()).isEqualTo("listen");
         assertThat(ask.path("speech").asString()).contains("내려놓고").contains("한 바퀴");
-        String sid = ask.path("sessionId").asString();
 
         JsonNode advice = turn("w1", """
                 {"sessionId": "%s", "utterance": "입고 돌아볼게"}""".formatted(sid));
@@ -284,12 +294,17 @@ class TurnFlowTest {
 
     @Test
     void 앱이_기억한_방식이_있어도_매번_묻고_말에_방식이_있으면_바로() throws Exception {
+        String sid = turn("w2", """
+                {"utterance": "옷 추천해 줘", "outfitMode": "worn"}""").path("sessionId").asString();
         JsonNode r = turn("w2", """
-                {"utterance": "옷 추천해 줘", "outfitMode": "worn"}""");
+                {"sessionId": "%s", "utterance": "네", "outfitMode": "worn"}""".formatted(sid));
         assertThat(r.path("next").asString()).isEqualTo("listen");
         assertThat(r.path("speech").asString()).contains("어떻게 보여");
+
+        String sid2 = turn("w2b", """
+                {"utterance": "입고 볼게 오늘 뭐 입지"}""").path("sessionId").asString();
         JsonNode direct = turn("w2b", """
-                {"utterance": "입고 볼게 오늘 뭐 입지"}""");
+                {"sessionId": "%s", "utterance": "응"}""".formatted(sid2));
         assertThat(direct.path("next").asString()).isEqualTo("camera_worn");
     }
 
@@ -316,7 +331,16 @@ class TurnFlowTest {
     }
 
     @Test
-    void 방식을_물었는데_다른_말을_하면_원래_대화로() throws Exception {
+    void 봐_드릴까요에_아니요면_끝낸다() throws Exception {
+        String sid = turn("w6", """
+                {"utterance": "오늘 뭐 입지?"}""").path("sessionId").asString();
+        JsonNode r = turn("w6", """
+                {"sessionId": "%s", "utterance": "아니 괜찮아"}""".formatted(sid));
+        assertThat(r.path("next").asString()).isEqualTo("done");
+    }
+
+    @Test
+    void 봐_드릴까요에_다른_기능을_말하면_원래_대화로() throws Exception {
         String sid = turn("w5", """
                 {"utterance": "오늘 뭐 입지?"}""").path("sessionId").asString();
         JsonNode r = turn("w5", """

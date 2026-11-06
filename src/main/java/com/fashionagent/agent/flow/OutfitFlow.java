@@ -123,19 +123,58 @@ public class OutfitFlow {
     }
 
     /**
-     * "오늘 뭐 입지?" 보여 주는 방식을 매번 먼저 묻습니다. 말에 방식이 있으면("입고 볼게, 뭐 입지?") 바로 추천합니다.
-     * 2026-11-06 진행 님 결정: 기억한 방식을 쓰지 않고 매번 고르게(내려놓고 본 뒤 입고도 보고 싶은 사람이 있어서).
+     * "오늘 뭐 입지?" 날씨·일정으로 먼저 말로 추천하고 "봐 드릴까요?"를 묻습니다. 바로 카메라를 켜지 않습니다.
+     * 2026-11-06 진행 님 요청: 추천 → "옷 봐 드릴까요?" → 봐 달라고 하면 그때 보여 주는 방식(내려놓기/입고 한 바퀴)을 고르고 카메라.
+     * 말에 방식이 있으면("입고 볼게, 뭐 입지?") 기억해 두었다가 방식은 묻지 않습니다. 앱이 기억한 방식은 쓰지 않고 매번 고릅니다.
      */
     public TurnResponse start(AgentSession session, Location location, String utterance) {
+        session.outfitMode = modeFrom(utterance);
+        session.modeAsked = 0;
+        TurnResponse advice = advise(session, location);
+        session.checkOffered = true;
+        sessions.save(session);
+        return new TurnResponse(session.sessionId, withoutCameraHint(advice.speech()) + " " + OFFER_CHECK,
+                Next.listen, advice.result());
+    }
+
+    static final String OFFER_CHECK = "옷을 꺼내 오시면 잘 맞는지 봐 드릴까요?";
+
+    /** "봐 드릴까요?"에 대한 답. 알아듣지 못하면 null(원래 대화로). */
+    public TurnResponse answerCheckOffer(AgentSession session, String utterance) {
+        session.checkOffered = false;
         String mode = modeFrom(utterance);
-        if (mode == null) {
+        String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        if (otherFeature(utterance)) {
+            // "아니 그냥 날씨 어때?"처럼 다른 기능을 말하면 답이 아니라 새 요청입니다.
+            sessions.save(session);
+            return null;
+        }
+        if (mode == null && NO.stream().anyMatch(s::contains)) {
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, "알겠어요. 옷을 고르다가 확인이 필요하면 다시 불러 주세요.", Next.done, null);
+        }
+        if (mode != null) {
+            session.outfitMode = mode;
+        } else if (!YES.stream().anyMatch(s::startsWith) && !s.contains("봐줘") && !s.contains("봐주")) {
+            sessions.save(session);
+            return null;
+        }
+        if (session.outfitMode == null) {
             session.modeAsked = 1;
-            session.pendingLocation = location;
             sessions.save(session);
             return new TurnResponse(session.sessionId, ASK_MODE, Next.listen, Result.of("outfit_mode"));
         }
-        session.outfitMode = mode;
-        return advise(session, location);
+        return toCamera(session, "좋아요. ");
+    }
+
+    /** 고른 방식으로 카메라를 켭니다. */
+    private TurnResponse toCamera(AgentSession session, String prefix) {
+        String mode = session.outfitMode;
+        session.wornStep = null;
+        session.wornGarments = new ArrayList<>();
+        sessions.save(session);
+        return new TurnResponse(session.sessionId, prefix + (WORN.equals(mode) ? WORN_HINT : LAID_HINT),
+                cameraFor(mode), new Result("outfit_mode", null, null, mode));
     }
 
     /** "어떻게 보여 주실래요?"에 대한 답. 알아들으면 추천으로, 아니면 한 번 더 묻거나 null(원래 대화로). */
@@ -154,6 +193,10 @@ public class OutfitFlow {
         }
         session.modeAsked = 0;
         session.outfitMode = mode;
+        if (session.advice != null) {
+            // 추천은 이미 했으니 바로 카메라
+            return toCamera(session, "좋아요. ");
+        }
         Location at = session.pendingLocation;
         session.pendingLocation = null;
         TurnResponse advice = advise(session, at);
@@ -171,6 +214,17 @@ public class OutfitFlow {
                 : "내려놓고 볼게요. " + LAID_HINT;
         return new TurnResponse(session.sessionId, speech, cameraFor(mode),
                 new Result("outfit_mode", null, null, mode));
+    }
+
+    /** 추천 문장 끝의 카메라 안내("옷을 꺼내서 카메라에 보여 주세요")를 뺍니다. */
+    static String withoutCameraHint(String speech) {
+        String s = speech == null ? "" : speech.trim();
+        int cut = Math.max(s.lastIndexOf(". ", s.length() - 2), s.lastIndexOf("요 ", s.length() - 2));
+        String last = cut < 0 ? s : s.substring(cut + 1).trim();
+        if (last.contains("카메라") || last.contains("보여 주") || last.contains("보여주")) {
+            s = cut < 0 ? "" : s.substring(0, cut + 1).trim();
+        }
+        return s;
     }
 
     /** 추천 문장 끝의 카메라 안내를 고른 방식에 맞게 바꿉니다. */
@@ -438,6 +492,13 @@ public class OutfitFlow {
         return new TurnResponse(session.sessionId, picked + " 잘 다녀오세요.", Next.done, null);
     }
 
+    private static boolean otherFeature(String utterance) {
+        return switch (Intent.of(utterance, false)) {
+            case WEATHER, SCHEDULE, FACE, HELP, OUTFIT -> true;
+            default -> false;
+        };
+    }
+
     static final String OFFER_WORN = "다 입으신 뒤에 입은 모습도 확인해 보실래요? 네 또는 아니요로 말씀해 주세요.";
     private static final List<String> YES = List.of("네", "응", "좋아", "그래", "볼게", "해줘", "확인", "예");
     private static final List<String> NO = List.of("아니", "괜찮", "됐어", "안할", "안볼", "싫", "그만", "다음에");
@@ -446,6 +507,11 @@ public class OutfitFlow {
     public TurnResponse answerWornOffer(AgentSession session, String utterance) {
         session.wornOfferAsked = false;
         String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        if (otherFeature(utterance)) {
+            // "아니 그냥 날씨 어때?"처럼 다른 기능을 말하면 답이 아니라 새 요청입니다.
+            sessions.save(session);
+            return null;
+        }
         if (NO.stream().anyMatch(s::contains)) {
             sessions.save(session);
             return new TurnResponse(session.sessionId, "알겠어요. 잘 다녀오세요.", Next.done, null);

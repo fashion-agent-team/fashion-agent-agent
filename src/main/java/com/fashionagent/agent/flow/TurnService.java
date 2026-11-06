@@ -51,6 +51,7 @@ public class TurnService {
         if (req.hasImage()) {
             // 가족에게 묻기에 쓰려고 직전 사진 한 장만 10분 들고 있습니다.
             session.keepPhoto(req.image(), clock);
+            session.checkOffered = false;
             if ("face".equals(req.imageKind())) {
                 return face.checkMakeup(session, req.image(), req.faceLandmarks());
             }
@@ -71,8 +72,14 @@ public class TurnService {
                 return chosen;
             }
         }
-        if (session.outfitMode == null) {
-            session.outfitMode = OutfitFlow.parseMode(req.outfitMode());
+        // 앱이 기억한 outfitMode는 쓰지 않습니다. 매번 고릅니다(2026-11-06 진행 님 결정).
+
+        // 말로 추천한 뒤 "봐 드릴까요?"에 대한 답
+        if (session.checkOffered) {
+            TurnResponse answered = outfit.answerCheckOffer(session, req.utterance());
+            if (answered != null) {
+                return answered;
+            }
         }
 
         // "입은 모습도 확인해 보실래요?"에 대한 답
