@@ -197,6 +197,30 @@ public class AssistantTools {
         return out;
     }
 
+    /** 기능 열기에서 고를 수 있는 이름. */
+    static final java.util.Set<String> FEATURES = java.util.Set.of("outfit", "face", "teeth", "schedule_today");
+
+    /**
+     * GPT가 연 기능. 2026-11-06 진행 님 요청: 키워드에 안 걸린 말도 AI가 보고 우리 기능으로 풀 수 있으면 풀기.
+     * 옷 추천·얼굴 확인은 정해진 흐름(카메라 순서 등)이 있어 GPT가 직접 하지 않고, agent가 이 값을 보고 그 흐름을 시작합니다.
+     */
+    String feature;
+
+    @Tool(name = "open_feature", description = """
+            우리 앱의 정해진 기능을 시작합니다. 사용자가 기능 이름을 정확히 말하지 않아도 뜻이 맞으면 부릅니다. \
+            outfit: 옷 추천·옷 고르기·꺼낸 옷 확인("나 뭐 걸치고 나가지?", "이 옷 괜찮아?"), \
+            face: 얼굴·화장·머리 확인, teeth: 이·치아에 뭐 꼈는지, schedule_today: 오늘 일정 읽기. \
+            부른 뒤에는 "네, 볼게요."처럼 한마디만 답합니다(이어지는 안내는 agent가 합니다).""")
+    public String openFeature(
+            @ToolParam(description = "outfit, face, teeth, schedule_today 중 하나") String name) {
+        String n = name == null ? "" : name.strip().toLowerCase(java.util.Locale.ROOT);
+        if (!FEATURES.contains(n)) {
+            return error("unknown_feature", "outfit, face, teeth, schedule_today 중에서 고르세요.");
+        }
+        feature = n;
+        return "{\"opened\":\"" + n + "\"}";
+    }
+
     @Tool(name = ToolNames.HELPER_ANSWER, description = """
             가족·친구에게 보낸 질문에 답이 왔는지 확인합니다. "엄마 답 왔어?"에 씁니다. \
             status가 pending이면 아직, answered면 answer를 읽어 주고, expired면 시간이 지났다고 말합니다.""")

@@ -96,6 +96,16 @@ public class TurnService {
             // 그 밖(일정 등록·삭제, 다른 날 일정, 가족에게 묻기 등)은 GPT가 도구를 고릅니다(약속 5-2절).
             case OTHER -> {
                 Assistant.Reply r = assistant.reply(session, req.utterance(), req.location(), inOutfit);
+                // GPT가 말뜻을 보고 우리 기능을 고른 경우(키워드에 안 걸린 말). 그 흐름을 그대로 시작합니다.
+                if (r.feature() != null) {
+                    yield switch (r.feature()) {
+                        case "outfit" -> outfit.start(session, req.location(), req.outfitMode());
+                        case "face" -> face.start(session, "얼굴 확인");
+                        case "teeth" -> face.start(session, "이 확인");
+                        case "schedule_today" -> schedule(session);
+                        default -> say(session, r.speech(), r.next());
+                    };
+                }
                 yield say(session, r.speech(), r.next());
             }
         };

@@ -33,6 +33,8 @@ public final class SmallTalk {
     private static final List<String> HOW_ARE_YOU = List.of("잘지냈", "기분어때", "뭐해", "심심");
     private static final List<String> TIME = List.of("몇시", "지금시간", "시간알려");
     private static final List<String> DATE = List.of("며칠", "몇일", "날짜", "무슨요일", "몇월");
+    /** 2026-11-06 진행 님 예: 이름 부르고 "바보~"면 "바보 아닙니다" 느낌으로. */
+    private static final List<String> TEASE = List.of("바보", "멍청", "멍텅", "똥개", "못생");
     private static final List<String> BYE = List.of("잘자", "잘있어", "안녕히", "다음에봐", "나갈게");
 
     private SmallTalk() {
@@ -54,6 +56,9 @@ public final class SmallTalk {
         if (containsAny(s, DATE)) {
             return "오늘은 " + now.getMonthValue() + "월 " + now.getDayOfMonth() + "일 "
                     + now.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN) + "이에요.";
+        }
+        if (containsAny(s, TEASE)) {
+            return "바보 아니에요. 그래도 더 잘 도와드리도록 노력할게요.";
         }
         if (containsAny(s, THANKS)) {
             return "천만에요. 또 필요하면 언제든 불러 주세요.";

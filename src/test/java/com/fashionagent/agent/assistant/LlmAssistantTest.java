@@ -124,6 +124,30 @@ class LlmAssistantTest {
     }
 
     @Test
+    void 키워드에_안_걸린_옷_이야기는_GPT가_옷_추천을_연다() {
+        var model = new ScriptedModel(List.<String[]>of(new String[] { "open_feature", "{\"name\":\"outfit\"}" }),
+                results -> "네, 볼게요.", 0);
+        var session = new AgentSession("s9", "user-9");
+
+        var reply = assistant(model, Duration.ofSeconds(5)).reply(session, "나 오늘 뭐 걸치고 나가면 좋을까", null, false);
+
+        assertThat(reply.feature()).isEqualTo("outfit");
+        assertThat(calls).isEmpty();
+    }
+
+    @Test
+    void 모르는_기능_이름은_열지_않는다() {
+        var model = new ScriptedModel(List.<String[]>of(new String[] { "open_feature", "{\"name\":\"music\"}" }),
+                results -> "음악은 아직 틀 수 없어요.", 0);
+
+        var reply = assistant(model, Duration.ofSeconds(5)).reply(new AgentSession("s10", "u"), "노래 틀어 줘", null,
+                false);
+
+        assertThat(reply.feature()).isNull();
+        assertThat(reply.speech()).contains("음악");
+    }
+
+    @Test
     void 가족에게_묻기_사진은_agent가_넣는다() {
         var model = new ScriptedModel(List.of(
                 new String[] { "helper_contacts", "{}" },

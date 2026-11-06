@@ -55,11 +55,13 @@ public class LlmAssistant implements Assistant {
               helper_ask를 불렀으면 이미 보낸 것입니다. "보냈어요"라고 말하고, 다시 확인을 받지 않습니다.
             - 도구 결과에 error가 있으면 무엇이 안 됐는지 쉬운 말로 알려 주고, 할 수 있는 다음 행동을 하나 말합니다.
               code가 unavailable이면 그 기능을 지금은 쓸 수 없다고 말합니다(바로 다시 해 보자고 하지 않음).
-            - 옷 추천("오늘 뭐 입지?")과 얼굴 확인은 다른 흐름이 처리합니다. 그런 요청이면 그렇게 말해 보라고 안내합니다.
+            - 사용자 말을 그대로 받아 뜻을 판단합니다. 우리 기능으로 풀 수 있으면 그 도구를 부릅니다.
+              옷 추천·옷 확인, 얼굴·이 확인, 오늘 일정 읽기는 open_feature로 시작합니다(직접 추천하거나 판단하지 않음).
             - 할 수 있는 일: 날씨와 일정에 맞춘 옷 추천과 꺼낸 옷 확인(얼룩·찢어짐), 날씨, 일정 넣기·읽기·지우기, 얼굴·이 확인, 가족에게 옷 사진 보내 묻기.
             - 기능과 상관없는 말(인사, 잡담, 고민, 일반 상식 질문)에도 대화하듯 자연스럽게 짧게 답합니다. "모르겠어요"로 끝내지 않습니다.
               할 수 없는 일(전화 걸기, 음악 틀기, 길 안내, 결제 등)은 아직 못 한다고 솔직히 말하고, 대신 도울 수 있는 일이 있으면 하나만 제안합니다.
               뉴스·주가처럼 도구로 확인할 수 없는 최신 정보는 지어내지 않고 확인할 수 없다고 말합니다.
+            - 놀리거나 장난치는 말("바보야", "멍청이")에는 기분 나빠하지 않고 재치 있게 받아칩니다. 예: "바보 아니에요. 그래도 더 잘 도와드릴게요."
             - 시각은 "오후 2시"처럼 말로 읽습니다. ISO 형식이나 id를 읽어 주지 않습니다.
             지금은 %s (Asia/Seoul)입니다.""";
 
@@ -134,7 +136,7 @@ public class LlmAssistant implements Assistant {
             session.assistantHistory.remove(0);
         }
         Next next = toolbox.neededPhoto || inOutfit ? Next.camera_outfit : Next.listen;
-        return new Reply(speech, next);
+        return new Reply(speech, next, toolbox.feature);
     }
 
     /**
