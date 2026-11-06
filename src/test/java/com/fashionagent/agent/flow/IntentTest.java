@@ -17,6 +17,20 @@ class IntentTest {
         assertThat(Intent.of("이걸로 할게", true)).isEqualTo(Intent.FINISH);
         assertThat(Intent.of("이걸로 할게", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("얼룩 어디야?", true)).isEqualTo(Intent.WHERE);
+        assertThat(Intent.of("입고 볼게", true)).isEqualTo(Intent.MODE);
+        assertThat(Intent.of("내려놓고 보여줄게", true)).isEqualTo(Intent.MODE);
+        assertThat(Intent.of("흰 셔츠 입고 갈게", true)).isNotEqualTo(Intent.MODE);
+        assertThat(Intent.of("입고 볼게", false)).isNotEqualTo(Intent.MODE);
+    }
+
+    @Test
+    void 할_줄_아는_거() {
+        assertThat(Intent.of("할 줄 아는 거 말해 봐", false)).isEqualTo(Intent.HELP);
+        assertThat(Intent.of("기능 설명해 줘", false)).isEqualTo(Intent.HELP);
+        assertThat(Intent.of("뭐 할 수 있어?", false)).isEqualTo(Intent.HELP);
+        assertThat(Intent.of("뭘 도와줄 수 있어", false)).isEqualTo(Intent.HELP);
+        assertThat(Intent.of("날씨 기능 있어?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("엄마한테 뭐 할 수 있는지 물어봐 줘", false)).isEqualTo(Intent.OTHER);
     }
 
     @Test

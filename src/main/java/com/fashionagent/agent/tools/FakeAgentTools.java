@@ -29,7 +29,9 @@ public class FakeAgentTools implements AgentTools {
         return json.valueToTree(switch (tool) {
             case ToolNames.WEATHER_TODAY -> weather();
             case ToolNames.SCHEDULE_LIST -> schedule();
-            case ToolNames.CLOTHES_INSPECT -> inspect(String.valueOf(args.get("imageBase64")));
+            case ToolNames.CLOTHES_INSPECT -> "worn".equals(args.get("mode"))
+                    ? inspectWorn(String.valueOf(args.get("imageBase64")), String.valueOf(args.get("view")))
+                    : inspect(String.valueOf(args.get("imageBase64")));
             case ToolNames.CLOSET_SEARCH -> Map.of("candidates", List.of(), "styleNotes", List.of(), "empty", true);
             case ToolNames.CLOSET_SAVE -> closetSave(args);
             case ToolNames.CLOSET_WEAR -> Map.of("recorded", ((List<?>) args.get("garmentIds")).size());
@@ -73,6 +75,25 @@ public class FakeAgentTools implements AgentTools {
                 "occasion", "formal")));
     }
 
+    /** 입은 사람 한 명. 앞에서는 셔츠와 슬랙스, 뒤에서는 셔츠 등에 얼룩. where는 입은 사람 몸 기준입니다. */
+    private static Map<String, Object> inspectWorn(String image, String view) {
+        if (image.startsWith("FAR")) {
+            return Map.of("garments", List.of(), "framing", "발이 안 보여요. 한 걸음 더 물러나 주세요.",
+                    "lighting", "ok", "source", "model", "modelVersion", "fake");
+        }
+        var shirt = map("id", "g1", "category", "top", "name", "셔츠", "colorName", "흰색",
+                "colorFamily", "white", "tone", "light", "formality", "smart", "position", "center",
+                "defects", "back".equals(view)
+                        ? List.of(Map.of("kind", "stain", "where", "등 가운데", "confidence", 0.8))
+                        : List.of(),
+                "confidence", 0.93);
+        var slacks = map("id", "g2", "category", "bottom", "name", "슬랙스", "colorName", "남색",
+                "colorFamily", "navy", "tone", "dark", "formality", "formal", "position", "center",
+                "defects", List.of(), "confidence", 0.9);
+        return Map.of("garments", "front".equals(view) ? List.of(shirt, slacks) : List.of(shirt),
+                "framing", "", "lighting", "ok", "source", "model", "modelVersion", "fake");
+    }
+
     private static Map<String, Object> inspect(String image) {
         if (image.startsWith("DARK")) {
             return Map.of("garments", List.of(), "lighting", "dark", "source", "model", "modelVersion", "fake");
@@ -108,11 +129,14 @@ public class FakeAgentTools implements AgentTools {
     /** 치아: "CUT"으로 시작하면 구도 안내, 그 밖에는 앞니에 낀 것. */
     private static Map<String, Object> teeth(String image) {
         if (image.startsWith("CUT")) {
-            return map("framing", "입이 다 보이지 않아요. 입을 조금 더 벌려 주세요.", "lighting", "ok", "source", "model");
+            return map("framing", "입이 다 보이지 않아요. 입을 조금 더 벌려 주세요.", "lighting", "ok");
         }
-        return map("lighting", "ok",
-                "teeth", map("foreignObject", true, "confidence", 0.82, "note", "앞니 사이에 뭔가 낀 것 같아요."),
-                "source", "model");
+        if (image.startsWith("UNSURE")) {
+            return map("framing", null, "lighting", "ok",
+                    "teeth", map("foreignObject", null, "confidence", 0.5, "note", "잘 보이지 않아서 확실하지 않아요."));
+        }
+        return map("framing", null, "lighting", "ok",
+                "teeth", map("foreignObject", true, "confidence", 0.82, "note", "앞니 사이에 뭔가 낀 것 같아요."));
     }
 
     private static Map<String, Object> map(Object... kv) {

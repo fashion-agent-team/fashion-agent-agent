@@ -13,6 +13,7 @@ public record TurnRequest(
         Map<String, Object> faceLandmarks,
         Map<String, Object> mouthBox,
         Location location,
+        String outfitMode,
         /** imageKind=face: 얼굴이 잘 잡혀 멈춘 1초 동안 더 찍은 장면들 [{image, faceLandmarks}] (openapi.yaml faceFrames) */
         List<Map<String, Object>> faceFrames) {
 

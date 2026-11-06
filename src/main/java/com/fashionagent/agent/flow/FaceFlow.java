@@ -30,8 +30,6 @@ import tools.jackson.databind.JsonNode;
 public class FaceFlow {
 
     private static final Logger log = LoggerFactory.getLogger(FaceFlow.class);
-    /** 이 값보다 확신이 낮으면 "낀 것 같다"고 단정하지 않습니다. */
-    static final double TEETH_SURE = 0.6;
     /** 얼굴/이 중 고르라고 묻는 최대 횟수. 그래도 모르면 원래 대화로 돌아갑니다. */
     static final int MAX_CHOICE_ASKS = 2;
     /** face-check는 한 번에 5장(첫 장 + 4장)까지 받습니다. */
@@ -193,16 +191,24 @@ public class FaceFlow {
         return parts.isEmpty() ? "화장이 양쪽이 조금 달라 보여요. 거울로 한 번 확인해 보세요." : String.join(" ", parts);
     }
 
+    /** 치아가 애매할 때 덧붙이는 말. 사용자가 원하면 GPT 대화가 helper_ask로 직전 사진을 보냅니다. */
+    static final String ASK_HELPER = "가족이나 친구에게 사진을 보내서 물어볼까요?";
+
+    /**
+     * teeth.foreignObject: true(낀 것 있음) / false(없음) / null(애매함, 앱 레포 mcp-tools.md).
+     * 얼굴 사진은 외부 AI로 보내지 않으므로, 애매하면 지어내지 않고 가족에게 물어볼지 제안합니다.
+     */
     static String teethSpeech(JsonNode r) {
         JsonNode teeth = r.path("teeth");
-        if (!teeth.path("foreignObject").asBoolean(false)) {
+        JsonNode found = teeth.path("foreignObject");
+        if (found.isBoolean() && found.asBoolean()) {
+            return teeth.path("note").asString("이에 뭔가 낀 것 같아요.") + " 혀로 한 번 확인해 보세요.";
+        }
+        if (found.isBoolean()) {
             return "이에 낀 것은 없어 보여요.";
         }
-        String note = teeth.path("note").asString("이에 뭔가 낀 것 같아요.");
-        if (teeth.path("confidence").asDouble(1) >= TEETH_SURE) {
-            return note + " 혀로 한 번 확인해 보세요.";
-        }
-        return "이에 뭔가 있는지는 확실하지 않아요. 한 번 확인해 보세요.";
+        String note = teeth.path("note").asString("");
+        return (note.isBlank() ? "잘 보이지 않아서 확실하지 않아요." : note) + " " + ASK_HELPER;
     }
 
     private static String compact(String utterance) {

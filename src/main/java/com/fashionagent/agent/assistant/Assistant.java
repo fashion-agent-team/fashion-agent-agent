@@ -12,6 +12,10 @@ public interface Assistant {
 
     Reply reply(AgentSession session, String utterance, Location location, boolean inOutfit);
 
-    record Reply(String speech, Next next) {
+    /** feature: GPT가 연 기능(outfit, face, teeth, schedule_today). 있으면 agent가 그 흐름을 시작하고 speech는 쓰지 않습니다. */
+    record Reply(String speech, Next next, String feature) {
+        public Reply(String speech, Next next) {
+            this(speech, next, null);
+        }
     }
 }
