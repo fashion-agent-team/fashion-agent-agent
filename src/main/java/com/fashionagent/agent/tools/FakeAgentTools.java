@@ -126,11 +126,14 @@ public class FakeAgentTools implements AgentTools {
     /** 치아: "CUT"으로 시작하면 구도 안내, 그 밖에는 앞니에 낀 것. */
     private static Map<String, Object> teeth(String image) {
         if (image.startsWith("CUT")) {
-            return map("framing", "입이 다 보이지 않아요. 입을 조금 더 벌려 주세요.", "lighting", "ok", "source", "model");
+            return map("framing", "입이 다 보이지 않아요. 입을 조금 더 벌려 주세요.", "lighting", "ok");
         }
-        return map("lighting", "ok",
-                "teeth", map("foreignObject", true, "confidence", 0.82, "note", "앞니 사이에 뭔가 낀 것 같아요."),
-                "source", "model");
+        if (image.startsWith("UNSURE")) {
+            return map("framing", null, "lighting", "ok",
+                    "teeth", map("foreignObject", null, "confidence", 0.5, "note", "잘 보이지 않아서 확실하지 않아요."));
+        }
+        return map("framing", null, "lighting", "ok",
+                "teeth", map("foreignObject", true, "confidence", 0.82, "note", "앞니 사이에 뭔가 낀 것 같아요."));
     }
 
     private static Map<String, Object> map(Object... kv) {
