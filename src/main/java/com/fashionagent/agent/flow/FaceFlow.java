@@ -32,10 +32,13 @@ public class FaceFlow {
     private static final Logger log = LoggerFactory.getLogger(FaceFlow.class);
     /** 얼굴/이 중 고르라고 묻는 최대 횟수. 그래도 모르면 원래 대화로 돌아갑니다. */
     static final int MAX_CHOICE_ASKS = 2;
+    /** face-check는 한 번에 5장(첫 장 + 4장)까지 받습니다. */
+    static final int MAX_EXTRA_FRAMES = 4;
 
     static final String ASK_CHOICE = "얼굴 화장을 볼까요, 이를 확인할까요?";
-    static final String START_MAKEUP = "얼굴 화장을 볼게요. 폰을 얼굴 앞에 들어 주세요. 잘 보이면 자동으로 찍을게요.";
-    static final String START_TEETH = "이를 확인할게요. 폰을 입 가까이 대고 '이' 하고 입을 벌려 주세요. 잘 보이면 자동으로 찍을게요.";
+    /** 앱이 실시간으로 비추며 구도를 안내하고, 잘 잡히면 알아서 판단하므로 사용자는 비추고만 있으면 됨 (박창근 2026-11-05, 얼굴·치아 둘 다) */
+    static final String START_MAKEUP = "얼굴 화장을 볼게요. 폰을 얼굴 앞에 들고 얼굴을 비춰 주고 계시면 저희가 판단할게요.";
+    static final String START_TEETH = "이를 확인할게요. 폰을 입 가까이 대고 '이' 하고 입을 벌린 채 비춰 주고 계시면 저희가 판단할게요.";
 
     /** 처음 말에서 치아를 알아보는 말. "이쪽 옷"처럼 흔한 말과 겹치지 않게 좁게 둡니다. */
     private static final List<String> TEETH_WORDS = List.of("치아", "이빨", "이사이", "이확인", "이에낀", "이에뭐", "입안");
@@ -99,8 +102,41 @@ public class FaceFlow {
         return reply(session, START_TEETH, Next.camera_teeth, null);
     }
 
-    public TurnResponse checkMakeup(AgentSession session, String imageBase64, Map<String, Object> landmarks) {
-        JsonNode r = call(ToolNames.FACE_MAKEUP_CHECK, imageBase64, "landmarks", landmarks);
+    static final String NO_FACE = "얼굴을 찾지 못했어요. 폰을 얼굴 정면에 들고 비춰 주세요.";
+
+    /**
+     * 얼굴이 잘 잡혀 멈춘 1초 동안 앱이 보낸 장면들(첫 장 + frames)을 한 번에 넘깁니다. face-check가 장마다 재고
+     * 항목별 중간값으로 판단합니다(2026-11-05 결정). 윤곽점이 없으면(no_landmarks) 카메라를 켠 채 다시 비추게 합니다.
+     */
+    public TurnResponse checkMakeup(AgentSession session, String imageBase64, Map<String, Object> landmarks,
+            List<Map<String, Object>> frames) {
+        Map<String, Object> args = new HashMap<>();
+        args.put("imageBase64", imageBase64);
+        if (landmarks != null && !landmarks.isEmpty()) {
+            args.put("landmarks", landmarks);
+        }
+        if (frames != null && !frames.isEmpty()) {
+            List<Map<String, Object>> more = new ArrayList<>();
+            for (Map<String, Object> f : frames.subList(0, Math.min(MAX_EXTRA_FRAMES, frames.size()))) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("imageBase64", f.get("image"));
+                if (f.get("faceLandmarks") != null) {
+                    m.put("landmarks", f.get("faceLandmarks"));
+                }
+                more.add(m);
+            }
+            args.put("frames", more);
+        }
+        JsonNode r;
+        try {
+            r = tools.call(ToolNames.FACE_MAKEUP_CHECK, args);
+        } catch (ToolException e) {
+            log.warn("{} 실패: {} {}", ToolNames.FACE_MAKEUP_CHECK, e.code(), e.getMessage());
+            if ("no_landmarks".equals(e.code())) {
+                return reply(session, NO_FACE, Next.camera_face, null);
+            }
+            r = null;
+        }
         if (r == null) {
             return reply(session, "지금은 얼굴을 확인하지 못했어요. 잠시 뒤에 다시 해 주세요.", Next.listen, null);
         }
