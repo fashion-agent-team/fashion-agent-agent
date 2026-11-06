@@ -57,7 +57,22 @@ public class TurnService {
             if ("teeth".equals(req.imageKind())) {
                 return face.checkTeeth(session, req.image(), req.mouthBox());
             }
+            if ("worn".equals(req.imageKind())) {
+                session.outfitMode = OutfitFlow.WORN;
+                return outfit.checkWorn(session, req.image());
+            }
             return outfit.check(session, req.image());
+        }
+
+        // "어떻게 보여 주실래요?"에 대한 답
+        if (session.modeAsked > 0) {
+            TurnResponse chosen = outfit.answerMode(session, req.utterance());
+            if (chosen != null) {
+                return chosen;
+            }
+        }
+        if (session.outfitMode == null) {
+            session.outfitMode = OutfitFlow.parseMode(req.outfitMode());
         }
 
         // "얼굴을 볼까요, 이를 확인할까요?"에 대한 답
@@ -69,7 +84,8 @@ public class TurnService {
         }
 
         return switch (Intent.of(req.utterance(), inOutfit)) {
-            case OUTFIT -> outfit.advise(session, req.location());
+            case OUTFIT -> outfit.start(session, req.location(), req.outfitMode());
+            case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
             case FINISH -> outfit.finish(session);
             case WHERE -> outfit.where(session);
             case WEATHER -> weather(session, req.location());

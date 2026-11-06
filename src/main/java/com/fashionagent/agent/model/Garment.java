@@ -31,6 +31,14 @@ public record Garment(
         defects = defects == null ? List.of() : List.copyOf(defects);
     }
 
+    /** 다른 방향(옆·뒤)에서 찾은 얼룩·찢어짐을 더한 옷. */
+    public Garment withMoreDefects(List<Defect> more) {
+        var all = new java.util.ArrayList<>(defects);
+        all.addAll(more);
+        return new Garment(id, category, name, colorName, colorFamily, tone, pattern, material, notes,
+                formality, all, box, position, confidence);
+    }
+
     public Garment withId(String newId) {
         return new Garment(newId, category, name, colorName, colorFamily, tone, pattern, material, notes,
                 formality, defects, box, position, confidence);

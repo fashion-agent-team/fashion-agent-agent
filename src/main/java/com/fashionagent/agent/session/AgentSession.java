@@ -35,6 +35,16 @@ public class AgentSession {
     public String lastHelperRequestId;
     /** 얼굴 확인에서 "얼굴을 볼까요, 이를 확인할까요?"를 물은 횟수. 0이면 묻지 않은 상태. */
     public int faceChoiceAsked;
+    /** 옷을 보여 주는 방식: laid(내려놓고 비추기) | worn(입고 한 바퀴). null이면 아직 모름. */
+    public String outfitMode;
+    /** "어떻게 보여 주실래요?"를 물은 횟수. 0이면 묻지 않은 상태. */
+    public int modeAsked;
+    /** 방식을 물을 때 받은 위치. 답을 들은 뒤 추천에 씁니다. */
+    public com.fashionagent.agent.api.Location pendingLocation;
+    /** 입고 한 바퀴에서 다음에 볼 방향: front | side | back. null이면 front. */
+    public String wornStep;
+    /** 입고 한 바퀴에서 이번 바퀴에 본 옷 (앞모습 옷이 기준, 옆·뒤 얼룩을 더함). */
+    public List<Garment> wornGarments = new ArrayList<>();
     /** 개별 기능 대화의 최근 몇 마디. GPT가 되물은 뒤 이어 듣기 위해. */
     public List<Said> assistantHistory = new ArrayList<>();
 

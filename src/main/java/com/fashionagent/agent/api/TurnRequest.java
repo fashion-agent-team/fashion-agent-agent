@@ -11,7 +11,8 @@ public record TurnRequest(
         Boolean autoCaptured,
         Map<String, Object> faceLandmarks,
         Map<String, Object> mouthBox,
-        Location location) {
+        Location location,
+        String outfitMode) {
 
     public boolean hasImage() {
         return image != null && !image.isBlank();

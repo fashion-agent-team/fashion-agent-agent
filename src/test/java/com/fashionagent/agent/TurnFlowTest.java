@@ -39,10 +39,11 @@ class TurnFlowTest {
     void 말로_추천_카메라_확인_어디야_이걸로할게() throws Exception {
         // 1단계: 말로 추천
         JsonNode advice = turn("u1", """
-                {"utterance": "오늘 뭐 입지?", "location": {"lat": 37.5, "lon": 127.0}}""");
+                {"utterance": "오늘 뭐 입지?", "location": {"lat": 37.5, "lon": 127.0}, "outfitMode": "laid"}""");
         assertThat(advice.path("next").asString()).isEqualTo("camera_outfit");
         assertThat(advice.path("result").path("type").asString()).isEqualTo("outfit_advice");
-        assertThat(advice.path("speech").asString()).contains("면접").contains("겉옷").contains("카메라");
+        assertThat(advice.path("speech").asString()).contains("면접").contains("겉옷").contains("펼쳐 놓고");
+        assertThat(advice.path("result").path("outfitMode").asString()).isEqualTo("laid");
         String sid = advice.path("sessionId").asString();
 
         // 2단계: 두 벌 나란히 → 비교 + 얼룩은 할 일 중심, 위치는 말하지 않음
@@ -80,7 +81,7 @@ class TurnFlowTest {
     @Test
     void 다른_사람의_세션은_이어지지_않는다() throws Exception {
         String sid = turn("u3", """
-                {"utterance": "옷 추천해 줘"}""").path("sessionId").asString();
+                {"utterance": "옷 추천해 줘", "outfitMode": "laid"}""").path("sessionId").asString();
         JsonNode other = turn("someone-else", """
                 {"sessionId": "%s", "utterance": "이걸로 할게"}""".formatted(sid));
         assertThat(other.path("sessionId").asString()).isNotEqualTo(sid);
@@ -185,6 +186,82 @@ class TurnFlowTest {
                 {"utterance": "토요일 두 시에 결혼식 넣어 줘"}""");
         assertThat(r.path("speech").asString()).contains("오늘 뭐 입지");
         assertThat(r.path("next").asString()).isEqualTo("listen");
+    }
+
+    @Test
+    void 방식을_모르면_먼저_묻고_입고_한_바퀴를_앞_옆_뒤로_본다() throws Exception {
+        JsonNode ask = turn("w1", """
+                {"utterance": "오늘 뭐 입지?"}""");
+        assertThat(ask.path("next").asString()).isEqualTo("listen");
+        assertThat(ask.path("speech").asString()).contains("내려놓고").contains("한 바퀴");
+        String sid = ask.path("sessionId").asString();
+
+        JsonNode advice = turn("w1", """
+                {"sessionId": "%s", "utterance": "입고 돌아볼게"}""".formatted(sid));
+        assertThat(advice.path("next").asString()).isEqualTo("camera_worn");
+        assertThat(advice.path("result").path("outfitMode").asString()).isEqualTo("worn");
+        assertThat(advice.path("speech").asString()).startsWith("좋아요, 다음부터도")
+                .contains("머리부터 발끝까지").doesNotContain("옷을 꺼내서 카메라에");
+
+        JsonNode front = turn("w1", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
+        assertThat(front.path("speech").asString()).contains("옆으로");
+        assertThat(front.path("next").asString()).isEqualTo("camera_worn");
+
+        JsonNode side = turn("w1", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
+        assertThat(side.path("speech").asString()).contains("뒤로");
+
+        JsonNode back = turn("w1", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
+        assertThat(back.path("next").asString()).isEqualTo("camera_worn");
+        JsonNode oc = back.path("result").path("outfitCheck");
+        assertThat(oc.path("garments")).hasSize(2);
+        assertThat(oc.path("damage").get(0).path("action").asString()).isEqualTo("wash");
+        assertThat(back.path("speech").asString()).contains("빨래").endsWith("앞모습부터 보여 주세요.");
+
+        JsonNode where = turn("w1", """
+                {"sessionId": "%s", "utterance": "얼룩 어디야?"}""".formatted(sid));
+        assertThat(where.path("speech").asString()).contains("등 가운데").contains("몸 기준");
+        assertThat(where.path("next").asString()).isEqualTo("camera_worn");
+    }
+
+    @Test
+    void 앱이_기억한_방식이면_묻지_않는다() throws Exception {
+        JsonNode r = turn("w2", """
+                {"utterance": "옷 추천해 줘", "outfitMode": "worn"}""");
+        assertThat(r.path("next").asString()).isEqualTo("camera_worn");
+    }
+
+    @Test
+    void 추천_중에_말로_방식을_바꾼다() throws Exception {
+        String sid = turn("w3", """
+                {"utterance": "옷 추천해 줘", "outfitMode": "laid"}""").path("sessionId").asString();
+        JsonNode r = turn("w3", """
+                {"sessionId": "%s", "utterance": "그냥 입고 보여줄게", "outfitMode": "laid"}""".formatted(sid));
+        assertThat(r.path("next").asString()).isEqualTo("camera_worn");
+        assertThat(r.path("result").path("outfitMode").asString()).isEqualTo("worn");
+    }
+
+    @Test
+    void 몸이_다_안_보이면_같은_방향을_다시_보여_달라고_한다() throws Exception {
+        String sid = turn("w4", """
+                {"utterance": "옷 추천해 줘", "outfitMode": "worn"}""").path("sessionId").asString();
+        JsonNode r = turn("w4", """
+                {"sessionId": "%s", "image": "FAR", "imageKind": "worn"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).contains("물러나");
+        JsonNode again = turn("w4", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
+        assertThat(again.path("speech").asString()).contains("옆으로");
+    }
+
+    @Test
+    void 방식을_물었는데_다른_말을_하면_원래_대화로() throws Exception {
+        String sid = turn("w5", """
+                {"utterance": "오늘 뭐 입지?"}""").path("sessionId").asString();
+        JsonNode r = turn("w5", """
+                {"sessionId": "%s", "utterance": "아니 그냥 오늘 날씨 어때?"}""".formatted(sid));
+        assertThat(r.path("result").path("type").asString()).isEqualTo("weather");
     }
 
     @Test

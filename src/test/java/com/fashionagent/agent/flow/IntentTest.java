@@ -17,6 +17,10 @@ class IntentTest {
         assertThat(Intent.of("이걸로 할게", true)).isEqualTo(Intent.FINISH);
         assertThat(Intent.of("이걸로 할게", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("얼룩 어디야?", true)).isEqualTo(Intent.WHERE);
+        assertThat(Intent.of("입고 볼게", true)).isEqualTo(Intent.MODE);
+        assertThat(Intent.of("내려놓고 보여줄게", true)).isEqualTo(Intent.MODE);
+        assertThat(Intent.of("흰 셔츠 입고 갈게", true)).isNotEqualTo(Intent.MODE);
+        assertThat(Intent.of("입고 볼게", false)).isNotEqualTo(Intent.MODE);
     }
 
     @Test

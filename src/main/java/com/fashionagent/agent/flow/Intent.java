@@ -8,7 +8,7 @@ import java.util.List;
  * 나머지({@link #OTHER}: 일정 등록·삭제, 다른 날 일정, 가족에게 묻기 등)는 GPT가 도구를 고릅니다.
  */
 public enum Intent {
-    OUTFIT, FINISH, WHERE, WEATHER, SCHEDULE, FACE, OTHER;
+    OUTFIT, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, OTHER;
 
     private static final List<String> FINISH_WORDS = List.of("이걸로", "이거로", "이걸입", "이거입", "됐어", "다됐", "그만",
             "끝낼", "마칠");
@@ -31,6 +31,10 @@ public enum Intent {
         }
         if (inOutfitSession && s.contains("어디")) {
             return WHERE;
+        }
+        // 옷 추천 중 "입고 볼게", "내려놓고 볼게"
+        if (inOutfitSession && OutfitFlow.switchFrom(s) != null) {
+            return MODE;
         }
         if (containsAny(s, OUTFIT_WORDS)) {
             return OUTFIT;
