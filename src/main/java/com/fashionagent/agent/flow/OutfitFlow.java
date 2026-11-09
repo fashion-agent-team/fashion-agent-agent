@@ -81,11 +81,10 @@ public class OutfitFlow {
 
     public static final String LAID = "laid";
     public static final String WORN = "worn";
-    static final String ASK_MODE = "옷은 어떻게 보여 주실래요? 침대나 바닥에 내려놓고 비추기, "
-            + "아니면 입고 카메라 앞에서 한 바퀴 돌기 중에 골라 주세요.";
-    static final String LAID_HINT = "옷을 꺼내서 침대나 바닥에 펼쳐 놓고 폰으로 비춰 주세요. 두 벌을 나란히 놓으면 비교해 드려요.";
-    static final String WORN_HINT = "옷을 입은 뒤 폰을 가슴 높이에 세워 두고, 두세 걸음 물러나 머리부터 발끝까지 보이게 서 주세요. "
-            + "앞모습부터 볼게요.";
+    // 2026-11-09 리허설: 카메라 안내가 길고 어렵다는 의견으로 짧게 줄였습니다.
+    static final String ASK_MODE = "옷을 내려놓고 볼까요, 입고 한 바퀴 돌면서 볼까요?";
+    static final String LAID_HINT = "옷을 바닥에 펼쳐 놓고 폰으로 비춰 주세요.";
+    static final String WORN_HINT = "폰을 가슴 높이에 세워 두고, 두세 걸음 떨어져 서 주세요.";
     static final int MAX_MODE_ASKS = 2;
 
     private static final List<String> WORN_WORDS = List.of("입고", "입은채", "입어서", "입은거", "한바퀴", "돌게", "돌기",
@@ -138,6 +137,23 @@ public class OutfitFlow {
     }
 
     static final String OFFER_CHECK = "옷을 꺼내 오시면 잘 맞는지 봐 드릴까요?";
+
+    /**
+     * "옷 검사해 줘": 추천을 말로 길게 하지 않고 바로 보여 주는 방식을 묻거나 카메라를 켭니다(2026-11-09 리허설).
+     * 날씨·일정은 옷 판단에 필요해서 불러 두기만 합니다.
+     */
+    public TurnResponse startCheck(AgentSession session, Location location, String utterance) {
+        session.outfitMode = modeFrom(utterance);
+        session.modeAsked = 0;
+        session.checkOffered = false;
+        advise(session, location);
+        if (session.outfitMode == null) {
+            session.modeAsked = 1;
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, ASK_MODE, Next.listen, Result.of("outfit_mode"));
+        }
+        return toCamera(session, "");
+    }
 
     /** "봐 드릴까요?"에 대한 답. 알아듣지 못하면 null(원래 대화로). */
     public TurnResponse answerCheckOffer(AgentSession session, String utterance) {
@@ -326,9 +342,9 @@ public class OutfitFlow {
 
     // ── 2단계(입고 한 바퀴): 앞·옆·뒤 ─────────────────────────────────
 
-    static final String WORN_SIDE = "앞모습을 봤어요. 이제 천천히 옆으로 돌아서 잠시 멈춰 주세요.";
-    static final String WORN_BACK = "옆모습도 봤어요. 이제 뒤로 돌아서 잠시 멈춰 주세요.";
-    static final String WORN_AGAIN = " 다른 옷으로 갈아입으면 다시 앞모습부터 보여 주세요.";
+    static final String WORN_SIDE = "이제 옆으로 돌아 주세요.";
+    static final String WORN_BACK = "이제 뒤로 돌아 주세요.";
+    static final String WORN_AGAIN = " 갈아입으면 앞모습부터 다시 볼게요.";
 
     /**
      * 입고 한 바퀴. 앞모습에서 옷을 알아보고, 옆·뒤에서는 얼룩·찢어짐을 더 찾습니다.
@@ -421,7 +437,7 @@ public class OutfitFlow {
             return framing;
         }
         if (now.isEmpty() && "front".equals(view)) {
-            return "몸이 다 보이지 않아요. 한두 걸음 더 물러나서 머리부터 발끝까지 보이게 서 주세요.";
+            return "몸이 다 안 보여요. 한 걸음 뒤로 가 주세요.";
         }
         return null;
     }

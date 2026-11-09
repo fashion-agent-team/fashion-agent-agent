@@ -78,6 +78,11 @@ public class FaceFlow {
     /** 고르라고 물은 뒤의 답. 얼굴/이 중 하나를 알아들으면 시작하고, 아니면 한 번 더 묻거나 null(원래 대화로). */
     public TurnResponse answerChoice(AgentSession session, String utterance) {
         String s = compact(utterance);
+        // "옷 검사해 줘"는 짧아서(6자 이하) 예전에는 "얼굴이라고 하시면…"을 다시 물었습니다(2026-11-09 리허설).
+        if (s.contains("옷") || s.contains("날씨") || s.contains("일정")) {
+            session.faceChoiceAsked = 0;
+            return null;
+        }
         if (isTeeth(s) || TEETH_ANSWERS.contains(s) || s.startsWith("이를") || s.startsWith("이요")) {
             return startTeeth(session);
         }

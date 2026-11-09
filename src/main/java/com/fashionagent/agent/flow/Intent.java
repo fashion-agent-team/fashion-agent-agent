@@ -8,12 +8,18 @@ import java.util.List;
  * 나머지({@link #OTHER}: 일정 등록·삭제, 다른 날 일정, 가족에게 묻기 등)는 GPT가 도구를 고릅니다.
  */
 public enum Intent {
-    OUTFIT, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
+    OUTFIT, CHECK, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
 
     private static final List<String> FINISH_WORDS = List.of("이걸로", "이거로", "이걸입", "이거입", "됐어", "다됐", "그만",
             "끝낼", "마칠");
     private static final List<String> OUTFIT_WORDS = List.of("뭐입", "뭘입", "옷추천", "추천해", "코디", "입을까", "입지",
             "옷골라");
+    /**
+     * "옷 검사해 줘"처럼 꺼낸 옷을 바로 봐 달라는 말. 추천을 길게 말하지 않고 바로 카메라로 갑니다.
+     * 2026-11-09 리허설: "옷 검사"가 키워드에 없어 GPT로 갔고, 얼굴 확인으로 넘어갔습니다.
+     */
+    private static final List<String> CHECK_WORDS = List.of("옷검사", "옷확인", "옷체크", "옷상태", "옷봐", "옷좀봐",
+            "입은옷", "입은거", "입은모습", "옷차림", "검사해", "검사좀");
     /** 가족·친구에게 묻기. 옷 이야기가 섞여도("이 옷 괜찮은지 엄마한테 물어봐") GPT로 보냅니다. */
     private static final List<String> HELPER_WORDS = List.of("물어", "보내", "답왔", "답장");
     /** "오늘 일정 뭐야?"가 아닌 일정 말(등록·삭제·다른 날)은 GPT로 보냅니다. */
@@ -39,6 +45,9 @@ public enum Intent {
         // 옷 추천 중 "입고 볼게", "내려놓고 볼게"
         if (inOutfitSession && OutfitFlow.switchFrom(s) != null) {
             return MODE;
+        }
+        if (containsAny(s, CHECK_WORDS) && !s.contains("얼굴") && !FaceFlow.isTeeth(s)) {
+            return CHECK;
         }
         if (containsAny(s, OUTFIT_WORDS)) {
             return OUTFIT;

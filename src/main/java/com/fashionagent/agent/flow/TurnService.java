@@ -100,6 +100,7 @@ public class TurnService {
 
         return switch (Intent.of(req.utterance(), inOutfit)) {
             case OUTFIT -> outfit.start(session, req.location(), req.utterance());
+            case CHECK -> outfit.startCheck(session, req.location(), req.utterance());
             case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
             case FINISH -> outfit.finish(session);
             case WHERE -> outfit.where(session);

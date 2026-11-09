@@ -63,4 +63,27 @@ class RuleOutfitJudgeTest {
         var out = judge.advise(new OutfitJudge.AdviceInput(null, null, null, null));
         assertThat(out.speech()).contains("불러오지 못했어요").contains("카메라");
     }
+
+    @Test
+    void 추운날_반바지는_bad() {
+        JsonNode weather = json.readTree("{\"apparentTemperature\": 5, \"dailyRange\": 6}");
+        Garment shorts = new Garment("g1", "bottom", "반바지", "갈색", "brown", "dark", null, null, null, "casual",
+                List.of(), null, "center", 0.9);
+        var out = judge.check(new OutfitJudge.CheckInput(weather, json.readTree("[]"), null, List.of(shorts), List.of()));
+        assertThat(out.verdicts().get(0).fit()).isEqualTo("bad");
+        assertThat(out.speech()).contains("추울");
+    }
+
+    @Test
+    void 옷_종류를_모르면_겉옷이_없다고_하지_않고_확인을_부탁한다() {
+        JsonNode weather = json.readTree("{\"apparentTemperature\": 5, \"dailyRange\": 6}");
+        var advice = judge.advise(new OutfitJudge.AdviceInput(weather, json.readTree("[]"), null, null));
+        Garment other = new Garment("g1", "other", null, "검정", "black", "dark", null, null, null, "unknown",
+                List.of(), null, null, null);
+        var out = judge.check(new OutfitJudge.CheckInput(weather, json.readTree("[]"), advice, List.of(other),
+                List.of()));
+        assertThat(out.verdicts().get(0).fit()).isEqualTo("ok");
+        assertThat(out.stillMissing()).isEmpty();
+        assertThat(out.speech()).contains("겉옷을 입으셨는지").doesNotContain("겉옷도 보여");
+    }
 }

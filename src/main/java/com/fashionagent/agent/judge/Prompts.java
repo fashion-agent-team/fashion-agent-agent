@@ -23,6 +23,13 @@ final class Prompts {
               예: "왼쪽 흰 셔츠에 얼룩이 있어요. 오늘은 오른쪽 네이비 니트를 입고, 셔츠는 빨래하는 게 좋겠어요."
               (옷이 화면 어디 있는지(position)는 말해도 되고, 옷 안의 얼룩 위치(where)는 말하지 않는다.)
             - fit은 자리·날씨에 맞는지만 본다. 얼룩은 fit이 아니라 damage로 따로 말한다.
+            - 날씨와 옷: 체감 12도 미만에 반바지·반팔·민소매·얇은 옷이면 fit은 bad("오늘 추워서 반바지는 추워요")다.
+              체감 20도 미만이면 겉옷(outer)이 보였는지 꼭 말한다. 겉옷이 보이면 "겉옷도 잘 챙기셨어요"처럼 말한다.
+            - 옷 종류를 모를 때: category가 other이거나 name이 없으면 옷 종류를 알아내지 못한 것이다.
+              종류를 지어내지 말고 "옷"이라고만 부른다. "겉옷이 안 보여요"라고 단정하지 않는다.
+              날씨에 맞는지도 단정하지 않는다. fit은 ok 이하로 두고, 겉옷이 필요한 날이면
+              "오늘 체감 N도라 추워요. 겉옷을 입으셨는지 확인해 주세요"처럼 확인을 부탁한다.
+            - 색은 colorName을 그대로 쓴다. colorName이 없으면 색을 말하지 않는다.
             """;
 
     static final String ADVICE = """
@@ -40,6 +47,7 @@ final class Prompts {
             now에 옷이 두 벌 이상이면 comparison에 더 나은 옷(betterInputId)과 이유를 넣고, 한 벌이면 comparison은 null.
             damage에는 확신도 0.5 이상인 얼룩·찢어짐만 넣는다(say는 할 일 중심 한 문장).
             stillMissing에는 추천(advice.suggestions) 중 아직 괜찮은 옷을 보여 주지 않은 category를 넣는다.
+            now에 category가 other인 옷이 있으면 종류를 모르는 것이라 stillMissing은 빈 배열로 둔다.
             다 보여 줬으면 speech 끝에 "이걸로 할게"라고 말하면 된다고 안내한다.
 
             입력:

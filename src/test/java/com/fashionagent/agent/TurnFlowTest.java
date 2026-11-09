@@ -92,7 +92,7 @@ class TurnFlowTest {
         JsonNode worn = turn("u9", """
                 {"sessionId": "%s", "utterance": "네 볼게요"}""".formatted(sid));
         assertThat(worn.path("next").asString()).isEqualTo("camera_worn");
-        assertThat(worn.path("speech").asString()).contains("머리부터 발끝까지");
+        assertThat(worn.path("speech").asString()).contains("두세 걸음");
 
         for (int i = 0; i < 3; i++) {
             turn("u9", """
@@ -230,6 +230,28 @@ class TurnFlowTest {
     }
 
     @Test
+    void 옷_검사해_달라면_추천_없이_방식부터_묻는다_리허설() throws Exception {
+        JsonNode ask = turn("rc1", """
+                {"utterance": "옷 검사해 줘"}""");
+        assertThat(ask.path("next").asString()).isEqualTo("listen");
+        assertThat(ask.path("speech").asString()).contains("내려놓고").doesNotContain("얼굴");
+        String sid = ask.path("sessionId").asString();
+        JsonNode cam = turn("rc1", """
+                {"sessionId": "%s", "utterance": "내려놓고 볼게"}""".formatted(sid));
+        assertThat(cam.path("next").asString()).isEqualTo("camera_outfit");
+    }
+
+    @Test
+    void 얼굴_이를_묻는_중에_옷_검사를_말하면_옷_검사로() throws Exception {
+        JsonNode ask = turn("rc2", """
+                {"utterance": "얼굴 확인해 줘"}""");
+        String sid = ask.path("sessionId").asString();
+        JsonNode r = turn("rc2", """
+                {"sessionId": "%s", "utterance": "옷 검사해 줘"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).doesNotContain("얼굴").contains("내려놓고");
+    }
+
+    @Test
     void GPT가_꺼져_있으면_개별_기능은_안내만() throws Exception {
         JsonNode r = turn("u7", """
                 {"utterance": "토요일 두 시에 결혼식 넣어 줘"}""");
@@ -275,7 +297,7 @@ class TurnFlowTest {
         assertThat(advice.path("next").asString()).isEqualTo("camera_worn");
         assertThat(advice.path("result").path("outfitMode").asString()).isEqualTo("worn");
         assertThat(advice.path("speech").asString()).startsWith("좋아요.")
-                .contains("머리부터 발끝까지").doesNotContain("옷을 꺼내서 카메라에");
+                .contains("두세 걸음").doesNotContain("옷을 꺼내서 카메라에");
 
         JsonNode front = turn("w1", """
                 {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
@@ -292,7 +314,7 @@ class TurnFlowTest {
         JsonNode oc = back.path("result").path("outfitCheck");
         assertThat(oc.path("garments")).hasSize(2);
         assertThat(oc.path("damage").get(0).path("action").asString()).isEqualTo("wash");
-        assertThat(back.path("speech").asString()).contains("빨래").endsWith("앞모습부터 보여 주세요.");
+        assertThat(back.path("speech").asString()).contains("빨래").endsWith("앞모습부터 다시 볼게요.");
 
         JsonNode where = turn("w1", """
                 {"sessionId": "%s", "utterance": "얼룩 어디야?"}""".formatted(sid));
@@ -307,7 +329,7 @@ class TurnFlowTest {
         JsonNode r = turn("w2", """
                 {"sessionId": "%s", "utterance": "네", "outfitMode": "worn"}""".formatted(sid));
         assertThat(r.path("next").asString()).isEqualTo("listen");
-        assertThat(r.path("speech").asString()).contains("어떻게 보여");
+        assertThat(r.path("speech").asString()).contains("내려놓고 볼까요");
 
         String sid2 = turn("w2b", """
                 {"utterance": "입고 볼게 오늘 뭐 입지"}""").path("sessionId").asString();
