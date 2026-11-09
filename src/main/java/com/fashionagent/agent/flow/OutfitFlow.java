@@ -445,8 +445,20 @@ public class OutfitFlow {
         session.lastDamage = new ArrayList<>(j.damage());
         sessions.save(session);
         var result = new OutfitCheck(now, j.verdicts(), j.comparison(), j.damage(), j.stillMissing(), null, source);
-        return new TurnResponse(session.sessionId, j.speech(), Next.camera_outfit,
+        return new TurnResponse(session.sessionId, withMore(j.speech()), Next.camera_outfit,
                 new Result("outfit_check", null, result));
+    }
+
+    /** 2026-11-09 진행 님: 한 벌 찍고 나면 "더 찍으실 옷이 있으면 비춰 주세요"로 다음 옷을 기다린다. */
+    static final String MORE = "더 찍으실 옷이 있으면 비춰 주세요.";
+
+    /** 판단 말이 이미 다른 옷을 보여 달라고 하면("겉옷도 보여 주세요") 겹치지 않게 붙이지 않는다. */
+    static String withMore(String speech) {
+        String s = speech == null ? "" : speech.strip();
+        if (s.contains("보여 주세요") || s.contains("비춰 주세요") || s.contains("보여주세요") || s.contains("비춰주세요")) {
+            return s;
+        }
+        return s.isEmpty() ? MORE : s + " " + MORE;
     }
 
     // ── 2단계(입고 한 바퀴): 앞·옆·뒤 ─────────────────────────────────
