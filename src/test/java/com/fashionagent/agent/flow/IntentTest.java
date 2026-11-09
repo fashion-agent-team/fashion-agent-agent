@@ -45,6 +45,9 @@ class IntentTest {
     void 개별_기능() {
         assertThat(Intent.of("오늘 날씨 어때", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("오늘 일정 뭐야", false)).isEqualTo(Intent.SCHEDULE);
+        // 하루 일정은 GPT를 거치지 않고 바로 읽습니다(2026-11-09 측정: GPT 2~4.6초).
+        assertThat(Intent.of("내일 일정 뭐야", false)).isEqualTo(Intent.SCHEDULE);
+        assertThat(Intent.of("다음 주 토요일 일정 알려 줘", false)).isEqualTo(Intent.SCHEDULE);
         assertThat(Intent.of("얼굴 확인해 줘", false)).isEqualTo(Intent.FACE);
         assertThat(Intent.of("이 확인해 줘", false)).isEqualTo(Intent.FACE);
         assertThat(Intent.of("치아에 뭐 꼈어?", false)).isEqualTo(Intent.FACE);
@@ -55,7 +58,7 @@ class IntentTest {
     @Test
     void 일정_등록_삭제_다른_날과_가족에게_묻기는_GPT로() {
         assertThat(Intent.of("토요일 두 시에 결혼식 넣어 줘", false)).isEqualTo(Intent.OTHER);
-        assertThat(Intent.of("내일 일정 뭐야", false)).isEqualTo(Intent.OTHER);
+        assertThat(Intent.of("이번 주 일정 뭐야", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("면접 일정 지워 줘", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("이 옷 괜찮은지 엄마한테 물어봐 줘", true)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("엄마 답 왔어?", false)).isEqualTo(Intent.OTHER);

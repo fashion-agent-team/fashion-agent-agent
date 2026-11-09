@@ -15,10 +15,10 @@ public class ToolsConfig {
     private static final Logger log = LoggerFactory.getLogger(ToolsConfig.class);
 
     @Bean
-    public AgentTools agentTools(AgentProperties props, JsonMapper json) {
+    public AgentTools agentTools(AgentProperties props, JsonMapper json, java.time.Clock clock) {
         if ("mcp".equals(props.tools())) {
-            log.info("도구: MCP 서버 {}", props.mcp());
-            return new McpAgentTools(props.mcp(), json);
+            log.info("도구: MCP 서버 {} (날씨·일정은 잠깐 기억)", props.mcp());
+            return new CachingAgentTools(new McpAgentTools(props.mcp(), json), clock);
         }
         log.info("도구: 가짜 (agent.tools=fake)");
         return new FakeAgentTools(json);

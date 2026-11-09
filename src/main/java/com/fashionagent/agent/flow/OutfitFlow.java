@@ -82,13 +82,14 @@ public class OutfitFlow {
     public static final String LAID = "laid";
     public static final String WORN = "worn";
     // 2026-11-09 리허설: 카메라 안내가 길고 어렵다는 의견으로 짧게 줄였습니다.
-    static final String ASK_MODE = "옷을 내려놓고 볼까요, 입고 한 바퀴 돌면서 볼까요?";
+    // 2026-11-09 발표 피드백: "내려놓고 찍으실래요, 입어 보고 돌아보는 거 찍으실래요?"
+    static final String ASK_MODE = "옷을 내려놓고 찍으실래요, 입어 보고 한 바퀴 도는 모습을 찍으실래요?";
     static final String LAID_HINT = "옷을 바닥에 펼쳐 놓고 폰으로 비춰 주세요.";
     static final String WORN_HINT = "폰을 가슴 높이에 세워 두고, 두세 걸음 떨어져 서 주세요.";
     static final int MAX_MODE_ASKS = 2;
 
     private static final List<String> WORN_WORDS = List.of("입고", "입은채", "입어서", "입은거", "한바퀴", "돌게", "돌기",
-            "돌면서");
+            "돌면서", "입어보", "입어볼", "돌아보", "돌아볼", "도는", "입은모습");
     /** 옷 추천 중 방식을 바꾸는 말에만 있는 낱말. "흰 셔츠 입고 갈게"는 바꾸기가 아닙니다. */
     private static final List<String> SWITCH_WORDS = List.of("볼게", "봐줘", "봐주", "보여줄", "보여드", "방식", "바꿔",
             "확인해");
@@ -134,11 +135,13 @@ public class OutfitFlow {
         TurnResponse advice = advise(session, location);
         session.checkOffered = true;
         sessions.save(session);
-        return new TurnResponse(session.sessionId, withoutCameraHint(advice.speech()) + " " + OFFER_CHECK,
+        // 카메라 안내 없이 추천만 말하고 봐 드릴지 묻습니다. 방식은 "봐 줘"라고 하면 그때 묻습니다.
+        return new TurnResponse(session.sessionId, session.advice.speech() + " " + OFFER_CHECK,
                 Next.listen, advice.result());
     }
 
-    static final String OFFER_CHECK = "옷을 꺼내 오시면 잘 맞는지 봐 드릴까요?";
+    /** 2026-11-09 발표 피드백의 흐름: "… ~한 옷을 추천드려요. 옷을 봐 드릴까요?" */
+    static final String OFFER_CHECK = "옷을 봐 드릴까요?";
 
     /**
      * "옷 검사해 줘": 추천을 말로 길게 하지 않고 바로 보여 주는 방식을 묻거나 카메라를 켭니다(2026-11-09 리허설).
@@ -274,10 +277,14 @@ public class OutfitFlow {
         session.events = scheduleResult == null ? null : scheduleResult.path("events");
         session.closet = props.closetSearch() ? closetSearch(session) : null;
 
-        AdviceJudgement advice = judge.advise(new AdviceInput(session.weather, session.events,
+        String label = SpokenDate.label(day, today());
+        AdviceJudgement judged = judge.advise(new AdviceInput(session.weather, session.events,
                 session.closet == null ? null : session.closet.path("candidates"),
                 session.closet == null ? null : session.closet.path("styleNotes"),
-                SpokenDate.label(day, today()), weatherNote[0]));
+                label, weatherNote[0]));
+        // 날짜 → 날씨 → 일정 → 추천 순서는 코드가 정합니다(2026-11-09 발표 피드백: 문장이 이상했음).
+        AdviceJudgement advice = new AdviceJudgement(judged.suggestions(), judged.closetPicks(),
+                adviceSpeech(label, session.weather, weatherNote[0], session.events, judged.speech()));
         session.advice = advice;
         session.seen = new ArrayList<>();
         session.lastDamage = new ArrayList<>();
@@ -289,7 +296,74 @@ public class OutfitFlow {
                 new Result("outfit_advice", advice.toAdvice(), null, mode));
     }
 
-    static final String NO_FORECAST = "그날 날씨는 아직 예보가 없어요. 가까워지면 다시 물어봐 주세요.";
+    static final String NO_FORECAST = "그날 날씨는 아직 예보가 없어요.";
+
+    /**
+     * 추천 문장. 2026-11-09 발표 피드백의 틀:
+     * "{날짜}의 패션을 추천해 드릴게요. {날짜} 날씨는 ~예요. 일정은 ~이 있어요. ~한 옷을 추천드려요."
+     * 너무 먼 날이라 예보가 없으면 날씨는 "아직 예보가 없어요"로 짧게 말합니다.
+     */
+    static String adviceSpeech(String label, JsonNode weather, String weatherNote, JsonNode events,
+            String recommendation) {
+        StringBuilder sb = new StringBuilder(label).append("의 패션을 추천해 드릴게요. ");
+        if (weather != null && !weather.isMissingNode() && !weather.isNull()) {
+            String condition = weather.path("condition").asString("");
+            sb.append(label).append(" 날씨는 ");
+            if (!condition.isBlank()) {
+                sb.append(conditionClause(condition)).append(", ");
+            }
+            if (weather.has("minTemperature") && weather.has("maxTemperature")) {
+                sb.append("최저 ").append(Math.round(weather.path("minTemperature").asDouble())).append("도, 최고 ")
+                        .append(Math.round(weather.path("maxTemperature").asDouble())).append("도예요. ");
+            } else {
+                sb.append("체감 ").append(Math.round(weather.path("apparentTemperature").asDouble())).append("도예요. ");
+            }
+        } else if (weatherNote != null) {
+            sb.append(weatherNote).append(" ");
+        } else {
+            sb.append("날씨는 불러오지 못했어요. ");
+        }
+        sb.append(scheduleSentence(events)).append(" ");
+        String rec = withoutCameraHint(recommendation);
+        if (!rec.isBlank()) {
+            sb.append(rec);
+        }
+        return sb.toString().trim();
+    }
+
+    /** mcp-weather의 날씨 말을 이어지는 말로: 맑음 → "맑고", 비 → "비가 오고". */
+    static String conditionClause(String condition) {
+        return switch (condition.trim()) {
+            case "맑음" -> "맑고";
+            case "흐림" -> "흐리고";
+            case "구름 조금" -> "구름이 조금 있고";
+            case "구름 많음" -> "구름이 많고";
+            case "안개" -> "안개가 끼고";
+            case "이슬비" -> "이슬비가 내리고";
+            case "비" -> "비가 오고";
+            case "눈" -> "눈이 오고";
+            case "뇌우" -> "천둥 번개가 치고";
+            default -> Korean.josa(condition.trim(), "이고", "고");
+        };
+    }
+
+    /** "일정은 오후 2시 친구 결혼식이 있어요." / "일정은 없어요." */
+    static String scheduleSentence(JsonNode events) {
+        if (events == null || events.isMissingNode() || events.isNull()) {
+            return "일정은 불러오지 못했어요.";
+        }
+        if (events.isEmpty()) {
+            return "일정은 없어요.";
+        }
+        List<String> parts = new ArrayList<>();
+        for (JsonNode e : events) {
+            String time = TurnService.spokenTime(e.path("start").asString(""));
+            String title = e.path("title").asString("").trim();
+            parts.add((time.isEmpty() ? "" : time + " ") + title);
+        }
+        String joined = String.join(", ", parts).trim();
+        return "일정은 " + Korean.josa(joined, "이", "가") + " 있어요.";
+    }
 
     /** 다른 날 예보. 16일 넘게 남았으면 null과 함께 까닭(note[0])을 남깁니다. */
     private JsonNode forecast(Location at, LocalDate day, String[] note) {

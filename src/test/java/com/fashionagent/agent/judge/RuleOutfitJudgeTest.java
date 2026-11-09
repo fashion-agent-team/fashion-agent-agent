@@ -55,13 +55,13 @@ class RuleOutfitJudgeTest {
         JsonNode weather = json.readTree("{\"apparentTemperature\": 9.5, \"dailyRange\": 11}");
         var out = judge.advise(new OutfitJudge.AdviceInput(weather, json.readTree("[]"), null, null));
         assertThat(out.suggestions()).extracting(s -> s.category()).contains("outer");
-        assertThat(out.speech()).contains("체감 10도");
+        assertThat(out.speech()).contains("겉옷을 추천드려요");
     }
 
     @Test
     void 날씨를_못_불러와도_추천은_한다() {
         var out = judge.advise(new OutfitJudge.AdviceInput(null, null, null, null));
-        assertThat(out.speech()).contains("불러오지 못했어요").contains("카메라");
+        assertThat(out.speech()).contains("추천드려요").contains("겉옷도 챙겨");
     }
 
     @Test

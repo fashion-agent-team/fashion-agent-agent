@@ -102,6 +102,28 @@ class TurnFlowTest {
     }
 
     @Test
+    void 내일_옷_추천은_날짜_날씨_일정_추천_순서로_말하고_봐_줄지_묻는다() throws Exception {
+        // 2026-11-09 발표 피드백: "내일 입을 거 추천해 줘"에 오늘 옷을 추천했고, 문장도 이상했음.
+        JsonNode advice = turn("u22", """
+                {"utterance": "내일 입을 옷 추천해 줘", "location": {"lat": 37.5, "lon": 127.0}}""");
+        String speech = advice.path("speech").asString();
+        assertThat(speech).startsWith("내일의 패션을 추천해 드릴게요. 내일 날씨는 ")
+                .contains("일정은 ")
+                .contains("추천드려요.")
+                .endsWith("옷을 봐 드릴까요?");
+        assertThat(speech.indexOf("날씨는")).isLessThan(speech.indexOf("일정은"));
+        assertThat(speech.indexOf("일정은")).isLessThan(speech.indexOf("추천드려요"));
+
+        String sid = advice.path("sessionId").asString();
+        JsonNode ask = turn("u22", """
+                {"sessionId": "%s", "utterance": "어 봐줘"}""".formatted(sid));
+        assertThat(ask.path("speech").asString()).isEqualTo("옷을 내려놓고 찍으실래요, 입어 보고 한 바퀴 도는 모습을 찍으실래요?");
+        JsonNode camera = turn("u22", """
+                {"sessionId": "%s", "utterance": "입어 보고 돌아볼게"}""".formatted(sid));
+        assertThat(camera.path("next").asString()).isEqualTo("camera_worn");
+    }
+
+    @Test
     void 예보가_없는_먼_날은_일정만으로_추천한다() throws Exception {
         var day = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(40);
         String said = day.getMonthValue() + "월 " + day.getDayOfMonth() + "일";
@@ -363,7 +385,7 @@ class TurnFlowTest {
         JsonNode r = turn("w2", """
                 {"sessionId": "%s", "utterance": "네", "outfitMode": "worn"}""".formatted(sid));
         assertThat(r.path("next").asString()).isEqualTo("listen");
-        assertThat(r.path("speech").asString()).contains("내려놓고 볼까요");
+        assertThat(r.path("speech").asString()).contains("내려놓고 찍으실래요");
 
         String sid2 = turn("w2b", """
                 {"utterance": "입고 볼게 오늘 뭐 입지"}""").path("sessionId").asString();

@@ -52,29 +52,21 @@ public class RuleOutfitJudge implements OutfitJudge {
             suggestions.add(new Suggestion("outer", "겉옷", w.outerReason()));
         }
 
-        String day = in.day() == null ? "오늘" : in.day();
-        StringBuilder speech = new StringBuilder(in.today() ? "오늘은 " : day + "에는 ");
-        if (w.known()) {
-            speech.append("체감 ").append(Math.round(w.apparent())).append("도");
-            speech.append(title != null ? "이고 " : "예요. ");
-        }
-        if (title != null) {
-            speech.append(Korean.josa(title, "이", "가")).append(" 있어요. ");
-        } else if (!w.known() && in.weatherNote() == null) {
-            speech.append("날씨와 일정을 불러오지 못했어요. ");
-        } else if (!in.today()) {
-            speech.append("일정이 없어요. ");
-        }
-        if (!w.known() && in.weatherNote() != null) {
-            speech.append(in.weatherNote()).append(" ");
+        // 날짜·날씨·일정은 OutfitFlow가 앞에서 읽습니다(2026-11-09 발표 피드백: 정해진 순서로).
+        // 여기서는 추천하는 옷과 까닭만 말합니다.
+        StringBuilder speech = new StringBuilder();
+        if (title != null && occasion != Occasion.casual) {
+            speech.append(look.why()).append(" ");
         }
         speech.append(look.top()).append("에 ");
-        speech.append(w.needsOuter() ? look.bottom() + ", 겉옷을 추천드려요."
+        speech.append(w.needsOuter() ? look.bottom() + ", 겉옷을 추천드려요. " + w.outerReason()
                 : Korean.josa(look.bottom(), "을", "를") + " 추천드려요.");
+        if (!w.known()) {
+            speech.append(" 날씨를 몰라서 겉옷도 챙겨 두면 좋아요.");
+        }
         if (w.needsUmbrella()) {
             speech.append(" 비 소식이 있으니 우산도 챙기세요.");
         }
-        speech.append(" 옷을 꺼내서 카메라에 보여 주세요.");
         return new AdviceJudgement(suggestions, List.of(), speech.toString());
     }
 
