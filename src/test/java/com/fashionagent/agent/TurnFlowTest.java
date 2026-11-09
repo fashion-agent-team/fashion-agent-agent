@@ -42,7 +42,7 @@ class TurnFlowTest {
                 {"utterance": "내려놓고 볼게, 오늘 뭐 입지?", "location": {"lat": 37.5, "lon": 127.0}}""");
         assertThat(advice.path("next").asString()).isEqualTo("listen");
         assertThat(advice.path("result").path("type").asString()).isEqualTo("outfit_advice");
-        assertThat(advice.path("speech").asString()).contains("면접").contains("겉옷").endsWith("봐 드릴까요?");
+        assertThat(advice.path("speech").asString()).contains("면접").contains("겉옷").doesNotContain("봐 드릴까요");
         String sid = advice.path("sessionId").asString();
 
         // "봐 드릴까요?" → 네 → 말에 있던 방식(내려놓기)으로 바로 카메라
@@ -93,7 +93,7 @@ class TurnFlowTest {
                 .contains("결혼식")
                 .contains("우산")
                 .doesNotContain("면접")
-                .endsWith("봐 드릴까요?");
+                .doesNotContain("봐 드릴까요");
 
         // 일정 읽기도 그날로
         JsonNode schedule = turn("u20", """
@@ -110,7 +110,7 @@ class TurnFlowTest {
         assertThat(speech).startsWith("내일의 패션을 추천해 드릴게요. 내일 날씨는 ")
                 .contains("일정은 ")
                 .contains("추천드려요.")
-                .endsWith("옷을 봐 드릴까요?");
+                .doesNotContain("봐 드릴까요");
         assertThat(speech.indexOf("날씨는")).isLessThan(speech.indexOf("일정은"));
         assertThat(speech.indexOf("일정은")).isLessThan(speech.indexOf("추천드려요"));
 
@@ -340,7 +340,7 @@ class TurnFlowTest {
         JsonNode offer = turn("w1", """
                 {"utterance": "오늘 뭐 입지?"}""");
         assertThat(offer.path("next").asString()).isEqualTo("listen");
-        assertThat(offer.path("speech").asString()).contains("봐 드릴까요");
+        assertThat(offer.path("speech").asString()).doesNotContain("봐 드릴까요");
         String sid = offer.path("sessionId").asString();
 
         JsonNode ask = turn("w1", """

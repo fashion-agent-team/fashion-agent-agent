@@ -47,6 +47,7 @@ public class TurnService {
         if (session == null) {
             session = new AgentSession("s_" + UUID.randomUUID(), userId);
         }
+        session.gptConsent = Boolean.TRUE.equals(req.allowGpt());
 
         if (req.hasImage()) {
             // 가족에게 묻기에 쓰려고 직전 사진 한 장만 10분 들고 있습니다.

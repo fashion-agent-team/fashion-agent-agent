@@ -185,10 +185,19 @@ public class RuleOutfitJudge implements OutfitJudge {
     }
 
     static Damage damage(Garment g, Garment.Defect d) {
+        String label = g.label();
+        // 우리 모델은 애매했는데 GPT가 조각을 보고 결함이라고 한 것. 단정하지 않고 "~인 것 같아요"로 말합니다.
+        if (d.byGpt()) {
+            return switch (d.kind()) {
+                case "tear" -> new Damage(g.id(), "tear", "repair", d.where(),
+                        label + "에 찢어진 곳이 있는 것 같아요. 중요한 자리면 다른 옷이 안전해요.");
+                default -> new Damage(g.id(), d.kind(), "wash", d.where(),
+                        label + "에 얼룩이 있는 것 같아요. 중요한 자리면 다른 옷이 안전해요.");
+            };
+        }
         if (d.confidence() < MAYBE) {
             return null;
         }
-        String label = g.label();
         if (d.confidence() < SURE || "other".equals(d.kind())) {
             return new Damage(g.id(), d.kind(), "check", d.where(),
                     label + "에 얼룩일 수도 있는 게 보여요. 중요한 자리면 다른 옷이 안전해요.");
