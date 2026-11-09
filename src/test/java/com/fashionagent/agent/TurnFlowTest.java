@@ -330,7 +330,7 @@ class TurnFlowTest {
         assertThat(turn("h2", """
                 {"utterance": "고마워"}""").path("speech").asString()).contains("별말씀을요");
         assertThat(turn("h2", """
-                {"utterance": "바보야"}""").path("speech").asString()).contains("바보 아니에요");
+                {"utterance": "바보야"}""").path("speech").asString()).contains("서운해요");
         assertThat(turn("h2", """
                 {"utterance": "지금 몇 시야?"}""").path("speech").asString()).contains("지금은", "시");
     }
