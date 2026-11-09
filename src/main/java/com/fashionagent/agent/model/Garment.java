@@ -52,7 +52,15 @@ public record Garment(
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Defect(String kind, String where, double confidence) {
+    /** checkedBy: model(우리 모델이 확실) | gpt(애매해서 조각을 GPT로 확인, 옷 상태 서버 #10). 없으면 model. */
+    public record Defect(String kind, String where, double confidence, String checkedBy) {
+        public Defect(String kind, String where, double confidence) {
+            this(kind, where, confidence, null);
+        }
+
+        public boolean byGpt() {
+            return "gpt".equals(checkedBy);
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

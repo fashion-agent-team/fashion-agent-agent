@@ -37,6 +37,8 @@ public class AgentSession {
     public String lastHelperRequestId;
     /** 얼굴 확인에서 "얼굴을 볼까요, 이를 확인할까요?"를 물은 횟수. 0이면 묻지 않은 상태. */
     public int faceChoiceAsked;
+    /** 사용자가 처음 켤 때 동의했는지(앱이 요청마다 allowGpt로 보냄). 동의했으면 애매한 얼룩을 GPT로 확인합니다. */
+    public boolean gptConsent;
     /** 옷을 보여 주는 방식: laid(내려놓고 비추기) | worn(입고 한 바퀴). null이면 아직 모름. */
     public String outfitMode;
     /** "어떻게 보여 주실래요?"를 물은 횟수. 0이면 묻지 않은 상태. */

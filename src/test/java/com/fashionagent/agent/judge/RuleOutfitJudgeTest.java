@@ -51,6 +51,14 @@ class RuleOutfitJudgeTest {
     }
 
     @Test
+    void GPT가_확인한_얼룩은_같아요로_말한다() {
+        Garment g = top("g1", "흰색", "white", "smart");
+        Damage gpt = RuleOutfitJudge.damage(g, new Garment.Defect("stain", "앞", 0.3, "gpt"));
+        assertThat(gpt.action()).isEqualTo("wash");
+        assertThat(gpt.say()).contains("같아요");
+    }
+
+    @Test
     void 쌀쌀하면_겉옷을_추천한다() {
         JsonNode weather = json.readTree("{\"apparentTemperature\": 9.5, \"dailyRange\": 11}");
         var out = judge.advise(new OutfitJudge.AdviceInput(weather, json.readTree("[]"), null, null));

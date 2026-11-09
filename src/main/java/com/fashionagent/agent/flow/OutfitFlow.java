@@ -405,7 +405,8 @@ public class OutfitFlow {
         session.photoCount++;
         JsonNode inspect;
         try {
-            inspect = tools.call(ToolNames.CLOTHES_INSPECT, Map.of("imageBase64", imageBase64));
+            inspect = tools.call(ToolNames.CLOTHES_INSPECT,
+                    Map.of("imageBase64", imageBase64, "allowGpt", session.gptConsent));
         } catch (ToolException e) {
             log.warn("clothes_inspect 실패: {}", e.getMessage());
             sessions.save(session);
@@ -477,7 +478,7 @@ public class OutfitFlow {
         JsonNode inspect;
         try {
             inspect = tools.call(ToolNames.CLOTHES_INSPECT,
-                    Map.of("imageBase64", imageBase64, "mode", WORN, "view", view));
+                    Map.of("imageBase64", imageBase64, "mode", WORN, "view", view, "allowGpt", session.gptConsent));
         } catch (ToolException e) {
             log.warn("clothes_inspect(worn) 실패: {}", e.getMessage());
             sessions.save(session);
