@@ -128,6 +128,8 @@ public class OutfitFlow {
      * 말에 방식이 있으면("입고 볼게, 뭐 입지?") 기억해 두었다가 방식은 묻지 않습니다. 앱이 기억한 방식은 쓰지 않고 매번 고릅니다.
      */
     public TurnResponse start(AgentSession session, Location location, String utterance) {
+        LocalDate day = SpokenDate.from(utterance, today());
+        session.targetDate = day == null || day.equals(today()) ? null : day.toString();
         session.outfitMode = modeFrom(utterance);
         session.modeAsked = 0;
         TurnResponse advice = advise(session, location);
@@ -243,9 +245,14 @@ public class OutfitFlow {
 
     public TurnResponse advise(AgentSession session, Location location) {
         Location at = location == null ? Location.SEOUL : location;
-        var weather = async(() -> tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", at.lat(), "lon", at.lon())));
+        LocalDate day = targetDay(session);
+        boolean isToday = day.equals(today());
+        String[] weatherNote = {null};
+        var weather = isToday
+                ? async(() -> tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", at.lat(), "lon", at.lon())))
+                : CompletableFuture.supplyAsync(() -> forecast(at, day, weatherNote), executor);
         var schedule = async(() -> tools.callForUser(ToolNames.SCHEDULE_LIST, session.userId,
-                Map.of("date", today().toString())));
+                Map.of("date", day.toString())));
         session.weather = weather.join();
         JsonNode scheduleResult = schedule.join();
         session.events = scheduleResult == null ? null : scheduleResult.path("events");
@@ -253,7 +260,8 @@ public class OutfitFlow {
 
         AdviceJudgement advice = judge.advise(new AdviceInput(session.weather, session.events,
                 session.closet == null ? null : session.closet.path("candidates"),
-                session.closet == null ? null : session.closet.path("styleNotes")));
+                session.closet == null ? null : session.closet.path("styleNotes"),
+                SpokenDate.label(day, today()), weatherNote[0]));
         session.advice = advice;
         session.seen = new ArrayList<>();
         session.lastDamage = new ArrayList<>();
@@ -265,8 +273,35 @@ public class OutfitFlow {
                 new Result("outfit_advice", advice.toAdvice(), null, mode));
     }
 
+    static final String NO_FORECAST = "그날 날씨는 아직 예보가 없어요. 가까워지면 다시 물어봐 주세요.";
+
+    /** 다른 날 예보. 16일 넘게 남았으면 null과 함께 까닭(note[0])을 남깁니다. */
+    private JsonNode forecast(Location at, LocalDate day, String[] note) {
+        try {
+            return tools.call(ToolNames.WEATHER_FORECAST, Map.of("lat", at.lat(), "lon", at.lon(), "date", day.toString()));
+        } catch (ToolException e) {
+            log.warn("weather_forecast 실패, 없이 계속: {}", e.getMessage());
+            if ("out_of_range".equals(e.code())) {
+                note[0] = NO_FORECAST;
+            }
+            return null;
+        }
+    }
+
+    /** 옷을 입을 날. 정하지 않았으면 오늘. */
+    private LocalDate targetDay(AgentSession session) {
+        if (session.targetDate != null) {
+            try {
+                return LocalDate.parse(session.targetDate);
+            } catch (RuntimeException ignored) {
+                // 이상한 값이면 오늘
+            }
+        }
+        return today();
+    }
+
     private JsonNode closetSearch(AgentSession session) {
-        String situation = "오늘 " + titles(session.events) + (session.weather == null ? ""
+        String situation = SpokenDate.label(targetDay(session), today()) + " " + titles(session.events) + (session.weather == null ? ""
                 : ", 체감 " + Math.round(session.weather.path("apparentTemperature").asDouble()) + "도");
         Map<String, Object> args = new LinkedHashMap<>();
         args.put("situation", situation);
@@ -475,7 +510,7 @@ public class OutfitFlow {
             return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 보여 주세요.",
                     cameraFor(session.outfitMode), null);
         }
-        boolean recorded = !session.recorded && record(session.userId, chosen);
+        boolean recorded = !session.recorded && record(session.userId, chosen, targetDay(session));
         session.recorded = session.recorded || recorded;
         String names = String.join(", ", chosen.stream().map(Garment::label).toList());
         String picked = "좋아요. " + Korean.josa(names, "으로", "로") + (recorded ? " 기록해 둘게요." : " 정했어요.");
@@ -544,7 +579,7 @@ public class OutfitFlow {
         return "good".equals(fit) ? 2 : "ok".equals(fit) ? 1 : 0;
     }
 
-    private boolean record(String userId, List<Garment> chosen) {
+    private boolean record(String userId, List<Garment> chosen, LocalDate day) {
         try {
             List<?> garments = json.convertValue(chosen, List.class);
             JsonNode saved = tools.callForUser(ToolNames.CLOSET_SAVE, userId, Map.of("garments", garments));
@@ -552,7 +587,7 @@ public class OutfitFlow {
             for (JsonNode s : saved.path("saved")) {
                 ids.add(s.path("garmentId").asString());
             }
-            tools.callForUser(ToolNames.CLOSET_WEAR, userId, Map.of("garmentIds", ids, "date", today().toString()));
+            tools.callForUser(ToolNames.CLOSET_WEAR, userId, Map.of("garmentIds", ids, "date", day.toString()));
             return true;
         } catch (ToolException e) {
             log.warn("옷장 기록 실패 (추천은 계속): {}", e.getMessage());

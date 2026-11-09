@@ -26,7 +26,9 @@ final class Prompts {
             """;
 
     static final String ADVICE = """
-            [추천 모드] 사용자가 아직 옷을 꺼내지 않았다. 날씨와 일정으로 오늘 입을 옷을 말로 추천한다.
+            [추천 모드] 사용자가 아직 옷을 꺼내지 않았다. 날씨와 일정으로 day(입력의 day, 예: 오늘·내일·11월 20일 금요일)에 입을 옷을 말로 추천한다.
+            day가 오늘이 아니면 speech를 그날로 시작한다(예: "11월 20일 금요일에는 오후 2시 결혼식이 있어요."). weather·events도 그날 값이다.
+            weatherNote가 있으면 weather가 null인 까닭이니 그 문장을 짧게 전하고, 기온을 추측하지 않는다.
             suggestions에는 top·bottom을 넣고, 겉옷이 필요하면 outer도 넣는다. category는 top|bottom|outer|dress|shoes|other.
             speech 마지막은 "옷을 꺼내서 카메라에 보여 주세요." 같은 안내로 끝낸다.
 

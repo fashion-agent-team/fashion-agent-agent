@@ -52,15 +52,21 @@ public class RuleOutfitJudge implements OutfitJudge {
             suggestions.add(new Suggestion("outer", "겉옷", w.outerReason()));
         }
 
-        StringBuilder speech = new StringBuilder("오늘은 ");
+        String day = in.day() == null ? "오늘" : in.day();
+        StringBuilder speech = new StringBuilder(in.today() ? "오늘은 " : day + "에는 ");
         if (w.known()) {
             speech.append("체감 ").append(Math.round(w.apparent())).append("도");
             speech.append(title != null ? "이고 " : "예요. ");
         }
         if (title != null) {
             speech.append(Korean.josa(title, "이", "가")).append(" 있어요. ");
-        } else if (!w.known()) {
+        } else if (!w.known() && in.weatherNote() == null) {
             speech.append("날씨와 일정을 불러오지 못했어요. ");
+        } else if (!in.today()) {
+            speech.append("일정이 없어요. ");
+        }
+        if (!w.known() && in.weatherNote() != null) {
+            speech.append(in.weatherNote()).append(" ");
         }
         speech.append(look.top()).append("에 ");
         speech.append(w.needsOuter() ? look.bottom() + ", 겉옷을 추천드려요."
