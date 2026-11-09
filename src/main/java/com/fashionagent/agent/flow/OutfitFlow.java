@@ -123,7 +123,7 @@ public class OutfitFlow {
     }
 
     /**
-     * "오늘 뭐 입지?" 날씨·일정으로 먼저 말로 추천하고 "봐 드릴까요?"를 묻습니다. 바로 카메라를 켜지 않습니다.
+     * "오늘 뭐 입지?" 날씨·일정으로 먼저 말로 추천만 합니다. 바로 카메라를 켜지 않습니다.
      * 2026-11-06 진행 님 요청: 추천 → "옷 봐 드릴까요?" → 봐 달라고 하면 그때 보여 주는 방식(내려놓기/입고 한 바퀴)을 고르고 카메라.
      * 말에 방식이 있으면("입고 볼게, 뭐 입지?") 기억해 두었다가 방식은 묻지 않습니다. 앱이 기억한 방식은 쓰지 않고 매번 고릅니다.
      */
@@ -135,13 +135,10 @@ public class OutfitFlow {
         TurnResponse advice = advise(session, location);
         session.checkOffered = true;
         sessions.save(session);
-        // 카메라 안내 없이 추천만 말하고 봐 드릴지 묻습니다. 방식은 "봐 줘"라고 하면 그때 묻습니다.
-        return new TurnResponse(session.sessionId, session.advice.speech() + " " + OFFER_CHECK,
-                Next.listen, advice.result());
+        // 2026-11-09 진행 님: 추천은 "~을 추천드려요"까지만 말합니다. "옷을 봐 드릴까요?"는 묻지 않고,
+        // 사용자가 이어서 "봐 줘", "입고 볼게"라고 하면 그때 방식을 묻거나 카메라를 켭니다(checkOffered).
+        return new TurnResponse(session.sessionId, session.advice.speech(), Next.listen, advice.result());
     }
-
-    /** 2026-11-09 발표 피드백의 흐름: "… ~한 옷을 추천드려요. 옷을 봐 드릴까요?" */
-    static final String OFFER_CHECK = "옷을 봐 드릴까요?";
 
     /**
      * "옷 검사해 줘": 추천을 말로 길게 하지 않고 바로 보여 주는 방식을 묻거나 카메라를 켭니다(2026-11-09 리허설).
