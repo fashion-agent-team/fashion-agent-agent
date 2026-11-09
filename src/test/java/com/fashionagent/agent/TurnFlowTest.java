@@ -81,6 +81,40 @@ class TurnFlowTest {
     }
 
     @Test
+    void 날짜를_말하면_그날_일정과_예보로_추천한다() throws Exception {
+        var day = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(5);
+        String said = day.getMonthValue() + "월 " + day.getDayOfMonth() + "일";
+        JsonNode advice = turn("u20", """
+                {"utterance": "%s 일정에 어울릴만한 패션 추천해줘", "location": {"lat": 37.5, "lon": 127.0}}"""
+                .formatted(said));
+        assertThat(advice.path("result").path("type").asString()).isEqualTo("outfit_advice");
+        assertThat(advice.path("speech").asString())
+                .startsWith(said)
+                .contains("결혼식")
+                .contains("우산")
+                .doesNotContain("면접")
+                .endsWith("봐 드릴까요?");
+
+        // 일정 읽기도 그날로
+        JsonNode schedule = turn("u20", """
+                {"utterance": "%s 일정 뭐야"}""".formatted(said));
+        assertThat(schedule.path("speech").asString()).startsWith(said).contains("오후 2시 친구 결혼식");
+    }
+
+    @Test
+    void 예보가_없는_먼_날은_일정만으로_추천한다() throws Exception {
+        var day = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(40);
+        String said = day.getMonthValue() + "월 " + day.getDayOfMonth() + "일";
+        JsonNode advice = turn("u21", """
+                {"utterance": "%s 일정에 맞는 옷 추천해 줘"}""".formatted(said));
+        assertThat(advice.path("speech").asString())
+                .startsWith(said)
+                .contains("결혼식")
+                .contains("예보가 없어요")
+                .doesNotContain("불러오지 못했어요");
+    }
+
+    @Test
     void 내려놓고_고른_뒤_입은_모습도_보면_입고_한_바퀴로() throws Exception {
         String sid = turn("u9", """
                 {"utterance": "옷 내려놓고 볼게 뭐 입지"}""").path("sessionId").asString();

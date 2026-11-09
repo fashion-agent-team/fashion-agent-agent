@@ -6,6 +6,8 @@ import java.util.Map;
 public final class ToolNames {
 
     public static final String WEATHER_TODAY = "weather_today";
+    /** 날짜 하루의 예보(오늘부터 16일 안쪽). 다른 날 옷 추천에 씁니다. */
+    public static final String WEATHER_FORECAST = "weather_forecast";
     public static final String SCHEDULE_LIST = "schedule_list";
     public static final String SCHEDULE_ADD = "schedule_add";
     public static final String SCHEDULE_DELETE = "schedule_delete";

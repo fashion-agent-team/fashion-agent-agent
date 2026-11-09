@@ -28,7 +28,8 @@ public class FakeAgentTools implements AgentTools {
     public JsonNode call(String tool, Map<String, Object> args) {
         return json.valueToTree(switch (tool) {
             case ToolNames.WEATHER_TODAY -> weather();
-            case ToolNames.SCHEDULE_LIST -> schedule();
+            case ToolNames.WEATHER_FORECAST -> forecast(String.valueOf(args.get("date")));
+            case ToolNames.SCHEDULE_LIST -> schedule(String.valueOf(args.get("date")));
             case ToolNames.CLOTHES_INSPECT -> "worn".equals(args.get("mode"))
                     ? inspectWorn(String.valueOf(args.get("imageBase64")), String.valueOf(args.get("view")))
                     : inspect(String.valueOf(args.get("imageBase64")));
@@ -64,8 +65,38 @@ public class FakeAgentTools implements AgentTools {
                 "clothingAdvice", "자켓이나 가디건을 걸치세요.");
     }
 
-    private static Map<String, Object> schedule() {
+    /** 날짜 하루 예보. 16일 넘게 남은 날은 실제 서버처럼 out_of_range. */
+    private static Map<String, Object> forecast(String date) {
+        LocalDate day = LocalDate.parse(date);
+        if (day.isAfter(LocalDate.now(SEOUL).plusDays(15))) {
+            throw new ToolException(ToolNames.WEATHER_FORECAST, "out_of_range", "그날 날씨는 아직 알 수 없어요.");
+        }
+        return map(
+                "date", date,
+                "condition", "비",
+                "temperature", 8.0,
+                "apparentTemperature", 6.0,
+                "minTemperature", 3.0,
+                "maxTemperature", 13.0,
+                "dailyRange", 10.0,
+                "precipitationProbability", 70,
+                "needsOuter", true,
+                "needsUmbrella", true,
+                "clothingAdvice", "코트와 히트텍처럼 따뜻한 옷이 좋아요.");
+    }
+
+    /** 오늘(과 지난 날)은 면접, 앞으로의 날은 그날 오후 2시 결혼식(가짜). */
+    private static Map<String, Object> schedule(String date) {
         String today = LocalDate.now(SEOUL).toString();
+        if (date != null && date.matches("\\d{4}-\\d{2}-\\d{2}") && date.compareTo(today) > 0) {
+            return Map.of("events", List.of(Map.of(
+                    "eventId", "e_fake_" + date,
+                    "title", "친구 결혼식",
+                    "start", date + "T14:00:00+09:00",
+                    "place", "더채플앳청담",
+                    "placeCategory", "웨딩홀",
+                    "occasion", "wedding")));
+        }
         return Map.of("events", List.of(Map.of(
                 "eventId", "e_fake",
                 "title", "면접",

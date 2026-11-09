@@ -20,7 +20,20 @@ public interface OutfitJudge {
     /** 2단계 확인 모드. now는 지금 사진의 옷, seenBefore는 앞서 본 옷. */
     CheckJudgement check(CheckInput input);
 
-    record AdviceInput(JsonNode weather, JsonNode events, JsonNode closetCandidates, JsonNode styleNotes) {
+    /**
+     * day: 옷을 입을 날을 말로 읽은 것("오늘", "내일", "11월 20일 금요일").
+     * weatherNote: weather가 null인 까닭을 사용자에게 말할 문장(예보가 아직 없는 날 등). 없으면 null.
+     */
+    record AdviceInput(JsonNode weather, JsonNode events, JsonNode closetCandidates, JsonNode styleNotes,
+            String day, String weatherNote) {
+
+        public AdviceInput(JsonNode weather, JsonNode events, JsonNode closetCandidates, JsonNode styleNotes) {
+            this(weather, events, closetCandidates, styleNotes, "오늘", null);
+        }
+
+        public boolean today() {
+            return day == null || "오늘".equals(day);
+        }
     }
 
     record CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,
