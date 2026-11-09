@@ -37,8 +37,8 @@ public class FaceFlow {
 
     static final String ASK_CHOICE = "얼굴 화장을 볼까요, 이를 확인할까요?";
     /** 앱이 실시간으로 비추며 구도를 안내하고, 잘 잡히면 알아서 판단하므로 사용자는 비추고만 있으면 됨 (박창근 2026-11-05, 얼굴·치아 둘 다) */
-    static final String START_MAKEUP = "얼굴 화장을 볼게요. 폰을 얼굴 앞에 들고 얼굴을 비춰 주고 계시면 저희가 판단할게요.";
-    static final String START_TEETH = "이를 확인할게요. 폰을 입 가까이 대고 '이' 하고 입을 벌린 채 비춰 주고 계시면 저희가 판단할게요.";
+    static final String START_MAKEUP = "좋아요, 화장 같이 볼게요. 폰을 얼굴 앞에 들고 비춰 주고 계시면 제가 봐 드릴게요.";
+    static final String START_TEETH = "좋아요, 이 같이 볼게요. 폰을 입 가까이 대고 '이' 하고 입을 벌린 채 비춰 주고 계시면 제가 봐 드릴게요.";
 
     /** 처음 말에서 치아를 알아보는 말. "이쪽 옷"처럼 흔한 말과 겹치지 않게 좁게 둡니다. */
     private static final List<String> TEETH_WORDS = List.of("치아", "이빨", "이사이", "이확인", "이에낀", "이에뭐", "입안");
@@ -78,6 +78,11 @@ public class FaceFlow {
     /** 고르라고 물은 뒤의 답. 얼굴/이 중 하나를 알아들으면 시작하고, 아니면 한 번 더 묻거나 null(원래 대화로). */
     public TurnResponse answerChoice(AgentSession session, String utterance) {
         String s = compact(utterance);
+        // "옷 검사해 줘"는 짧아서(6자 이하) 예전에는 "얼굴이라고 하시면…"을 다시 물었습니다(2026-11-09 리허설).
+        if (s.contains("옷") || s.contains("날씨") || s.contains("일정")) {
+            session.faceChoiceAsked = 0;
+            return null;
+        }
         if (isTeeth(s) || TEETH_ANSWERS.contains(s) || s.startsWith("이를") || s.startsWith("이요")) {
             return startTeeth(session);
         }
@@ -102,7 +107,7 @@ public class FaceFlow {
         return reply(session, START_TEETH, Next.camera_teeth, null);
     }
 
-    static final String NO_FACE = "얼굴을 찾지 못했어요. 폰을 얼굴 정면에 들고 비춰 주세요.";
+    static final String NO_FACE = "얼굴이 잘 안 보여요. 폰을 얼굴 정면에 들고 비춰 주실래요?";
 
     /**
      * 얼굴이 잘 잡혀 멈춘 1초 동안 앱이 보낸 장면들(첫 장 + frames)을 한 번에 넘깁니다. face-check가 장마다 재고
@@ -138,7 +143,7 @@ public class FaceFlow {
             r = null;
         }
         if (r == null) {
-            return reply(session, "지금은 얼굴을 확인하지 못했어요. 잠시 뒤에 다시 해 주세요.", Next.listen, null);
+            return reply(session, "미안해요, 지금은 얼굴을 잘 못 봤어요. 조금 있다가 다시 해 볼까요?", Next.listen, null);
         }
         TurnResponse retake = retake(session, r, Next.camera_face, "얼굴을");
         return retake != null ? retake
@@ -148,7 +153,7 @@ public class FaceFlow {
     public TurnResponse checkTeeth(AgentSession session, String imageBase64, Map<String, Object> mouthBox) {
         JsonNode r = call(ToolNames.TEETH_CHECK, imageBase64, "mouthBox", mouthBox);
         if (r == null) {
-            return reply(session, "지금은 이를 확인하지 못했어요. 잠시 뒤에 다시 해 주세요.", Next.listen, null);
+            return reply(session, "미안해요, 지금은 이를 잘 못 봤어요. 조금 있다가 다시 해 볼까요?", Next.listen, null);
         }
         TurnResponse retake = retake(session, r, Next.camera_teeth, "입을");
         return retake != null ? retake
@@ -184,7 +189,7 @@ public class FaceFlow {
     static String makeupSpeech(JsonNode r) {
         JsonNode symmetry = r.path("symmetry");
         if (symmetry.path("ok").asBoolean(true)) {
-            return "화장은 양쪽이 고르게 잘 됐어요.";
+            return "화장이 양쪽 다 고르게 예쁘게 잘 됐어요.";
         }
         List<String> parts = new ArrayList<>();
         symmetry.path("notes").valueStream().map(n -> n.asString("")).filter(s -> !s.isBlank()).forEach(parts::add);
@@ -205,7 +210,7 @@ public class FaceFlow {
             return teeth.path("note").asString("이에 뭔가 낀 것 같아요.") + " 혀로 한 번 확인해 보세요.";
         }
         if (found.isBoolean()) {
-            return "이에 낀 것은 없어 보여요.";
+            return "이에 낀 건 없어 보여요. 깔끔해요.";
         }
         String note = teeth.path("note").asString("");
         return (note.isBlank() ? "잘 보이지 않아서 확실하지 않아요." : note) + " " + ASK_HELPER;

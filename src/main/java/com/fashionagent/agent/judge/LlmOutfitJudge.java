@@ -30,7 +30,11 @@ public class LlmOutfitJudge implements OutfitJudge {
     @Override
     public AdviceJudgement advise(AdviceInput in) {
         Map<String, Object> input = new LinkedHashMap<>();
+        input.put("day", in.day() == null ? "오늘" : in.day());
         input.put("weather", in.weather());
+        if (in.weatherNote() != null) {
+            input.put("weatherNote", in.weatherNote());
+        }
         input.put("events", in.events());
         input.put("closetCandidates", in.closetCandidates());
         input.put("styleNotes", in.styleNotes());

@@ -21,11 +21,12 @@ public final class SmallTalk {
             + "오늘 날씨와 일정에 맞춰 옷을 추천하고, 꺼낸 옷을 카메라로 보여 주시면 얼룩이나 찢어진 곳이 없는지 봐 드려요. "
             + "오늘 날씨를 알려 드리고, 일정을 넣거나 읽어 드려요. "
             + "얼굴이나 이에 뭐가 묻었는지 봐 드리고, 옷 사진을 가족에게 보내 물어봐 드릴 수도 있어요. "
-            + "예를 들어 \"오늘 뭐 입지?\"라고 말해 보세요.";
+            + "제 목소리가 마음에 안 들면 \"목소리 바꿔 줘\"라고 하시면 돼요. "
+            + "예를 들어 \"내일 뭐 입지?\"라고 말해 보세요.";
 
     /** 모르는 말. 못 한다고 솔직히 말하고 할 수 있는 일을 짧게 알려 줍니다. */
     public static final String UNKNOWN = "그건 아직 제가 할 수 없는 일이에요. "
-            + "옷 추천, 날씨, 일정, 얼굴 확인은 도와드릴 수 있어요. 뭘 해 드릴까요?";
+            + "옷 추천, 날씨, 일정, 얼굴 확인은 도와드릴 수 있어요. 뭐부터 해 볼까요?";
 
     private static final List<String> HELLO = List.of("안녕", "반가", "하이", "좋은아침");
     private static final List<String> THANKS = List.of("고마", "감사", "땡큐", "고맙");
@@ -58,22 +59,22 @@ public final class SmallTalk {
                     + now.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN) + "이에요.";
         }
         if (containsAny(s, TEASE)) {
-            return "바보 아니에요. 그래도 더 잘 도와드리도록 노력할게요.";
+            return "에이, 서운해요. 그래도 더 잘 도와드리게 열심히 할게요.";
         }
         if (containsAny(s, THANKS)) {
-            return "천만에요. 또 필요하면 언제든 불러 주세요.";
+            return "별말씀을요, 저도 기뻐요. 또 필요하면 언제든 불러 주세요.";
         }
         if (containsAny(s, BYE)) {
-            return "네, 다음에 또 불러 주세요.";
+            return "네, 푹 쉬세요. 또 불러 주시면 금방 올게요.";
         }
         if (containsAny(s, WHO)) {
-            return "저는 옷 입는 걸 도와드리는 에이전트예요. 오늘 뭐 입을지 같이 골라 드릴게요.";
+            return "저는 옷 입는 걸 곁에서 같이 챙겨 드리는 친구예요. 오늘 뭐 입을지 같이 골라 봐요.";
         }
         if (containsAny(s, HOW_ARE_YOU)) {
-            return "저는 언제나 잘 있어요. 오늘은 어떤 걸 도와드릴까요?";
+            return "저는 잘 지내요, 물어봐 주셔서 고마워요. 오늘은 뭘 같이 해 볼까요?";
         }
         if (containsAny(s, HELLO)) {
-            return "안녕하세요. 오늘은 어떤 걸 도와드릴까요?";
+            return "안녕하세요, 반가워요. 오늘은 뭘 같이 해 볼까요?";
         }
         return null;
     }

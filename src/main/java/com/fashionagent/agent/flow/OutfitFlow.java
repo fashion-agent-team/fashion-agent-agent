@@ -81,15 +81,15 @@ public class OutfitFlow {
 
     public static final String LAID = "laid";
     public static final String WORN = "worn";
-    static final String ASK_MODE = "옷은 어떻게 보여 주실래요? 침대나 바닥에 내려놓고 비추기, "
-            + "아니면 입고 카메라 앞에서 한 바퀴 돌기 중에 골라 주세요.";
-    static final String LAID_HINT = "옷을 꺼내서 침대나 바닥에 펼쳐 놓고 폰으로 비춰 주세요. 두 벌을 나란히 놓으면 비교해 드려요.";
-    static final String WORN_HINT = "옷을 입은 뒤 폰을 가슴 높이에 세워 두고, 두세 걸음 물러나 머리부터 발끝까지 보이게 서 주세요. "
-            + "앞모습부터 볼게요.";
+    // 2026-11-09 리허설: 카메라 안내가 길고 어렵다는 의견으로 짧게 줄였습니다.
+    // 2026-11-09 발표 피드백: "내려놓고 찍으실래요, 입어 보고 돌아보는 거 찍으실래요?"
+    static final String ASK_MODE = "옷을 내려놓고 찍으실래요, 입어 보고 한 바퀴 도는 모습을 찍으실래요?";
+    static final String LAID_HINT = "옷을 바닥에 펼쳐 놓고 폰으로 비춰 주세요.";
+    static final String WORN_HINT = "폰을 가슴 높이에 세워 두고, 두세 걸음 떨어져 서 주세요.";
     static final int MAX_MODE_ASKS = 2;
 
     private static final List<String> WORN_WORDS = List.of("입고", "입은채", "입어서", "입은거", "한바퀴", "돌게", "돌기",
-            "돌면서");
+            "돌면서", "입어보", "입어볼", "돌아보", "돌아볼", "도는", "입은모습");
     /** 옷 추천 중 방식을 바꾸는 말에만 있는 낱말. "흰 셔츠 입고 갈게"는 바꾸기가 아닙니다. */
     private static final List<String> SWITCH_WORDS = List.of("볼게", "봐줘", "봐주", "보여줄", "보여드", "방식", "바꿔",
             "확인해");
@@ -128,16 +128,37 @@ public class OutfitFlow {
      * 말에 방식이 있으면("입고 볼게, 뭐 입지?") 기억해 두었다가 방식은 묻지 않습니다. 앱이 기억한 방식은 쓰지 않고 매번 고릅니다.
      */
     public TurnResponse start(AgentSession session, Location location, String utterance) {
+        LocalDate day = SpokenDate.from(utterance, today());
+        session.targetDate = day == null || day.equals(today()) ? null : day.toString();
         session.outfitMode = modeFrom(utterance);
         session.modeAsked = 0;
         TurnResponse advice = advise(session, location);
         session.checkOffered = true;
         sessions.save(session);
-        return new TurnResponse(session.sessionId, withoutCameraHint(advice.speech()) + " " + OFFER_CHECK,
+        // 카메라 안내 없이 추천만 말하고 봐 드릴지 묻습니다. 방식은 "봐 줘"라고 하면 그때 묻습니다.
+        return new TurnResponse(session.sessionId, session.advice.speech() + " " + OFFER_CHECK,
                 Next.listen, advice.result());
     }
 
-    static final String OFFER_CHECK = "옷을 꺼내 오시면 잘 맞는지 봐 드릴까요?";
+    /** 2026-11-09 발표 피드백의 흐름: "… ~한 옷을 추천드려요. 옷을 봐 드릴까요?" */
+    static final String OFFER_CHECK = "옷을 봐 드릴까요?";
+
+    /**
+     * "옷 검사해 줘": 추천을 말로 길게 하지 않고 바로 보여 주는 방식을 묻거나 카메라를 켭니다(2026-11-09 리허설).
+     * 날씨·일정은 옷 판단에 필요해서 불러 두기만 합니다.
+     */
+    public TurnResponse startCheck(AgentSession session, Location location, String utterance) {
+        session.outfitMode = modeFrom(utterance);
+        session.modeAsked = 0;
+        session.checkOffered = false;
+        advise(session, location);
+        if (session.outfitMode == null) {
+            session.modeAsked = 1;
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, ASK_MODE, Next.listen, Result.of("outfit_mode"));
+        }
+        return toCamera(session, "");
+    }
 
     /** "봐 드릴까요?"에 대한 답. 알아듣지 못하면 null(원래 대화로). */
     public TurnResponse answerCheckOffer(AgentSession session, String utterance) {
@@ -151,7 +172,7 @@ public class OutfitFlow {
         }
         if (mode == null && NO.stream().anyMatch(s::contains)) {
             sessions.save(session);
-            return new TurnResponse(session.sessionId, "알겠어요. 옷을 고르다가 확인이 필요하면 다시 불러 주세요.", Next.done, null);
+            return new TurnResponse(session.sessionId, "그럼요, 알겠어요. 옷 고르다가 봐 줄 게 생기면 언제든 불러 주세요.", Next.done, null);
         }
         if (mode != null) {
             session.outfitMode = mode;
@@ -243,17 +264,27 @@ public class OutfitFlow {
 
     public TurnResponse advise(AgentSession session, Location location) {
         Location at = location == null ? Location.SEOUL : location;
-        var weather = async(() -> tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", at.lat(), "lon", at.lon())));
+        LocalDate day = targetDay(session);
+        boolean isToday = day.equals(today());
+        String[] weatherNote = {null};
+        var weather = isToday
+                ? async(() -> tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", at.lat(), "lon", at.lon())))
+                : CompletableFuture.supplyAsync(() -> forecast(at, day, weatherNote), executor);
         var schedule = async(() -> tools.callForUser(ToolNames.SCHEDULE_LIST, session.userId,
-                Map.of("date", today().toString())));
+                Map.of("date", day.toString())));
         session.weather = weather.join();
         JsonNode scheduleResult = schedule.join();
         session.events = scheduleResult == null ? null : scheduleResult.path("events");
         session.closet = props.closetSearch() ? closetSearch(session) : null;
 
-        AdviceJudgement advice = judge.advise(new AdviceInput(session.weather, session.events,
+        String label = SpokenDate.label(day, today());
+        AdviceJudgement judged = judge.advise(new AdviceInput(session.weather, session.events,
                 session.closet == null ? null : session.closet.path("candidates"),
-                session.closet == null ? null : session.closet.path("styleNotes")));
+                session.closet == null ? null : session.closet.path("styleNotes"),
+                label, weatherNote[0]));
+        // 날짜 → 날씨 → 일정 → 추천 순서는 코드가 정합니다(2026-11-09 발표 피드백: 문장이 이상했음).
+        AdviceJudgement advice = new AdviceJudgement(judged.suggestions(), judged.closetPicks(),
+                adviceSpeech(label, session.weather, weatherNote[0], session.events, judged.speech()));
         session.advice = advice;
         session.seen = new ArrayList<>();
         session.lastDamage = new ArrayList<>();
@@ -265,8 +296,102 @@ public class OutfitFlow {
                 new Result("outfit_advice", advice.toAdvice(), null, mode));
     }
 
+    static final String NO_FORECAST = "그날 날씨는 아직 예보가 없어요.";
+
+    /**
+     * 추천 문장. 2026-11-09 발표 피드백의 틀:
+     * "{날짜}의 패션을 추천해 드릴게요. {날짜} 날씨는 ~예요. 일정은 ~이 있어요. ~한 옷을 추천드려요."
+     * 너무 먼 날이라 예보가 없으면 날씨는 "아직 예보가 없어요"로 짧게 말합니다.
+     */
+    static String adviceSpeech(String label, JsonNode weather, String weatherNote, JsonNode events,
+            String recommendation) {
+        StringBuilder sb = new StringBuilder(label).append("의 패션을 추천해 드릴게요. ");
+        if (weather != null && !weather.isMissingNode() && !weather.isNull()) {
+            String condition = weather.path("condition").asString("");
+            sb.append(label).append(" 날씨는 ");
+            if (!condition.isBlank()) {
+                sb.append(conditionClause(condition)).append(", ");
+            }
+            if (weather.has("minTemperature") && weather.has("maxTemperature")) {
+                sb.append("최저 ").append(Math.round(weather.path("minTemperature").asDouble())).append("도, 최고 ")
+                        .append(Math.round(weather.path("maxTemperature").asDouble())).append("도예요. ");
+            } else {
+                sb.append("체감 ").append(Math.round(weather.path("apparentTemperature").asDouble())).append("도예요. ");
+            }
+        } else if (weatherNote != null) {
+            sb.append(weatherNote).append(" ");
+        } else {
+            sb.append("날씨는 불러오지 못했어요. ");
+        }
+        sb.append(scheduleSentence(events)).append(" ");
+        String rec = withoutCameraHint(recommendation);
+        if (!rec.isBlank()) {
+            sb.append(rec);
+        }
+        return sb.toString().trim();
+    }
+
+    /** mcp-weather의 날씨 말을 이어지는 말로: 맑음 → "맑고", 비 → "비가 오고". */
+    static String conditionClause(String condition) {
+        return switch (condition.trim()) {
+            case "맑음" -> "맑고";
+            case "흐림" -> "흐리고";
+            case "구름 조금" -> "구름이 조금 있고";
+            case "구름 많음" -> "구름이 많고";
+            case "안개" -> "안개가 끼고";
+            case "이슬비" -> "이슬비가 내리고";
+            case "비" -> "비가 오고";
+            case "눈" -> "눈이 오고";
+            case "뇌우" -> "천둥 번개가 치고";
+            default -> Korean.josa(condition.trim(), "이고", "고");
+        };
+    }
+
+    /** "일정은 오후 2시 친구 결혼식이 있어요." / "일정은 없어요." */
+    static String scheduleSentence(JsonNode events) {
+        if (events == null || events.isMissingNode() || events.isNull()) {
+            return "일정은 불러오지 못했어요.";
+        }
+        if (events.isEmpty()) {
+            return "일정은 없어요.";
+        }
+        List<String> parts = new ArrayList<>();
+        for (JsonNode e : events) {
+            String time = TurnService.spokenTime(e.path("start").asString(""));
+            String title = e.path("title").asString("").trim();
+            parts.add((time.isEmpty() ? "" : time + " ") + title);
+        }
+        String joined = String.join(", ", parts).trim();
+        return "일정은 " + Korean.josa(joined, "이", "가") + " 있어요.";
+    }
+
+    /** 다른 날 예보. 16일 넘게 남았으면 null과 함께 까닭(note[0])을 남깁니다. */
+    private JsonNode forecast(Location at, LocalDate day, String[] note) {
+        try {
+            return tools.call(ToolNames.WEATHER_FORECAST, Map.of("lat", at.lat(), "lon", at.lon(), "date", day.toString()));
+        } catch (ToolException e) {
+            log.warn("weather_forecast 실패, 없이 계속: {}", e.getMessage());
+            if ("out_of_range".equals(e.code())) {
+                note[0] = NO_FORECAST;
+            }
+            return null;
+        }
+    }
+
+    /** 옷을 입을 날. 정하지 않았으면 오늘. */
+    private LocalDate targetDay(AgentSession session) {
+        if (session.targetDate != null) {
+            try {
+                return LocalDate.parse(session.targetDate);
+            } catch (RuntimeException ignored) {
+                // 이상한 값이면 오늘
+            }
+        }
+        return today();
+    }
+
     private JsonNode closetSearch(AgentSession session) {
-        String situation = "오늘 " + titles(session.events) + (session.weather == null ? ""
+        String situation = SpokenDate.label(targetDay(session), today()) + " " + titles(session.events) + (session.weather == null ? ""
                 : ", 체감 " + Math.round(session.weather.path("apparentTemperature").asDouble()) + "도");
         Map<String, Object> args = new LinkedHashMap<>();
         args.put("situation", situation);
@@ -287,7 +412,7 @@ public class OutfitFlow {
         } catch (ToolException e) {
             log.warn("clothes_inspect 실패: {}", e.getMessage());
             sessions.save(session);
-            return new TurnResponse(session.sessionId, "지금은 옷을 확인하지 못했어요. 잠시 뒤에 다시 보여 주세요.",
+            return new TurnResponse(session.sessionId, "미안해요, 지금은 옷을 잘 못 봤어요. 조금 있다가 다시 보여 주실래요?",
                     Next.camera_outfit, null);
         }
         String prefix = "p" + session.photoCount + "_";
@@ -326,9 +451,9 @@ public class OutfitFlow {
 
     // ── 2단계(입고 한 바퀴): 앞·옆·뒤 ─────────────────────────────────
 
-    static final String WORN_SIDE = "앞모습을 봤어요. 이제 천천히 옆으로 돌아서 잠시 멈춰 주세요.";
-    static final String WORN_BACK = "옆모습도 봤어요. 이제 뒤로 돌아서 잠시 멈춰 주세요.";
-    static final String WORN_AGAIN = " 다른 옷으로 갈아입으면 다시 앞모습부터 보여 주세요.";
+    static final String WORN_SIDE = "이제 옆으로 돌아 주세요.";
+    static final String WORN_BACK = "이제 뒤로 돌아 주세요.";
+    static final String WORN_AGAIN = " 갈아입으면 앞모습부터 다시 볼게요.";
 
     /**
      * 입고 한 바퀴. 앞모습에서 옷을 알아보고, 옆·뒤에서는 얼룩·찢어짐을 더 찾습니다.
@@ -347,7 +472,7 @@ public class OutfitFlow {
         } catch (ToolException e) {
             log.warn("clothes_inspect(worn) 실패: {}", e.getMessage());
             sessions.save(session);
-            return new TurnResponse(session.sessionId, "지금은 옷을 확인하지 못했어요. 잠시 뒤에 다시 서 주세요.",
+            return new TurnResponse(session.sessionId, "미안해요, 지금은 옷을 잘 못 봤어요. 조금 있다가 다시 서 주실래요?",
                     Next.camera_worn, null);
         }
         String prefix = "p" + session.photoCount + "_";
@@ -421,7 +546,7 @@ public class OutfitFlow {
             return framing;
         }
         if (now.isEmpty() && "front".equals(view)) {
-            return "몸이 다 보이지 않아요. 한두 걸음 더 물러나서 머리부터 발끝까지 보이게 서 주세요.";
+            return "몸이 다 안 보여요. 한 걸음만 뒤로 가 주실래요?";
         }
         return null;
     }
@@ -435,7 +560,7 @@ public class OutfitFlow {
             return framing;
         }
         if (now.isEmpty()) {
-            return "옷이 안 보여요. 옷 위로 폰을 들어 주세요.";
+            return "옷이 잘 안 보여요. 옷 위로 폰을 들어 주실래요?";
         }
         return null;
     }
@@ -472,10 +597,10 @@ public class OutfitFlow {
     public TurnResponse finish(AgentSession session) {
         List<Garment> chosen = chosen(session);
         if (chosen.isEmpty()) {
-            return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 보여 주세요.",
+            return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 한번 보여 주실래요?",
                     cameraFor(session.outfitMode), null);
         }
-        boolean recorded = !session.recorded && record(session.userId, chosen);
+        boolean recorded = !session.recorded && record(session.userId, chosen, targetDay(session));
         session.recorded = session.recorded || recorded;
         String names = String.join(", ", chosen.stream().map(Garment::label).toList());
         String picked = "좋아요. " + Korean.josa(names, "으로", "로") + (recorded ? " 기록해 둘게요." : " 정했어요.");
@@ -489,7 +614,7 @@ public class OutfitFlow {
                     Result.of("outfit_worn_offer"));
         }
         sessions.save(session);
-        return new TurnResponse(session.sessionId, picked + " 잘 다녀오세요.", Next.done, null);
+        return new TurnResponse(session.sessionId, picked + " 오늘 멋지게 잘 다녀오세요.", Next.done, null);
     }
 
     private static boolean otherFeature(String utterance) {
@@ -514,7 +639,7 @@ public class OutfitFlow {
         }
         if (NO.stream().anyMatch(s::contains)) {
             sessions.save(session);
-            return new TurnResponse(session.sessionId, "알겠어요. 잘 다녀오세요.", Next.done, null);
+            return new TurnResponse(session.sessionId, "그럼요. 오늘 멋지게 잘 다녀오세요.", Next.done, null);
         }
         if (YES.stream().anyMatch(s::startsWith) || s.contains("입고") || s.contains("볼게")) {
             session.outfitMode = WORN;
@@ -544,7 +669,7 @@ public class OutfitFlow {
         return "good".equals(fit) ? 2 : "ok".equals(fit) ? 1 : 0;
     }
 
-    private boolean record(String userId, List<Garment> chosen) {
+    private boolean record(String userId, List<Garment> chosen, LocalDate day) {
         try {
             List<?> garments = json.convertValue(chosen, List.class);
             JsonNode saved = tools.callForUser(ToolNames.CLOSET_SAVE, userId, Map.of("garments", garments));
@@ -552,7 +677,7 @@ public class OutfitFlow {
             for (JsonNode s : saved.path("saved")) {
                 ids.add(s.path("garmentId").asString());
             }
-            tools.callForUser(ToolNames.CLOSET_WEAR, userId, Map.of("garmentIds", ids, "date", today().toString()));
+            tools.callForUser(ToolNames.CLOSET_WEAR, userId, Map.of("garmentIds", ids, "date", day.toString()));
             return true;
         } catch (ToolException e) {
             log.warn("옷장 기록 실패 (추천은 계속): {}", e.getMessage());

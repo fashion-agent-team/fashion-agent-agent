@@ -100,11 +100,12 @@ public class TurnService {
 
         return switch (Intent.of(req.utterance(), inOutfit)) {
             case OUTFIT -> outfit.start(session, req.location(), req.utterance());
+            case CHECK -> outfit.startCheck(session, req.location(), req.utterance());
             case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
             case FINISH -> outfit.finish(session);
             case WHERE -> outfit.where(session);
             case WEATHER -> weather(session, req.location());
-            case SCHEDULE -> schedule(session);
+            case SCHEDULE -> schedule(session, req.utterance());
             case FACE -> face.start(session, req.utterance());
             // "할 줄 아는 거 말해 봐": GPT 여부와 상관없이 매번 같은 안내
             case HELP -> say(session, SmallTalk.CAPABILITIES, Next.listen);
@@ -117,7 +118,7 @@ public class TurnService {
                         case "outfit" -> outfit.start(session, req.location(), req.utterance());
                         case "face" -> face.start(session, "얼굴 확인");
                         case "teeth" -> face.start(session, "이 확인");
-                        case "schedule_today" -> schedule(session);
+                        case "schedule_today" -> schedule(session, null);
                         default -> say(session, r.speech(), r.next());
                     };
                 }
@@ -139,20 +140,23 @@ public class TurnService {
             sessions.save(session);
             return new TurnResponse(session.sessionId, speech.trim(), Next.listen, Result.of("weather"));
         } catch (ToolException e) {
-            return say(session, "지금은 날씨를 불러오지 못했어요.", Next.listen);
+            return say(session, "미안해요, 지금은 날씨를 못 가져왔어요. 조금 있다가 다시 물어봐 주실래요?", Next.listen);
         }
     }
 
-    /** "오늘 일정 뭐야?" */
-    private TurnResponse schedule(AgentSession session) {
+    /** "오늘 일정 뭐야?", "11월 20일 일정 뭐야?" */
+    private TurnResponse schedule(AgentSession session, String utterance) {
+        var today = java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("Asia/Seoul")));
+        var asked = SpokenDate.from(utterance, today);
+        var day = asked == null ? today : asked;
+        String label = SpokenDate.label(day, today);
         try {
-            JsonNode r = tools.callForUser(ToolNames.SCHEDULE_LIST, session.userId,
-                    Map.of("date", java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).toString()));
+            JsonNode r = tools.callForUser(ToolNames.SCHEDULE_LIST, session.userId, Map.of("date", day.toString()));
             JsonNode events = r.path("events");
             if (events.isEmpty()) {
-                return say(session, "오늘은 일정이 없어요.", Next.listen);
+                return say(session, label + "은 일정이 없어요.", Next.listen);
             }
-            StringBuilder sb = new StringBuilder("오늘 일정은 ");
+            StringBuilder sb = new StringBuilder(label + " 일정은 ");
             for (int i = 0; i < events.size(); i++) {
                 JsonNode e = events.get(i);
                 String start = e.path("start").asString("");
@@ -163,7 +167,7 @@ public class TurnService {
             sessions.save(session);
             return new TurnResponse(session.sessionId, sb.toString(), Next.listen, Result.of("schedule"));
         } catch (ToolException e) {
-            return say(session, "지금은 일정을 불러오지 못했어요.", Next.listen);
+            return say(session, "미안해요, 지금은 일정을 못 가져왔어요. 조금 있다가 다시 물어봐 주실래요?", Next.listen);
         }
     }
 

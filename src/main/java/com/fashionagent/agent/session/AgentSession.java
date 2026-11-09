@@ -22,6 +22,8 @@ public class AgentSession {
     public JsonNode events;
     public JsonNode closet;
     public AdviceJudgement advice;
+    /** 옷을 입을 날 YYYY-MM-DD. null이면 오늘. "11월 20일 일정에 맞는 옷 추천해 줘"에서 정해집니다. */
+    public String targetDate;
     /** 2단계에서 본 옷과 판단 (fit: good | ok | bad). id는 사진마다 겹치지 않게 다시 붙인 값. */
     public List<Seen> seen = new ArrayList<>();
     /** 직전 판단의 얼룩·찢어짐. "어디야?"에 답할 때 씁니다. */

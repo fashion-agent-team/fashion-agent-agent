@@ -52,23 +52,21 @@ public class RuleOutfitJudge implements OutfitJudge {
             suggestions.add(new Suggestion("outer", "겉옷", w.outerReason()));
         }
 
-        StringBuilder speech = new StringBuilder("오늘은 ");
-        if (w.known()) {
-            speech.append("체감 ").append(Math.round(w.apparent())).append("도");
-            speech.append(title != null ? "이고 " : "예요. ");
-        }
-        if (title != null) {
-            speech.append(Korean.josa(title, "이", "가")).append(" 있어요. ");
-        } else if (!w.known()) {
-            speech.append("날씨와 일정을 불러오지 못했어요. ");
+        // 날짜·날씨·일정은 OutfitFlow가 앞에서 읽습니다(2026-11-09 발표 피드백: 정해진 순서로).
+        // 여기서는 추천하는 옷과 까닭만 말합니다.
+        StringBuilder speech = new StringBuilder();
+        if (title != null && occasion != Occasion.casual) {
+            speech.append(look.why()).append(" ");
         }
         speech.append(look.top()).append("에 ");
-        speech.append(w.needsOuter() ? look.bottom() + ", 겉옷을 추천드려요."
+        speech.append(w.needsOuter() ? look.bottom() + ", 겉옷을 추천드려요. " + w.outerReason()
                 : Korean.josa(look.bottom(), "을", "를") + " 추천드려요.");
+        if (!w.known()) {
+            speech.append(" 날씨를 몰라서 겉옷도 챙겨 두면 좋아요.");
+        }
         if (w.needsUmbrella()) {
             speech.append(" 비 소식이 있으니 우산도 챙기세요.");
         }
-        speech.append(" 옷을 꺼내서 카메라에 보여 주세요.");
         return new AdviceJudgement(suggestions, List.of(), speech.toString());
     }
 
@@ -78,9 +76,10 @@ public class RuleOutfitJudge implements OutfitJudge {
         String title = Occasion.titleOf(in.events(), occasion);
         String place = title != null ? title + "에" : "오늘";
 
+        Weather w = Weather.of(in.weather());
         List<Verdict> verdicts = new ArrayList<>();
         for (Garment g : in.now()) {
-            Fit fit = fit(g, occasion);
+            Fit fit = withWeather(fit(g, occasion), g, w);
             verdicts.add(new Verdict(g.id(), g.position(), fit.fit(), List.of(fit.note())));
         }
         List<Damage> damage = new ArrayList<>();
@@ -155,6 +154,36 @@ public class RuleOutfitJudge implements OutfitJudge {
         };
     }
 
+    /** 반바지·반팔처럼 얇은 옷 이름. */
+    private static final List<String> LIGHT = List.of("반바지", "반팔", "민소매", "나시", "티셔츠");
+
+    /**
+     * 날씨를 더해 판단을 고칩니다(2026-11-09 리허설: 추운 날 반바지를 괜찮다고 함).
+     * 옷 종류를 모르면(other) 날씨에 맞다고 단정하지 않고, 겉옷이 필요한 날이면 확인을 부탁합니다.
+     */
+    static Fit withWeather(Fit fit, Garment g, Weather w) {
+        if (!w.known()) {
+            return fit;
+        }
+        String name = g.name() == null ? "" : g.name();
+        boolean unknownKind = g.category() == null || "other".equals(g.category()) || g.name() == null;
+        if (!unknownKind && w.apparent() < 12 && LIGHT.stream().anyMatch(name::contains)) {
+            return new Fit("bad", "오늘 체감 " + Math.round(w.apparent()) + "도라 " + Korean.josa(name, "은", "는")
+                    + " 추울 수 있어요.");
+        }
+        if ("outer".equals(g.category()) && w.needsOuter()) {
+            return "bad".equals(fit.fit()) ? fit : new Fit(fit.fit(), "오늘 쌀쌀한데 겉옷까지 잘 챙기셨어요.");
+        }
+        if (unknownKind) {
+            String fitValue = "good".equals(fit.fit()) ? "ok" : fit.fit();
+            return w.needsOuter()
+                    ? new Fit(fitValue, "종류는 확실하지 않아요. 오늘 체감 " + Math.round(w.apparent())
+                            + "도라 추우니 겉옷을 입으셨는지 확인해 주세요.")
+                    : new Fit(fitValue, fit.note());
+        }
+        return fit;
+    }
+
     static Damage damage(Garment g, Garment.Defect d) {
         if (d.confidence() < MAYBE) {
             return null;
@@ -176,6 +205,10 @@ public class RuleOutfitJudge implements OutfitJudge {
 
     private static List<String> stillMissing(CheckInput in, List<Verdict> verdicts) {
         if (in.advice() == null) {
+            return List.of();
+        }
+        // 옷 종류를 모르면 무엇이 빠졌는지도 모릅니다. "겉옷도 보여 주세요"라고 하지 않습니다.
+        if (in.now().stream().anyMatch(g -> g.category() == null || "other".equals(g.category()))) {
             return List.of();
         }
         Set<String> covered = new LinkedHashSet<>();
