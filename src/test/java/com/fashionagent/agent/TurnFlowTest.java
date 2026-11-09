@@ -223,7 +223,7 @@ class TurnFlowTest {
         // 윤곽점을 못 찾으면 카메라를 켠 채 다시 비추게
         JsonNode noFace = turn("u6", """
                 {"sessionId": "%s", "image": "NOFACE", "imageKind": "face", "autoCaptured": true}""".formatted(sid));
-        assertThat(noFace.path("speech").asString()).contains("얼굴을 찾지 못했어요");
+        assertThat(noFace.path("speech").asString()).contains("얼굴이 잘 안 보여요");
         assertThat(noFace.path("next").asString()).isEqualTo("camera_face");
 
         // 멈춘 1초 동안의 여러 장(faceFrames)도 받음
@@ -328,7 +328,7 @@ class TurnFlowTest {
         assertThat(turn("h2", """
                 {"utterance": "안녕"}""").path("speech").asString()).contains("안녕하세요");
         assertThat(turn("h2", """
-                {"utterance": "고마워"}""").path("speech").asString()).contains("천만에요");
+                {"utterance": "고마워"}""").path("speech").asString()).contains("별말씀을요");
         assertThat(turn("h2", """
                 {"utterance": "바보야"}""").path("speech").asString()).contains("바보 아니에요");
         assertThat(turn("h2", """

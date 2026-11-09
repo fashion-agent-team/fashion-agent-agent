@@ -140,7 +140,7 @@ public class TurnService {
             sessions.save(session);
             return new TurnResponse(session.sessionId, speech.trim(), Next.listen, Result.of("weather"));
         } catch (ToolException e) {
-            return say(session, "지금은 날씨를 불러오지 못했어요.", Next.listen);
+            return say(session, "미안해요, 지금은 날씨를 못 가져왔어요. 조금 있다가 다시 물어봐 주실래요?", Next.listen);
         }
     }
 
@@ -167,7 +167,7 @@ public class TurnService {
             sessions.save(session);
             return new TurnResponse(session.sessionId, sb.toString(), Next.listen, Result.of("schedule"));
         } catch (ToolException e) {
-            return say(session, "지금은 일정을 불러오지 못했어요.", Next.listen);
+            return say(session, "미안해요, 지금은 일정을 못 가져왔어요. 조금 있다가 다시 물어봐 주실래요?", Next.listen);
         }
     }
 

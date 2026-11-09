@@ -172,7 +172,7 @@ public class OutfitFlow {
         }
         if (mode == null && NO.stream().anyMatch(s::contains)) {
             sessions.save(session);
-            return new TurnResponse(session.sessionId, "알겠어요. 옷을 고르다가 확인이 필요하면 다시 불러 주세요.", Next.done, null);
+            return new TurnResponse(session.sessionId, "그럼요, 알겠어요. 옷 고르다가 봐 줄 게 생기면 언제든 불러 주세요.", Next.done, null);
         }
         if (mode != null) {
             session.outfitMode = mode;
@@ -412,7 +412,7 @@ public class OutfitFlow {
         } catch (ToolException e) {
             log.warn("clothes_inspect 실패: {}", e.getMessage());
             sessions.save(session);
-            return new TurnResponse(session.sessionId, "지금은 옷을 확인하지 못했어요. 잠시 뒤에 다시 보여 주세요.",
+            return new TurnResponse(session.sessionId, "미안해요, 지금은 옷을 잘 못 봤어요. 조금 있다가 다시 보여 주실래요?",
                     Next.camera_outfit, null);
         }
         String prefix = "p" + session.photoCount + "_";
@@ -472,7 +472,7 @@ public class OutfitFlow {
         } catch (ToolException e) {
             log.warn("clothes_inspect(worn) 실패: {}", e.getMessage());
             sessions.save(session);
-            return new TurnResponse(session.sessionId, "지금은 옷을 확인하지 못했어요. 잠시 뒤에 다시 서 주세요.",
+            return new TurnResponse(session.sessionId, "미안해요, 지금은 옷을 잘 못 봤어요. 조금 있다가 다시 서 주실래요?",
                     Next.camera_worn, null);
         }
         String prefix = "p" + session.photoCount + "_";
@@ -546,7 +546,7 @@ public class OutfitFlow {
             return framing;
         }
         if (now.isEmpty() && "front".equals(view)) {
-            return "몸이 다 안 보여요. 한 걸음 뒤로 가 주세요.";
+            return "몸이 다 안 보여요. 한 걸음만 뒤로 가 주실래요?";
         }
         return null;
     }
@@ -560,7 +560,7 @@ public class OutfitFlow {
             return framing;
         }
         if (now.isEmpty()) {
-            return "옷이 안 보여요. 옷 위로 폰을 들어 주세요.";
+            return "옷이 잘 안 보여요. 옷 위로 폰을 들어 주실래요?";
         }
         return null;
     }
@@ -597,7 +597,7 @@ public class OutfitFlow {
     public TurnResponse finish(AgentSession session) {
         List<Garment> chosen = chosen(session);
         if (chosen.isEmpty()) {
-            return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 보여 주세요.",
+            return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 한번 보여 주실래요?",
                     cameraFor(session.outfitMode), null);
         }
         boolean recorded = !session.recorded && record(session.userId, chosen, targetDay(session));
@@ -614,7 +614,7 @@ public class OutfitFlow {
                     Result.of("outfit_worn_offer"));
         }
         sessions.save(session);
-        return new TurnResponse(session.sessionId, picked + " 잘 다녀오세요.", Next.done, null);
+        return new TurnResponse(session.sessionId, picked + " 오늘 멋지게 잘 다녀오세요.", Next.done, null);
     }
 
     private static boolean otherFeature(String utterance) {
@@ -639,7 +639,7 @@ public class OutfitFlow {
         }
         if (NO.stream().anyMatch(s::contains)) {
             sessions.save(session);
-            return new TurnResponse(session.sessionId, "알겠어요. 잘 다녀오세요.", Next.done, null);
+            return new TurnResponse(session.sessionId, "그럼요. 오늘 멋지게 잘 다녀오세요.", Next.done, null);
         }
         if (YES.stream().anyMatch(s::startsWith) || s.contains("입고") || s.contains("볼게")) {
             session.outfitMode = WORN;
