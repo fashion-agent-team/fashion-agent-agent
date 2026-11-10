@@ -47,7 +47,10 @@ public class TurnService {
         if (session == null) {
             session = new AgentSession("s_" + UUID.randomUUID(), userId);
         }
-        session.gptConsent = Boolean.TRUE.equals(req.allowGpt());
+        // 이번 대화에서 이미 답했으면 그 답을 쓰고, 아니면 앱이 기억한 답(없으면 null = 아직 안 물음).
+        if (req.allowGpt() != null || !session.gptDecided) {
+            session.gptConsent = req.allowGpt();
+        }
 
         if (req.hasImage()) {
             // 가족에게 묻기에 쓰려고 직전 사진 한 장만 10분 들고 있습니다.
@@ -64,6 +67,14 @@ public class TurnService {
                 return outfit.checkWorn(session, req.image());
             }
             return outfit.check(session, req.image());
+        }
+
+        // "애매한 부분을 더 정확한 AI에게 물어봐도 될까요?"에 대한 답
+        if (session.gptAsked) {
+            TurnResponse answered = outfit.answerGptAsk(session, req.utterance());
+            if (answered != null) {
+                return answered;
+            }
         }
 
         // "어떻게 보여 주실래요?"에 대한 답

@@ -37,8 +37,17 @@ public class AgentSession {
     public String lastHelperRequestId;
     /** 얼굴 확인에서 "얼굴을 볼까요, 이를 확인할까요?"를 물은 횟수. 0이면 묻지 않은 상태. */
     public int faceChoiceAsked;
-    /** 사용자가 처음 켤 때 동의했는지(앱이 요청마다 allowGpt로 보냄). 동의했으면 애매한 얼룩을 GPT로 확인합니다. */
-    public boolean gptConsent;
+    /**
+     * GPT 확인·학습 저장 동의(앱이 요청마다 allowGpt로 보냄). true면 애매한 얼룩을 GPT로 확인합니다.
+     * null이면 아직 묻지 않았고, 처음 애매한 얼룩이 나오면 묻습니다(2026-11-10 진행 님).
+     */
+    public Boolean gptConsent;
+    /** "더 정확한 AI에게 물어봐도 될까요?"를 물었는지. 답을 기다리는 동안 true. */
+    public boolean gptAsked;
+    /** 이번 대화에서 GPT 확인 동의에 답했는지(앱이 다음 요청부터 기억한 답을 보냅니다). */
+    public boolean gptDecided;
+    /** 물을 때 본 옷 사진(내려놓고 비추기). 동의하면 이 사진을 GPT 확인으로 다시 봅니다. */
+    public String gptAskImage;
     /** 옷을 보여 주는 방식: laid(내려놓고 비추기) | worn(입고 한 바퀴). null이면 아직 모름. */
     public String outfitMode;
     /** "어떻게 보여 주실래요?"를 물은 횟수. 0이면 묻지 않은 상태. */

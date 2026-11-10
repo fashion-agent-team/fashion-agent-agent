@@ -32,7 +32,7 @@ public class FakeAgentTools implements AgentTools {
             case ToolNames.SCHEDULE_LIST -> schedule(String.valueOf(args.get("date")));
             case ToolNames.CLOTHES_INSPECT -> "worn".equals(args.get("mode"))
                     ? inspectWorn(String.valueOf(args.get("imageBase64")), String.valueOf(args.get("view")))
-                    : inspect(String.valueOf(args.get("imageBase64")));
+                    : inspect(String.valueOf(args.get("imageBase64")), Boolean.TRUE.equals(args.get("allowGpt")));
             case ToolNames.CLOSET_SEARCH -> Map.of("candidates", List.of(), "styleNotes", List.of(), "empty", true);
             case ToolNames.CLOSET_SAVE -> closetSave(args);
             case ToolNames.CLOSET_WEAR -> Map.of("recorded", ((List<?>) args.get("garmentIds")).size());
@@ -125,7 +125,17 @@ public class FakeAgentTools implements AgentTools {
                 "framing", "", "lighting", "ok", "source", "model", "modelVersion", "fake");
     }
 
-    private static Map<String, Object> inspect(String image) {
+    private static Map<String, Object> inspect(String image, boolean allowGpt) {
+        if (image.startsWith("UNSURE")) {
+            // 애매한 얼룩: GPT 확인을 허락하면 GPT가 얼룩이라고 확인한 것으로 돌려줍니다.
+            var stain = allowGpt
+                    ? Map.<String, Object>of("kind", "stain", "where", "앞", "confidence", 0.7, "checkedBy", "gpt")
+                    : Map.<String, Object>of("kind", "stain", "where", "앞", "confidence", 0.35);
+            return Map.of("garments", List.of(map("id", "g1", "category", "top", "name", "셔츠", "colorName", "흰색",
+                    "colorFamily", "white", "tone", "light", "formality", "smart", "position", "center",
+                    "defects", List.of(stain), "confidence", 0.95)),
+                    "lighting", "ok", "source", "model", "modelVersion", "fake");
+        }
         if (image.startsWith("DARK")) {
             return Map.of("garments", List.of(), "lighting", "dark", "source", "model", "modelVersion", "fake");
         }

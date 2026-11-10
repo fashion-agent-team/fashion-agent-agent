@@ -439,4 +439,38 @@ class TurnFlowTest {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
     }
+
+    @Test
+    void 처음_애매한_얼룩이_나오면_GPT_확인을_한_번만_묻고_좋다면_다시_본다() throws Exception {
+        JsonNode first = turn("u-gpt", """
+                {"image": "UNSURE1", "imageKind": "outfit"}""");
+        assertThat(first.path("speech").asString()).contains("더 정확한 AI에게");
+        assertThat(first.has("gptConsent")).isFalse();
+        String sid = first.path("sessionId").asString();
+
+        JsonNode yes = turn("u-gpt", """
+                {"sessionId": "%s", "utterance": "좋아"}""".formatted(sid));
+        assertThat(yes.path("gptConsent").asBoolean()).isTrue();
+        assertThat(yes.path("speech").asString()).startsWith("고마워요. 한 번 더 확인해 봤어요.").contains("같아요");
+        assertThat(yes.path("next").asString()).isEqualTo("camera_outfit");
+
+        // 이미 답했으면 다시 묻지 않습니다.
+        JsonNode again = turn("u-gpt", """
+                {"sessionId": "%s", "image": "UNSURE2", "imageKind": "outfit"}""".formatted(sid));
+        assertThat(again.path("speech").asString()).doesNotContain("더 정확한 AI에게");
+    }
+
+    @Test
+    void GPT_확인을_거절하면_기억하고_앱이_false를_보내면_묻지_않는다() throws Exception {
+        JsonNode first = turn("u-gpt2", """
+                {"image": "UNSURE1", "imageKind": "outfit"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode no = turn("u-gpt2", """
+                {"sessionId": "%s", "utterance": "아니"}""".formatted(sid));
+        assertThat(no.path("gptConsent").asBoolean(true)).isFalse();
+
+        JsonNode later = turn("u-gpt3", """
+                {"image": "UNSURE1", "imageKind": "outfit", "allowGpt": false}""");
+        assertThat(later.path("speech").asString()).doesNotContain("더 정확한 AI에게");
+    }
 }
