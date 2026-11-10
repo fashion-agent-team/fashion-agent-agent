@@ -40,7 +40,7 @@ agent:
   tools: fake
   judge: rule
   session: memory
-  closet-search: false
+  closet-search: true     # 옷장(closet_search)에 쌓인 옷으로 추천 (2026-11-10 진행 님)
   judge-timeout: 25s
   session-ttl: 30m
 
