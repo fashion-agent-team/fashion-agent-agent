@@ -36,13 +36,28 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
     @Override
     public JsonNode call(String tool, Map<String, Object> args) {
         String server = ToolNames.serverOf(tool);
-        McpSyncClient client = client(tool, server);
+        boolean cached = clients.containsKey(server);
         McpSchema.CallToolResult result;
         try {
-            result = client.callTool(McpSchema.CallToolRequest.builder().name(tool).arguments(args).build());
+            result = callOnce(tool, server, args);
+        } catch (ToolException e) {
+            throw e;
         } catch (RuntimeException e) {
             drop(server);
-            throw new ToolException(tool, "upstream_failed", "MCP 호출 실패: " + e.getMessage(), e);
+            if (!cached) {
+                throw new ToolException(tool, "upstream_failed", "MCP 호출 실패: " + e.getMessage(), e);
+            }
+            // MCP 서버가 다시 켜지면 예전 세션은 죽어 있다(2026-11-09: 서버를 다시 켠 뒤 첫 요청만 실패).
+            // 연결을 버리고 새로 붙어서 한 번만 다시 부른다.
+            log.info("MCP 세션이 끊겨 다시 연결: {} ({})", server, e.getMessage());
+            try {
+                result = callOnce(tool, server, args);
+            } catch (ToolException again) {
+                throw again;
+            } catch (RuntimeException again) {
+                drop(server);
+                throw new ToolException(tool, "upstream_failed", "MCP 호출 실패: " + again.getMessage(), again);
+            }
         }
         JsonNode body = parse(tool, result);
         if (Boolean.TRUE.equals(result.isError()) || body.has("error")) {
@@ -51,6 +66,10 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
                     error.path("message").asString(body.toString()));
         }
         return body;
+    }
+
+    private McpSchema.CallToolResult callOnce(String tool, String server, Map<String, Object> args) {
+        return client(tool, server).callTool(McpSchema.CallToolRequest.builder().name(tool).arguments(args).build());
     }
 
     private JsonNode parse(String tool, McpSchema.CallToolResult result) {
