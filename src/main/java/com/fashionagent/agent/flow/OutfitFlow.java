@@ -406,7 +406,7 @@ public class OutfitFlow {
         JsonNode inspect;
         try {
             inspect = tools.call(ToolNames.CLOTHES_INSPECT,
-                    Map.of("imageBase64", imageBase64, "allowGpt", session.gptConsent));
+                    Map.of("imageBase64", imageBase64, "allowGpt", Boolean.TRUE.equals(session.gptConsent)));
         } catch (ToolException e) {
             log.warn("clothes_inspect 실패: {}", e.getMessage());
             sessions.save(session);
@@ -443,8 +443,71 @@ public class OutfitFlow {
         session.lastDamage = new ArrayList<>(j.damage());
         sessions.save(session);
         var result = new OutfitCheck(now, j.verdicts(), j.comparison(), j.damage(), j.stillMissing(), null, source);
+        if (askGpt(session, now, imageBase64)) {
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, j.speech() + " " + GPT_ASK, Next.camera_outfit,
+                    new Result("outfit_check", null, result));
+        }
         return new TurnResponse(session.sessionId, withMore(j.speech()), Next.camera_outfit,
                 new Result("outfit_check", null, result));
+    }
+
+    /** 2026-11-10 진행 님 대사: 처음 애매한 얼룩이 나왔을 때 한 번만 묻는다. */
+    static final String GPT_ASK = "애매한 부분을 더 정확한 AI에게 한 번 더 물어봐도 될까요? 옷 사진 조각은 학습에 쓰일 수 있어요. "
+            + "\"좋아\" 또는 \"아니\"라고 말씀해 주세요.";
+
+    /** 애매한 얼룩으로 보는 확신도 범위(옷 상태 서버가 GPT로 확인하는 범위와 같음). */
+    static final double GPT_MIN = 0.2, GPT_MAX = 0.5;
+
+    /** 아직 묻지 않았고 GPT가 확인하지 않은 애매한 얼룩이 있으면 물을 준비를 하고 true. */
+    private static boolean askGpt(AgentSession session, List<Garment> garments, String imageBase64) {
+        if (session.gptConsent != null || session.gptAsked) {
+            return false;
+        }
+        boolean unsure = garments.stream().flatMap(g -> g.defects().stream())
+                .anyMatch(d -> !d.byGpt() && d.confidence() >= GPT_MIN && d.confidence() < GPT_MAX);
+        if (!unsure) {
+            return false;
+        }
+        session.gptAsked = true;
+        session.gptAskImage = imageBase64;
+        return true;
+    }
+
+    /** "더 정확한 AI에게 물어봐도 될까요?"에 대한 답. 좋다면 방금 사진을 GPT 확인으로 다시 봅니다. 답이 아니면 null. */
+    public TurnResponse answerGptAsk(AgentSession session, String utterance) {
+        String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        boolean no = NO.stream().anyMatch(s::contains);
+        boolean yes = !no && YES.stream().anyMatch(s::startsWith);
+        String image = session.gptAskImage;
+        session.gptAsked = false;
+        session.gptAskImage = null;
+        if (!yes && !no) {
+            sessions.save(session);
+            return null;
+        }
+        session.gptConsent = yes;
+        session.gptDecided = true;
+        boolean worn = WORN.equals(session.outfitMode);
+        Next camera = worn ? Next.camera_worn : Next.camera_outfit;
+        String after = worn ? WORN_AGAIN.strip() : MORE;
+        if (no) {
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, "알겠어요. 애매한 부분은 따로 물어보지 않을게요. " + after,
+                    camera, null, false);
+        }
+        if (image == null) {
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, "고마워요. 다음부터 애매한 부분은 한 번 더 확인할게요. " + after,
+                    camera, null, true);
+        }
+        // 방금 본 옷을 지우고 같은 사진을 다시 봅니다(같은 옷이 두 번 세어지지 않게).
+        String prefix = "p" + session.photoCount + "_";
+        session.seen.removeIf(x -> x.garment().id().startsWith(prefix));
+        session.photoCount--;
+        TurnResponse again = check(session, image);
+        return new TurnResponse(again.sessionId(), "고마워요. 한 번 더 확인해 봤어요. " + again.speech(), again.next(),
+                again.result(), true);
     }
 
     /** 2026-11-09 진행 님: 한 벌 찍고 나면 "더 찍으실 옷이 있으면 비춰 주세요"로 다음 옷을 기다린다. */
@@ -478,7 +541,8 @@ public class OutfitFlow {
         JsonNode inspect;
         try {
             inspect = tools.call(ToolNames.CLOTHES_INSPECT,
-                    Map.of("imageBase64", imageBase64, "mode", WORN, "view", view, "allowGpt", session.gptConsent));
+                    Map.of("imageBase64", imageBase64, "mode", WORN, "view", view, "allowGpt",
+                            Boolean.TRUE.equals(session.gptConsent)));
         } catch (ToolException e) {
             log.warn("clothes_inspect(worn) 실패: {}", e.getMessage());
             sessions.save(session);
@@ -525,6 +589,11 @@ public class OutfitFlow {
         session.wornGarments = new ArrayList<>();
         sessions.save(session);
         var result = new OutfitCheck(outfit, j.verdicts(), j.comparison(), j.damage(), j.stillMissing(), null, source);
+        if (askGpt(session, outfit, null)) {
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, j.speech() + " " + GPT_ASK, Next.camera_worn,
+                    new Result("outfit_check", null, result, WORN));
+        }
         return new TurnResponse(session.sessionId, j.speech() + WORN_AGAIN, Next.camera_worn,
                 new Result("outfit_check", null, result, WORN));
     }
