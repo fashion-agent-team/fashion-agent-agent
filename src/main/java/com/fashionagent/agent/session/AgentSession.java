@@ -66,6 +66,13 @@ public class AgentSession {
     public List<Garment> wornGarments = new ArrayList<>();
     /** 개별 기능 대화의 최근 몇 마디. GPT가 되물은 뒤 이어 듣기 위해. */
     public List<Said> assistantHistory = new ArrayList<>();
+    /**
+     * clothes_inspect가 준 옷 사진 벡터(garments[].embedding), 키는 다시 붙인 옷 id. closet_save에만 넘기고
+     * GPT·앱 응답에는 넣지 않으려고 Garment와 따로 둡니다. 옷을 고르고 나면 비웁니다.
+     */
+    public java.util.Map<String, List<Double>> embeddings = new java.util.HashMap<>();
+    /** clothes_inspect 응답의 embeddingModel (예: marqo-fashionSigLIP). */
+    public String embeddingModel;
 
     public AgentSession() {
     }
