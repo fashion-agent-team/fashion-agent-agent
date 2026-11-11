@@ -7,4 +7,3 @@ agent:
     clothes-state: ${MCP_CLOTHES_STATE_URL:http://localhost:8093/mcp}
     face-check: ${MCP_FACE_CHECK_URL:http://localhost:8094/mcp}
     closet: ${MCP_CLOSET_URL:http://localhost:8095/mcp}
-    helper: ${MCP_HELPER_URL:http://localhost:8096/mcp}
