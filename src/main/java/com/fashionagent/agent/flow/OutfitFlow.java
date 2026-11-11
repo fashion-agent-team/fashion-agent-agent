@@ -27,6 +27,7 @@ import com.fashionagent.agent.judge.OutfitJudge.CheckInput;
 import com.fashionagent.agent.judge.OutfitJudge.SeenBrief;
 import com.fashionagent.agent.model.AdviceJudgement;
 import com.fashionagent.agent.model.CheckJudgement;
+import com.fashionagent.agent.judge.Occasion;
 import com.fashionagent.agent.model.Garment;
 import com.fashionagent.agent.model.OutfitCheck;
 import com.fashionagent.agent.session.AgentSession;
@@ -393,9 +394,14 @@ public class OutfitFlow {
         Map<String, Object> args = new LinkedHashMap<>();
         args.put("situation", situation);
         args.put("limit", 8);
-        if (session.weather != null) {
-            args.put("apparentTemperature", session.weather.path("apparentTemperature").asDouble());
+        Double temp = session.weather == null ? null : session.weather.path("apparentTemperature").asDouble();
+        if (temp != null) {
+            args.put("apparentTemperature", temp);
         }
+        Occasion occasion = Occasion.strictest(session.events);
+        // 자리에 맞지 않는 옷(면접에 운동복 등)을 빼고 격식에 가산점 (closet 실측: 상황 질문 위 5개 정답 37%→42%)
+        args.put("occasion", occasion.name());
+        args.put("imageQuery", ClosetQuery.english(occasion, temp));
         return safe(ToolNames.CLOSET_SEARCH, () -> tools.callForUser(ToolNames.CLOSET_SEARCH, session.userId, args));
     }
 
@@ -418,6 +424,7 @@ public class OutfitFlow {
         for (JsonNode g : inspect.path("garments")) {
             Garment garment = json.treeToValue(g, Garment.class);
             now.add(garment.withId(prefix + garment.id()));
+            keepEmbedding(session, inspect, g, prefix + garment.id());
         }
         String source = inspect.path("source").asString(null);
 
@@ -554,6 +561,7 @@ public class OutfitFlow {
         for (JsonNode g : inspect.path("garments")) {
             Garment garment = json.treeToValue(g, Garment.class);
             now.add(garment.withId(prefix + garment.id()));
+            keepEmbedding(session, inspect, g, prefix + garment.id());
         }
         String source = inspect.path("source").asString(null);
 
@@ -679,12 +687,13 @@ public class OutfitFlow {
             return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 한번 보여 주실래요?",
                     cameraFor(session.outfitMode), null);
         }
-        boolean recorded = !session.recorded && record(session.userId, chosen, targetDay(session));
+        boolean recorded = !session.recorded && record(session, chosen, targetDay(session));
         session.recorded = session.recorded || recorded;
         String names = String.join(", ", chosen.stream().map(Garment::label).toList());
         String picked = "좋아요. " + Korean.josa(names, "으로", "로") + (recorded ? " 기록해 둘게요." : " 정했어요.");
         session.seen = new ArrayList<>();
         session.lastDamage = new ArrayList<>();
+        session.embeddings = new java.util.HashMap<>();
         if (!WORN.equals(session.outfitMode)) {
             // 2026-11-06 진행 님 요청: 내려놓고 고른 사람에게 입은 모습도 볼지 묻기
             session.wornOfferAsked = true;
@@ -748,10 +757,50 @@ public class OutfitFlow {
         return "good".equals(fit) ? 2 : "ok".equals(fit) ? 1 : 0;
     }
 
-    private boolean record(String userId, List<Garment> chosen, LocalDate day) {
+    /** 옷 사진 벡터는 closet_save에만 넘깁니다(같은 옷 판단·이름 고르기). 모델 이름이 없으면 넘기지 않습니다. */
+    private static void keepEmbedding(AgentSession session, JsonNode inspect, JsonNode garment, String id) {
+        String model = inspect.path("embeddingModel").asString(null);
+        JsonNode e = garment.path("embedding");
+        if (model == null || !e.isArray() || e.isEmpty()) {
+            return;
+        }
+        List<Double> v = new ArrayList<>(e.size());
+        e.forEach(x -> v.add(x.asDouble()));
+        session.embeddingModel = model;
+        session.embeddings.put(id, v);
+    }
+
+    /** closet_save 입력: 고른 옷 JSON에 그 옷의 사진 벡터를 붙입니다. */
+    static Map<String, Object> saveArgs(List<Map<String, Object>> garments, Map<String, List<Double>> embeddings, String model) {
+        Map<String, Object> args = new LinkedHashMap<>();
+        boolean any = false;
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> g : garments) {
+            List<Double> v = model == null ? null : embeddings.get(String.valueOf(g.get("id")));
+            if (v != null) {
+                g = new LinkedHashMap<>(g);
+                g.put("embedding", v);
+                any = true;
+            }
+            out.add(g);
+        }
+        args.put("garments", out);
+        if (any) {
+            args.put("embeddingModel", model);
+        }
+        return args;
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean record(AgentSession session, List<Garment> chosen, LocalDate day) {
+        String userId = session.userId;
         try {
-            List<?> garments = json.convertValue(chosen, List.class);
-            JsonNode saved = tools.callForUser(ToolNames.CLOSET_SAVE, userId, Map.of("garments", garments));
+            List<Map<String, Object>> garments = new ArrayList<>();
+            for (Garment g : chosen) {
+                garments.add(json.convertValue(g, Map.class));
+            }
+            JsonNode saved = tools.callForUser(ToolNames.CLOSET_SAVE, userId,
+                    saveArgs(garments, session.embeddings, session.embeddingModel));
             List<String> ids = new ArrayList<>();
             for (JsonNode s : saved.path("saved")) {
                 ids.add(s.path("garmentId").asString());
