@@ -23,6 +23,7 @@
 - **중심 기능은 옷 추천 2단계**입니다([흐름]({C}#5-기능-구분과-agent-처리-방법)).
   1. 말로 추천: `weather_today` + `schedule_list` + (선택) `closet_search`를 동시에 부르고 GPT(추천 모드)로 추천 → `next: camera_outfit`
   2. 카메라로 확인: 앱이 자동 전송한 한 장마다 `clothes_inspect` → GPT(확인 모드)로 한 벌 판단 또는 두 벌 비교 → "이걸로 할게"면 `closet_save` + `closet_wear` → `next: done`
+     - `clothes_inspect`의 옷 벡터(`garments[].embedding`, `embeddingModel`)는 세션에 따로 두고 `closet_save`에만 붙입니다. GPT 프롬프트와 앱 응답에는 넣지 않습니다(옷 한 벌에 숫자 768개).
 - 옷 추천은 **정해진 순서(코드)로** 도구를 부릅니다. GPT가 도구를 고르는 건 개별 기능(날씨 묻기, 일정 등록, 얼굴 확인, 가족에게 묻기)뿐입니다.
 - MCP 서버는 데이터만 줍니다. 판단은 GPT에 판단 기준(약속 문서 5-1절)을 주고 구조화 출력으로 받습니다.
 - 사진 base64는 GPT 대화에 넣지 않고 도구에 직접 넘깁니다.

@@ -20,6 +20,9 @@ public class FakeAgentTools implements AgentTools {
 
     private final JsonMapper json;
 
+    /** 마지막 closet_save 인자(테스트에서 옷장에 무엇이 넘어갔는지 확인용). */
+    public volatile Map<String, Object> lastClosetSave;
+
     public FakeAgentTools(JsonMapper json) {
         this.json = json;
     }
@@ -34,7 +37,10 @@ public class FakeAgentTools implements AgentTools {
                     ? inspectWorn(String.valueOf(args.get("imageBase64")), String.valueOf(args.get("view")))
                     : inspect(String.valueOf(args.get("imageBase64")), Boolean.TRUE.equals(args.get("allowGpt")));
             case ToolNames.CLOSET_SEARCH -> Map.of("candidates", List.of(), "styleNotes", List.of(), "empty", true);
-            case ToolNames.CLOSET_SAVE -> closetSave(args);
+            case ToolNames.CLOSET_SAVE -> {
+                lastClosetSave = args;
+                yield closetSave(args);
+            }
             case ToolNames.CLOSET_WEAR -> Map.of("recorded", ((List<?>) args.get("garmentIds")).size());
             case ToolNames.SCHEDULE_ADD -> Map.of("eventId", "e_added", "occasion", "casual",
                     "spokenSummary", "일정 '" + args.get("title") + "'을 등록했어요.");
@@ -146,12 +152,13 @@ public class FakeAgentTools implements AgentTools {
         var white = map("id", "g1", "category", "top", "name", "셔츠", "colorName", "흰색",
                 "colorFamily", "white", "tone", "light", "formality", "smart", "position", "left",
                 "defects", List.of(Map.of("kind", "stain", "where", "오른쪽 소매 끝", "confidence", 0.85)),
-                "confidence", 0.95);
+                "confidence", 0.95, "embedding", List.of(0.6, 0.8));
         var check = map("id", "g2", "category", "top", "name", "체크 셔츠", "colorName", "빨간색",
                 "colorFamily", "red", "tone", "mid", "pattern", "체크", "formality", "casual",
-                "position", "right", "defects", List.of(), "confidence", 0.93);
+                "position", "right", "defects", List.of(), "confidence", 0.93, "embedding", List.of(0.0, 1.0));
+        // embedding은 옷 박스 이미지 벡터(실제는 768개). 옷장에만 넘기고 GPT·앱에는 안 보냅니다.
         return Map.of("garments", List.of(white, check), "lighting", "ok", "source", "model",
-                "modelVersion", "fake");
+                "modelVersion", "fake", "embeddingModel", "fake-siglip");
     }
 
     /** 얼굴(화장): "CUT"으로 시작하면 구도 안내, 그 밖에는 눈썹 비대칭. */

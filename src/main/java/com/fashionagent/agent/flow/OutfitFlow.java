@@ -284,6 +284,7 @@ public class OutfitFlow {
                 adviceSpeech(label, session.weather, weatherNote[0], session.events, judged.speech()));
         session.advice = advice;
         session.seen = new ArrayList<>();
+        session.embeddings = new java.util.HashMap<>();
         session.lastDamage = new ArrayList<>();
         session.wornStep = null;
         session.wornGarments = new ArrayList<>();
@@ -419,6 +420,7 @@ public class OutfitFlow {
             Garment garment = json.treeToValue(g, Garment.class);
             now.add(garment.withId(prefix + garment.id()));
         }
+        keepEmbeddings(session, inspect, prefix);
         String source = inspect.path("source").asString(null);
 
         String retake = retake(inspect, now);
@@ -504,6 +506,7 @@ public class OutfitFlow {
         // 방금 본 옷을 지우고 같은 사진을 다시 봅니다(같은 옷이 두 번 세어지지 않게).
         String prefix = "p" + session.photoCount + "_";
         session.seen.removeIf(x -> x.garment().id().startsWith(prefix));
+        session.embeddings.keySet().removeIf(id -> id.startsWith(prefix));
         session.photoCount--;
         TurnResponse again = check(session, image);
         return new TurnResponse(again.sessionId(), "고마워요. 한 번 더 확인해 봤어요. " + again.speech(), again.next(),
@@ -555,6 +558,7 @@ public class OutfitFlow {
             Garment garment = json.treeToValue(g, Garment.class);
             now.add(garment.withId(prefix + garment.id()));
         }
+        keepEmbeddings(session, inspect, prefix);
         String source = inspect.path("source").asString(null);
 
         String retake = retakeWorn(inspect, now, view);
@@ -679,12 +683,13 @@ public class OutfitFlow {
             return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 한번 보여 주실래요?",
                     cameraFor(session.outfitMode), null);
         }
-        boolean recorded = !session.recorded && record(session.userId, chosen, targetDay(session));
+        boolean recorded = !session.recorded && record(session, chosen, targetDay(session));
         session.recorded = session.recorded || recorded;
         String names = String.join(", ", chosen.stream().map(Garment::label).toList());
         String picked = "좋아요. " + Korean.josa(names, "으로", "로") + (recorded ? " 기록해 둘게요." : " 정했어요.");
         session.seen = new ArrayList<>();
         session.lastDamage = new ArrayList<>();
+        session.embeddings = new java.util.HashMap<>();
         if (!WORN.equals(session.outfitMode)) {
             // 2026-11-06 진행 님 요청: 내려놓고 고른 사람에게 입은 모습도 볼지 묻기
             session.wornOfferAsked = true;
@@ -748,9 +753,10 @@ public class OutfitFlow {
         return "good".equals(fit) ? 2 : "ok".equals(fit) ? 1 : 0;
     }
 
-    private boolean record(String userId, List<Garment> chosen, LocalDate day) {
+    private boolean record(AgentSession session, List<Garment> chosen, LocalDate day) {
+        String userId = session.userId;
         try {
-            List<?> garments = json.convertValue(chosen, List.class);
+            List<Map<String, Object>> garments = forCloset(json, chosen, session.embeddings);
             JsonNode saved = tools.callForUser(ToolNames.CLOSET_SAVE, userId, Map.of("garments", garments));
             List<String> ids = new ArrayList<>();
             for (JsonNode s : saved.path("saved")) {
@@ -762,6 +768,46 @@ public class OutfitFlow {
             log.warn("옷장 기록 실패 (추천은 계속): {}", e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * clothes_inspect의 garments[].embedding(옷 박스 이미지 벡터)과 embeddingModel을 세션에 따로 둡니다.
+     * {@link Garment}에는 없어서 GPT 프롬프트·앱 응답에는 들어가지 않고, closet_save에만 붙입니다({@link #forCloset}).
+     */
+    static void keepEmbeddings(AgentSession session, JsonNode inspect, String prefix) {
+        String model = inspect.path("embeddingModel").asString(null);
+        if (model == null || model.isBlank()) {
+            return;
+        }
+        for (JsonNode g : inspect.path("garments")) {
+            JsonNode e = g.path("embedding");
+            String id = g.path("id").asString(null);
+            if (id == null || !e.isArray() || e.isEmpty()) {
+                continue;
+            }
+            float[] v = new float[e.size()];
+            for (int i = 0; i < v.length; i++) {
+                v[i] = (float) e.get(i).asDouble();
+            }
+            session.embeddings.put(prefix + id, new AgentSession.Embedding(model, v));
+        }
+    }
+
+    /** closet_save에 넘길 옷 목록. 벡터가 있는 옷에는 embedding·embeddingModel을 붙입니다. */
+    @SuppressWarnings("unchecked")
+    static List<Map<String, Object>> forCloset(JsonMapper json, List<Garment> chosen,
+            Map<String, AgentSession.Embedding> embeddings) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Garment g : chosen) {
+            Map<String, Object> m = new LinkedHashMap<>(json.convertValue(g, Map.class));
+            AgentSession.Embedding e = embeddings == null ? null : embeddings.get(g.id());
+            if (e != null) {
+                m.put("embedding", e.vector());
+                m.put("embeddingModel", e.model());
+            }
+            out.add(m);
+        }
+        return out;
     }
 
     // ── 공통 ──────────────────────────────────────────────────────────

@@ -27,6 +27,9 @@ class TurnFlowTest {
     @Autowired
     JsonMapper json;
 
+    @Autowired
+    com.fashionagent.agent.tools.AgentTools tools;
+
     private JsonNode turn(String userId, String body) throws Exception {
         String out = mvc.perform(post("/api/v1/agent/turn").header("X-User-Id", userId)
                 .contentType(MediaType.APPLICATION_JSON).content(body))
@@ -56,6 +59,8 @@ class TurnFlowTest {
                 {"sessionId": "%s", "image": "AAAA", "imageKind": "outfit", "autoCaptured": true}""".formatted(sid));
         assertThat(check.path("next").asString()).isEqualTo("camera_outfit");
         JsonNode oc = check.path("result").path("outfitCheck");
+        // 옷 벡터는 앱 응답에 안 나감(옷장에만 넘김)
+        assertThat(check.toString()).doesNotContain("embedding");
         assertThat(oc.path("comparison").path("betterInputId").asString()).isEqualTo("p1_g1");
         assertThat(oc.path("damage").get(0).path("action").asString()).isEqualTo("wash");
         assertThat(check.path("speech").asString())
@@ -73,6 +78,13 @@ class TurnFlowTest {
                 {"sessionId": "%s", "utterance": "이걸로 할게"}""".formatted(sid));
         assertThat(picked.path("next").asString()).isEqualTo("listen");
         assertThat(picked.path("speech").asString()).contains("흰색 셔츠").contains("기록").contains("입은 모습");
+        // 옷장에는 clothes_inspect의 옷 벡터와 모델 이름을 같이 넘김
+        var save = ((com.fashionagent.agent.tools.FakeAgentTools) tools).lastClosetSave;
+        JsonNode saved = json.valueToTree(save).path("garments").get(0);
+        assertThat(saved.path("id").asString()).isEqualTo("p1_g1");
+        assertThat(saved.path("embeddingModel").asString()).isEqualTo("fake-siglip");
+        assertThat(saved.path("embedding").size()).isEqualTo(2);
+        assertThat(saved.path("embedding").get(1).asDouble()).isCloseTo(0.8, org.assertj.core.data.Offset.offset(1e-6));
 
         JsonNode done = turn("u1", """
                 {"sessionId": "%s", "utterance": "아니요 괜찮아요"}""".formatted(sid));

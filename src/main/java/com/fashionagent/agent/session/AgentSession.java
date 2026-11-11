@@ -1,7 +1,9 @@
 package com.fashionagent.agent.session;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.fashionagent.agent.model.AdviceJudgement;
 import com.fashionagent.agent.model.Garment;
@@ -64,6 +66,11 @@ public class AgentSession {
     public String wornStep;
     /** 입고 한 바퀴에서 이번 바퀴에 본 옷 (앞모습 옷이 기준, 옆·뒤 얼룩을 더함). */
     public List<Garment> wornGarments = new ArrayList<>();
+    /**
+     * clothes_inspect가 옷마다 준 이미지 벡터(옷 id → 벡터). 옷장(closet_save)이 같은 옷인지 판단할 때만 씁니다.
+     * GPT 프롬프트와 앱 응답에는 넣지 않으려고 {@link Garment}와 따로 둡니다(숫자 768개라 사람이 읽을 값이 아님).
+     */
+    public Map<String, Embedding> embeddings = new HashMap<>();
     /** 개별 기능 대화의 최근 몇 마디. GPT가 되물은 뒤 이어 듣기 위해. */
     public List<Said> assistantHistory = new ArrayList<>();
 
@@ -94,5 +101,9 @@ public class AgentSession {
     }
 
     public record Seen(Garment garment, String fit) {
+    }
+
+    /** model: 벡터를 만든 모델(clothes_inspect의 embeddingModel). 옷장은 같은 모델 벡터끼리만 비교합니다. */
+    public record Embedding(String model, float[] vector) {
     }
 }
