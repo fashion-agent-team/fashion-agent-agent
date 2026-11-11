@@ -11,6 +11,7 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 
 import com.fashionagent.agent.api.Location;
+import com.fashionagent.agent.flow.ReminderFlow;
 import com.fashionagent.agent.session.AgentSession;
 import com.fashionagent.agent.tools.AgentTools;
 import com.fashionagent.agent.tools.ToolException;
@@ -94,6 +95,13 @@ public class AssistantTools {
         JsonNode node = json.readTree(out);
         if (node.has("spokenSummary")) {
             done.add(new Done(node.path("spokenSummary").asString(), List.of("등록|넣었")));
+        }
+        String eventId = node.path("eventId").asString("");
+        if (!eventId.isBlank()) {
+            // 답 뒤에 "일정 전에 알림을 드릴까요?"를 붙입니다(ReminderFlow). GPT는 알림을 묻지 않습니다.
+            session.reminderStep = ReminderFlow.PENDING;
+            session.reminderEventId = eventId;
+            session.reminderTitle = title == null ? null : title.strip();
         }
         return out;
     }

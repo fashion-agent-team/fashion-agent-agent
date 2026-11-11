@@ -46,7 +46,8 @@ public class CachingAgentTools implements AgentTools, AutoCloseable {
 
     @Override
     public JsonNode call(String tool, Map<String, Object> args) {
-        if (ToolNames.SCHEDULE_ADD.equals(tool) || ToolNames.SCHEDULE_DELETE.equals(tool)) {
+        if (ToolNames.SCHEDULE_ADD.equals(tool) || ToolNames.SCHEDULE_DELETE.equals(tool)
+                || ToolNames.SCHEDULE_SET_REMINDER.equals(tool)) {
             forgetSchedules(args.get("userId"));
         }
         Duration ttl = TTL.get(tool);
