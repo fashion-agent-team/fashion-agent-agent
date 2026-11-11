@@ -121,6 +121,10 @@ class LlmAssistantTest {
         assertThat(reply.next()).isEqualTo(Next.listen);
         assertThat(model.systemSeen).contains("2026-11-04 16:00 수요일");
         assertThat(session.assistantHistory).hasSize(2);
+        // 답 뒤에 알림을 물을 수 있게 방금 넣은 일정을 기억합니다(ReminderFlow).
+        assertThat(session.reminderStep).isEqualTo("pending");
+        assertThat(session.reminderEventId).isEqualTo("e_added");
+        assertThat(session.reminderTitle).isEqualTo("친구 결혼식");
     }
 
     @Test

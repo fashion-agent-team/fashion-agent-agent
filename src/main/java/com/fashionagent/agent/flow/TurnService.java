@@ -25,15 +25,17 @@ public class TurnService {
 
     private final OutfitFlow outfit;
     private final FaceFlow face;
+    private final ReminderFlow reminder;
     private final Assistant assistant;
     private final AgentTools tools;
     private final SessionStore sessions;
     private final java.time.Clock clock;
 
-    public TurnService(OutfitFlow outfit, FaceFlow face, Assistant assistant, AgentTools tools,
-            SessionStore sessions, java.time.Clock clock) {
+    public TurnService(OutfitFlow outfit, FaceFlow face, ReminderFlow reminder, Assistant assistant,
+            AgentTools tools, SessionStore sessions, java.time.Clock clock) {
         this.outfit = outfit;
         this.face = face;
+        this.reminder = reminder;
         this.assistant = assistant;
         this.tools = tools;
         this.sessions = sessions;
@@ -67,6 +69,14 @@ public class TurnService {
                 return outfit.checkWorn(session, req.image());
             }
             return outfit.check(session, req.image());
+        }
+
+        // 일정을 넣은 뒤 "일정 전에 알림을 드릴까요?", "며칠 전에 미리 알려 드릴까요?"에 대한 답
+        if (session.reminderStep != null) {
+            TurnResponse answered = reminder.answer(session, req.utterance());
+            if (answered != null) {
+                return answered;
+            }
         }
 
         // "애매한 부분을 더 정확한 AI에게 물어봐도 될까요?"에 대한 답
@@ -133,6 +143,10 @@ public class TurnService {
                         case "schedule_today" -> schedule(session, null);
                         default -> say(session, r.speech(), r.next());
                     };
+                }
+                // 방금 일정을 넣었으면 답 뒤에 "일정 전에 알림을 드릴까요?"를 붙이고 답을 기다립니다.
+                if (ReminderFlow.PENDING.equals(session.reminderStep)) {
+                    yield say(session, reminder.askIfAdded(session, r.speech()), Next.listen);
                 }
                 yield say(session, r.speech(), r.next());
             }

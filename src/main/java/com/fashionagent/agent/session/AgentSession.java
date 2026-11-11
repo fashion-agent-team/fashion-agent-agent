@@ -73,6 +73,16 @@ public class AgentSession {
     public java.util.Map<String, List<Double>> embeddings = new java.util.HashMap<>();
     /** clothes_inspect 응답의 embeddingModel (예: marqo-fashionSigLIP). */
     public String embeddingModel;
+    /**
+     * 일정을 넣은 뒤 알림 묻기(ReminderFlow): pending(방금 넣음) → want("일정 전에 알림을 드릴까요?") →
+     * days("며칠 전에?"). null이면 묻지 않는 중.
+     */
+    public String reminderStep;
+    /** 알림을 정할 일정(방금 넣은 일정)의 eventId와 이름. */
+    public String reminderEventId;
+    public String reminderTitle;
+    /** "며칠 전?"을 다시 물은 횟수. */
+    public int reminderAsked;
 
     public AgentSession() {
     }

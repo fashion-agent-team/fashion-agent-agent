@@ -11,6 +11,7 @@ public final class ToolNames {
     public static final String SCHEDULE_LIST = "schedule_list";
     public static final String SCHEDULE_ADD = "schedule_add";
     public static final String SCHEDULE_DELETE = "schedule_delete";
+    public static final String SCHEDULE_SET_REMINDER = "schedule_set_reminder";
     public static final String CLOTHES_INSPECT = "clothes_inspect";
     public static final String FACE_MAKEUP_CHECK = "face_makeup_check";
     public static final String TEETH_CHECK = "teeth_check";

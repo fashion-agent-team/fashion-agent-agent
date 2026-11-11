@@ -39,6 +39,7 @@ public class FakeAgentTools implements AgentTools {
             case ToolNames.SCHEDULE_ADD -> Map.of("eventId", "e_added", "occasion", "casual",
                     "spokenSummary", "일정 '" + args.get("title") + "'을 등록했어요.");
             case ToolNames.SCHEDULE_DELETE -> Map.of("deleted", true);
+            case ToolNames.SCHEDULE_SET_REMINDER -> reminder(args);
             case ToolNames.FACE_MAKEUP_CHECK -> makeup(String.valueOf(args.get("imageBase64")));
             case ToolNames.TEETH_CHECK -> teeth(String.valueOf(args.get("imageBase64")));
             case ToolNames.HELPER_CONTACTS -> Map.of("contacts",
@@ -49,6 +50,15 @@ public class FakeAgentTools implements AgentTools {
                     "answeredBy", "엄마", "answeredAt", "2026-11-04T09:10:00+09:00");
             default -> throw new ToolException(tool, "not_implemented", "가짜 도구에 없는 도구예요.");
         });
+    }
+
+    private static Map<String, Object> reminder(Map<String, Object> args) {
+        Map<String, Object> out = new java.util.HashMap<>();
+        boolean remind = !Boolean.FALSE.equals(args.get("remind"));
+        out.put("eventId", args.get("eventId"));
+        out.put("remind", remind);
+        out.put("remindDaysBefore", remind ? args.getOrDefault("daysBefore", 1) : null);
+        return out;
     }
 
     private static Map<String, Object> weather() {
