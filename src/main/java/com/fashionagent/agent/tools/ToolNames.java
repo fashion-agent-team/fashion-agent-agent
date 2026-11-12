@@ -20,6 +20,8 @@ public final class ToolNames {
     public static final String CLOSET_WEAR = "closet_wear";
     public static final String CLOSET_MERGE = "closet_merge";
     public static final String CLOSET_LIST = "closet_list";
+    public static final String CLOSET_OUTFITS = "closet_outfits";
+    public static final String CLOSET_REMOVE = "closet_remove";
 
     /** 도구 이름의 앞부분이 서버 이름입니다. clothes_inspect → clothes-state 처럼 다른 것만 적습니다. */
     private static final Map<String, String> SERVER_OF_PREFIX = Map.of(

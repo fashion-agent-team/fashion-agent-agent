@@ -689,6 +689,12 @@ public class OutfitFlow {
 
     public TurnResponse finish(AgentSession session) {
         List<Garment> chosen = chosen(session);
+        // 아쉽다고 말한 옷만 봤어도 사용자가 "이걸로 할게"라고 하면 그 옷으로 합니다(2026-11-12 시뮬: 입은 모습이
+        // 날씨에 가볍다고 했더니 기록을 거절하고 다시 보여 달라고만 했음).
+        boolean overruled = chosen.isEmpty() && !session.seen.isEmpty();
+        if (overruled) {
+            chosen = anyChosen(session);
+        }
         if (chosen.isEmpty()) {
             return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 한번 보여 주실래요?",
                     cameraFor(session.outfitMode), null);
@@ -696,7 +702,8 @@ public class OutfitFlow {
         boolean recorded = !session.recorded && record(session, chosen, targetDay(session));
         session.recorded = session.recorded || recorded;
         String names = String.join(", ", chosen.stream().map(Garment::label).toList());
-        String picked = "좋아요. " + Korean.josa(names, "으로", "로") + (recorded ? " 기록해 둘게요." : " 정했어요.");
+        String picked = (overruled ? "좋아요, 입고 싶은 옷으로 하세요. " : "좋아요. ")
+                + Korean.josa(names, "으로", "로") + (recorded ? " 기록해 둘게요." : " 정했어요.");
         session.seen = new ArrayList<>();
         session.lastDamage = new ArrayList<>();
         session.embeddings = new java.util.HashMap<>();
@@ -755,6 +762,15 @@ public class OutfitFlow {
             if ("bad".equals(s.fit())) {
                 continue;
             }
+            best.merge(s.garment().category(), s, (old, neu) -> rank(neu.fit()) >= rank(old.fit()) ? neu : old);
+        }
+        return best.values().stream().map(AgentSession.Seen::garment).toList();
+    }
+
+    /** 맞음·아쉬움을 가리지 않고 종류마다 가장 나은(같으면 나중에 본) 옷. 사용자가 아쉬운 옷을 고집할 때. */
+    static List<Garment> anyChosen(AgentSession session) {
+        Map<String, AgentSession.Seen> best = new LinkedHashMap<>();
+        for (AgentSession.Seen s : session.seen) {
             best.merge(s.garment().category(), s, (old, neu) -> rank(neu.fit()) >= rank(old.fit()) ? neu : old);
         }
         return best.values().stream().map(AgentSession.Seen::garment).toList();

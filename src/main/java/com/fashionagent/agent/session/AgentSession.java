@@ -81,6 +81,12 @@ public class AgentSession {
     /** "며칠 전?"을 다시 물은 횟수. */
     public int reminderAsked;
 
+    /** 옷장에서 지울 옷을 묻는 중: 후보 id·이름(같은 순서). null이면 묻지 않는 중. */
+    public List<String> closetRemoveIds;
+    public List<String> closetRemoveNames;
+    /** true면 한 벌을 골라 "지울까요?"를 물은 상태. false면 "몇째 옷을 지울까요?"를 물은 상태. */
+    public boolean closetRemoveConfirm;
+
     public AgentSession() {
     }
 

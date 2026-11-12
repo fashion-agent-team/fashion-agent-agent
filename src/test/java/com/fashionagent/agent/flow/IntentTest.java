@@ -38,6 +38,12 @@ class IntentTest {
         assertThat(Intent.of("옷장에 있는 옷 봐줘", false)).isEqualTo(Intent.CLOSET);
         assertThat(Intent.of("옷장 바지 뭐 있어", true)).isEqualTo(Intent.CLOSET);
         assertThat(Intent.of("옷장에서 옷 추천해 줘", false)).isEqualTo(Intent.OUTFIT);
+        // 2026-11-12 시뮬 2회차
+        assertThat(Intent.of("어제 뭐 입었지?", false)).isEqualTo(Intent.CLOSET_HISTORY);
+        assertThat(Intent.of("지난주에 무슨 옷 입었어", false)).isEqualTo(Intent.CLOSET_HISTORY);
+        assertThat(Intent.of("옷장에서 원피스 지워줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
+        assertThat(Intent.of("옷장에서 버린 바지 빼 줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
+        assertThat(Intent.of("내일 뭐 입지?", false)).isEqualTo(Intent.OUTFIT);
     }
 
     @Test
