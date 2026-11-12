@@ -5,6 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.fashionagent.agent.judge.Korean;
+
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -54,7 +56,7 @@ final class ClosetView {
         int total = list.path("total").asInt(0);
         String kind = category == null ? null : KOREAN.get(category);
         if (total == 0) {
-            return (kind == null ? "옷장이 아직 비어 있어요. " : "옷장에 " + kind + "는 아직 없어요. ")
+            return (kind == null ? "옷장이 아직 비어 있어요. " : "옷장에 " + Korean.josa(kind, "은", "는") + " 아직 없어요. ")
                     + "옷 추천을 받고 \"이걸로 할게\"라고 하시면 고른 옷이 옷장에 저장돼요.";
         }
         Map<String, List<String>> byKind = new LinkedHashMap<>();
@@ -62,7 +64,7 @@ final class ClosetView {
             byKind.computeIfAbsent(g.path("category").asString("other"), k -> new ArrayList<>()).add(name(g));
         }
         StringBuilder sb = new StringBuilder(kind == null ? "옷장에 옷이 " + total + "벌 있어요."
-                : "옷장에 " + kind + "가 " + total + "벌 있어요.");
+                : "옷장에 " + Korean.josa(kind, "이", "가") + " " + total + "벌 있어요.");
         for (var e : byKind.entrySet()) {
             List<String> names = e.getValue();
             List<String> said = names.subList(0, Math.min(NAMES_PER_CATEGORY, names.size()));

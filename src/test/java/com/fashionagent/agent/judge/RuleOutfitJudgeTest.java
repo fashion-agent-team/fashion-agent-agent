@@ -59,6 +59,48 @@ class RuleOutfitJudgeTest {
     }
 
     @Test
+    void GPT가_없어도_옷장_후보에서_종류마다_한_벌씩_고른다_2026_11_12() {
+        JsonNode weather = json.readTree("{\"apparentTemperature\": 1, \"dailyRange\": 8}");
+        JsonNode closet = json.readTree("""
+                [{"garmentId":"c_1","category":"outer","name":"패딩","colorName":"검정"},
+                 {"garmentId":"c_2","category":"bottom","name":"청바지","colorName":"청색"},
+                 {"garmentId":"c_3","category":"outer","name":"코트","colorName":"베이지"},
+                 {"garmentId":"c_4","category":"top","name":"니트","colorName":"아이보리"}]""");
+        var out = judge.advise(new OutfitJudge.AdviceInput(weather, json.readTree("[]"), closet, null));
+        assertThat(out.closetPicks()).extracting(p -> p.garmentId()).containsExactly("c_4", "c_2", "c_1");
+        assertThat(out.speech()).endsWith("옷장에 있는 아이보리 니트, 청색 청바지, 검정 패딩이 잘 맞겠어요.");
+
+        JsonNode warm = json.readTree("{\"apparentTemperature\": 24, \"dailyRange\": 6}");
+        var noOuter = judge.advise(new OutfitJudge.AdviceInput(warm, json.readTree("[]"), closet, null));
+        assertThat(noOuter.closetPicks()).extracting(p -> p.garmentId()).containsExactly("c_4", "c_2");
+
+        JsonNode dress = json.readTree("[{\"garmentId\":\"c_9\",\"category\":\"dress\",\"name\":\"원피스\",\"colorName\":\"남색\"},"
+                + "{\"garmentId\":\"c_2\",\"category\":\"bottom\",\"name\":\"청바지\",\"colorName\":\"청색\"}]");
+        assertThat(judge.advise(new OutfitJudge.AdviceInput(warm, json.readTree("[]"), dress, null)).closetPicks())
+                .extracting(p -> p.garmentId()).containsExactly("c_9");
+
+        var empty = judge.advise(new OutfitJudge.AdviceInput(weather, json.readTree("[]"), json.readTree("[]"), null));
+        assertThat(empty.closetPicks()).isEmpty();
+        assertThat(empty.speech()).doesNotContain("옷장");
+    }
+
+    @Test
+    void 종류가_다른_옷은_서로_견주지_않는다_2026_11_12() {
+        var padding = new Garment("g1", "outer", "패딩", "검정", "black", "dark", null, null, null, "casual", List.of(),
+                null, "center", 0.9);
+        var jeans = new Garment("g2", "bottom", "청바지", "청색", "blue", "mid", null, null, null, "casual", List.of(),
+                null, "center", 0.9);
+        var out = judge.check(new OutfitJudge.CheckInput(null, json.readTree("[]"), null, List.of(padding, jeans), List.of()));
+        assertThat(out.comparison()).isNull();
+        assertThat(out.speech()).doesNotContain("보다");
+
+        var two = judge.check(new OutfitJudge.CheckInput(null, json.readTree("[]"), null,
+                List.of(padding, top("g3", "흰색", "white", "smart"), top("g4", "회색", "gray", "casual")), List.of()));
+        assertThat(two.comparison()).isNotNull();
+        assertThat(two.comparison().betterInputId()).isIn("g3", "g4");
+    }
+
+    @Test
     void 쌀쌀하면_겉옷을_추천한다() {
         JsonNode weather = json.readTree("{\"apparentTemperature\": 9.5, \"dailyRange\": 11}");
         var out = judge.advise(new OutfitJudge.AdviceInput(weather, json.readTree("[]"), null, null));
