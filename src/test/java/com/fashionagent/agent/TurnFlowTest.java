@@ -245,7 +245,7 @@ class TurnFlowTest {
         // 가짜 오늘 체감 9.5도
         JsonNode r = turn("u5f", """
                 {"utterance": "오늘 추워?"}""");
-        assertThat(r.path("speech").asString()).startsWith("조금 쌀쌀해요. 체감 10도예요. 지금 맑음");
+        assertThat(r.path("speech").asString()).startsWith("조금 쌀쌀해요. 지금 맑음, 11도이고 체감 10도예요.");
         JsonNode hot = turn("u5f", """
                 {"utterance": "오늘 더워?"}""");
         assertThat(hot.path("speech").asString()).startsWith("아니요, 덥지 않아요.");
