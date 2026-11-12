@@ -32,6 +32,16 @@ class IntentTest {
     }
 
     @Test
+    void 옷장_보기_2026_11_12_폰() {
+        assertThat(Intent.of("옷장 확인해줘", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("내 옷장에 뭐 있어?", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("옷장에 있는 옷 봐줘", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("옷장 바지 뭐 있어", true)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("옷장에서 옷 추천해 줘", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("옷장 사진 엄마한테 보내 줘", false)).isEqualTo(Intent.OTHER);
+    }
+
+    @Test
     void 할_줄_아는_거() {
         assertThat(Intent.of("할 줄 아는 거 말해 봐", false)).isEqualTo(Intent.HELP);
         assertThat(Intent.of("기능 설명해 줘", false)).isEqualTo(Intent.HELP);

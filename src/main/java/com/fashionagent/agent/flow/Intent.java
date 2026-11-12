@@ -8,7 +8,7 @@ import java.util.List;
  * 나머지({@link #OTHER}: 일정 등록·삭제, 다른 날 일정, 가족에게 묻기 등)는 GPT가 도구를 고릅니다.
  */
 public enum Intent {
-    OUTFIT, CHECK, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
+    OUTFIT, CHECK, CLOSET, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
 
     private static final List<String> FINISH_WORDS = List.of("이걸로", "이거로", "이걸입", "이거입", "됐어", "다됐", "그만",
             "끝낼", "마칠");
@@ -50,6 +50,11 @@ public enum Intent {
         // 옷 추천 중 "입고 볼게", "내려놓고 볼게"
         if (inOutfitSession && OutfitFlow.switchFrom(s) != null) {
             return MODE;
+        }
+        // "옷장 확인해 줘", "옷장에 뭐 있어?": 옷장 목록. "옷장에서 옷 추천해 줘"는 추천으로.
+        // 2026-11-12 박창근 님 폰: 키워드가 없어 GPT로 갔고 옷 추천으로 넘어갔습니다.
+        if (s.contains("옷장") && !containsAny(s, OUTFIT_WORDS) && !containsAny(s, SCHEDULE_CHANGE_WORDS)) {
+            return CLOSET;
         }
         if (containsAny(s, CHECK_WORDS) && !s.contains("얼굴") && !FaceFlow.isTeeth(s)) {
             return CHECK;

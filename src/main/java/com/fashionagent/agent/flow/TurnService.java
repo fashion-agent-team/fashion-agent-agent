@@ -126,6 +126,7 @@ public class TurnService {
             case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
             case FINISH -> outfit.finish(session);
             case WHERE -> outfit.where(session);
+            case CLOSET -> closet(session, req.utterance());
             case WEATHER -> weather(session, req.location());
             case SCHEDULE -> schedule(session, req.utterance());
             case FACE -> face.start(session, req.utterance());
@@ -151,6 +152,24 @@ public class TurnService {
                 yield say(session, r.speech(), r.next());
             }
         };
+    }
+
+    /** "옷장 확인해 줘", "옷장에 바지 뭐 있어?": closet_list를 읽어 줍니다. */
+    private TurnResponse closet(AgentSession session, String utterance) {
+        String category = ClosetView.category(utterance);
+        var args = new java.util.LinkedHashMap<String, Object>();
+        if (category != null) {
+            args.put("category", category);
+        }
+        args.put("limit", 30);
+        try {
+            JsonNode list = tools.callForUser(ToolNames.CLOSET_LIST, session.userId, args);
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, ClosetView.speech(list, category), Next.listen,
+                    Result.of("closet_list"));
+        } catch (ToolException e) {
+            return say(session, "미안해요, 지금은 옷장을 못 열었어요. 조금 있다가 다시 말씀해 주실래요?", Next.listen);
+        }
     }
 
     /** "오늘 날씨 어때?" 판단 없이 weather_today 값을 읽어 줍니다. */
