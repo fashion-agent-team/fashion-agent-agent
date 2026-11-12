@@ -86,7 +86,7 @@ public class LlmAssistant implements Assistant {
     }
 
     @Override
-    public Reply reply(AgentSession session, String utterance, Location location, boolean inOutfit) {
+    public Reply reply(AgentSession session, String utterance, Location location, boolean cameraOn) {
         AssistantTools toolbox = new AssistantTools(tools, session, location, json);
         List<Message> messages = new ArrayList<>();
         for (AgentSession.Said said : session.assistantHistory) {
@@ -139,8 +139,9 @@ public class LlmAssistant implements Assistant {
             session.assistantHistory.remove(0);
         }
         // 사진이 필요할 때만 카메라. 옷 추천 중이라도 잡담에는 카메라를 다시 켜지 않습니다(2026-11-06 폰 확인).
-        // 단, 옷을 보다가 일정 등록처럼 일을 했으면 보던 카메라를 이어 갑니다.
-        Next next = inOutfit && !toolbox.done.isEmpty() ? Next.camera_outfit : Next.listen;
+        // 단, 카메라로 옷을 보다가 일정 등록처럼 일을 했으면 보던 카메라를 이어 갑니다.
+        // 2026-11-12 진행 님 폰: 추천만 듣고(카메라 안 켬) 일정을 지웠는데 카메라가 켜져서, 카메라가 켜져 있던 때로 좁혔습니다.
+        Next next = cameraOn && !toolbox.done.isEmpty() ? Next.camera_outfit : Next.listen;
         return new Reply(speech, next, toolbox.feature);
     }
 

@@ -22,9 +22,9 @@ public enum Intent {
             "입은옷", "입은거", "입은모습", "옷차림", "검사해", "검사좀");
     /** "옷장에서 검정 패딩 지워 줘", "옷장에서 버린 바지 빼 줘". */
     private static final List<String> CLOSET_REMOVE_WORDS = List.of("지워", "지우", "삭제", "빼줘", "빼", "버렸", "없애");
-    /** 일정 등록·삭제는 GPT로 보냅니다. */
-    private static final List<String> SCHEDULE_CHANGE_WORDS = List.of("넣어", "등록", "추가", "잡아", "지워", "삭제",
-            "취소", "빼");
+    /** 일정 등록·삭제는 GPT로 보냅니다. 2026-11-12: "일정 없애 줘"가 오늘 일정 읽기로 갔습니다. */
+    private static final List<String> SCHEDULE_CHANGE_WORDS = List.of("넣어", "등록", "추가", "잡아", "지워", "지우",
+            "삭제", "취소", "빼", "없애", "없앨", "없에");
     /**
      * 여러 날 일정("이번 주 일정")은 GPT가 date·endDate로 한 번에 봅니다. 하루("내일", "다음 주 토요일", "11월 20일")는
      * 바로 읽습니다(2026-11-09 측정: GPT를 거치면 2~4.6초, 바로 읽으면 0.1초 안팎).

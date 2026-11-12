@@ -46,12 +46,25 @@ public class TurnService {
     }
 
     public TurnResponse handle(String userId, TurnRequest req) {
-        AgentSession session = req.sessionId() == null ? null
+        AgentSession found = req.sessionId() == null ? null
                 : sessions.find(userId, req.sessionId()).orElse(null);
-        boolean inOutfit = session != null && (session.advice != null || !session.seen.isEmpty());
-        if (session == null) {
-            session = new AgentSession("s_" + UUID.randomUUID(), userId);
+        boolean inOutfit = found != null && (found.advice != null || !found.seen.isEmpty());
+        AgentSession session = found != null ? found : new AgentSession("s_" + UUID.randomUUID(), userId);
+        TurnResponse res = turn(session, req, inOutfit);
+        // 다음 턴에 카메라를 보던 중인지 알 수 있게 이번 next를 기억합니다.
+        if (res.next() != session.lastNext) {
+            session.lastNext = res.next();
+            sessions.save(session);
         }
+        return res;
+    }
+
+    /** 지난 턴에 카메라(옷)를 켜 둔 상태였으면 그 카메라, 아니면 null. */
+    static Next outfitCamera(AgentSession session) {
+        return session.lastNext == Next.camera_outfit || session.lastNext == Next.camera_worn ? session.lastNext : null;
+    }
+
+    private TurnResponse turn(AgentSession session, TurnRequest req, boolean inOutfit) {
         // 이번 대화에서 이미 답했으면 그 답을 쓰고, 아니면 앱이 기억한 답(없으면 null = 아직 안 물음).
         if (req.allowGpt() != null || !session.gptDecided) {
             session.gptConsent = req.allowGpt();
@@ -145,7 +158,9 @@ public class TurnService {
             case HELP -> say(session, SmallTalk.CAPABILITIES, Next.listen);
             // 그 밖(일정 등록·삭제, 다른 날 일정 등)은 GPT가 도구를 고릅니다(약속 5-2절).
             case OTHER -> {
-                Assistant.Reply r = assistant.reply(session, req.utterance(), req.location(), inOutfit);
+                // 카메라를 켜 둔 채 일정을 넣었을 때만 카메라를 이어 갑니다. 추천만 듣고 카메라를 안 켰으면 켜지 않습니다.
+                Next camera = outfitCamera(session);
+                Assistant.Reply r = assistant.reply(session, req.utterance(), req.location(), camera != null);
                 // GPT가 말뜻을 보고 우리 기능을 고른 경우(키워드에 안 걸린 말). 그 흐름을 그대로 시작합니다.
                 if (r.feature() != null) {
                     yield switch (r.feature()) {
@@ -160,7 +175,7 @@ public class TurnService {
                 if (ReminderFlow.PENDING.equals(session.reminderStep)) {
                     yield say(session, reminder.askIfAdded(session, r.speech()), Next.listen);
                 }
-                yield say(session, r.speech(), r.next());
+                yield say(session, r.speech(), r.next() == Next.camera_outfit && camera != null ? camera : r.next());
             }
         };
     }
