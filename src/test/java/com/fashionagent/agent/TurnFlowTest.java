@@ -357,12 +357,8 @@ class TurnFlowTest {
 
         JsonNode front = turn("w1", """
                 {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
-        assertThat(front.path("speech").asString()).contains("옆으로");
+        assertThat(front.path("speech").asString()).contains("뒤로").doesNotContain("옆으로");
         assertThat(front.path("next").asString()).isEqualTo("camera_worn");
-
-        JsonNode side = turn("w1", """
-                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
-        assertThat(side.path("speech").asString()).contains("뒤로");
 
         JsonNode back = turn("w1", """
                 {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
@@ -413,7 +409,7 @@ class TurnFlowTest {
         assertThat(r.path("speech").asString()).contains("물러나");
         JsonNode again = turn("w4", """
                 {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
-        assertThat(again.path("speech").asString()).contains("옆으로");
+        assertThat(again.path("speech").asString()).contains("뒤로");
     }
 
     @Test
