@@ -56,6 +56,28 @@ class IntentTest {
     }
 
     @Test
+    void 날씨라는_말이_없어도_날씨로_바로_답한다() {
+        // 2026-11-12 실제 서버: "우산 챙겨야 해?"가 GPT로 가서 8초 걸렸음
+        assertThat(Intent.of("우산 챙겨야 해?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("오늘 추워?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("내일 비 와?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("지금 기온 몇 도야", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("내일 눈 와?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("겉옷 챙겨야 할까", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("내일 날씨 어때", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("토요일 날씨 알려 줘", false)).isEqualTo(Intent.WEATHER);
+    }
+
+    @Test
+    void 날씨_단어가_있어도_다른_기능이_먼저() {
+        assertThat(Intent.of("추운 날 뭐 입을까", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("눈 화장 봐 줘", false)).isEqualTo(Intent.FACE);
+        // 여러 날은 GPT가 날짜별로 봄
+        assertThat(Intent.of("이번 주 날씨 어때", false)).isEqualTo(Intent.OTHER);
+        assertThat(Intent.of("준비가 다 끝났어", false)).isNotEqualTo(Intent.WEATHER);
+    }
+
+    @Test
     void 개별_기능() {
         assertThat(Intent.of("오늘 날씨 어때", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("오늘 일정 뭐야", false)).isEqualTo(Intent.SCHEDULE);
