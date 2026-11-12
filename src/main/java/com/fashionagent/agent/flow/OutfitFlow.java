@@ -444,7 +444,8 @@ public class OutfitFlow {
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
                         s.garment().colorName(), s.fit()))
                 .toList();
-        CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, now, before));
+        CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, now, before,
+                SpokenDate.label(targetDay(session), today())));
 
         for (Garment g : now) {
             String fit = j.verdicts().stream().filter(v -> v.inputId().equals(g.id()))
@@ -590,7 +591,8 @@ public class OutfitFlow {
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
                         s.garment().colorName(), s.fit()))
                 .toList();
-        CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, outfit, before));
+        CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, outfit, before,
+                SpokenDate.label(targetDay(session), today())));
         for (Garment g : outfit) {
             String fit = j.verdicts().stream().filter(v -> v.inputId().equals(g.id()))
                     .map(OutfitCheck.Verdict::fit).findFirst().orElse("ok");

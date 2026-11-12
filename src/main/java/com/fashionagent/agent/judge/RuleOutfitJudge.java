@@ -127,7 +127,7 @@ public class RuleOutfitJudge implements OutfitJudge {
     public CheckJudgement check(CheckInput in) {
         Occasion occasion = Occasion.strictest(in.events());
         String title = Occasion.titleOf(in.events(), occasion);
-        String place = title != null ? title + "에" : "오늘";
+        String place = title != null ? title + "에" : in.day();
 
         Weather w = Weather.of(in.weather());
         List<Verdict> verdicts = new ArrayList<>();

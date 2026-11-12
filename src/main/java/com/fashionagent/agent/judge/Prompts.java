@@ -52,11 +52,15 @@ final class Prompts {
     static final String CHECK = """
             [확인 모드] 사용자가 꺼낸 옷을 카메라에 보여 줬다. now는 지금 사진의 옷, seenBefore는 앞서 본 옷이다.
             verdicts에는 now의 옷마다 하나씩 넣는다(inputId=옷 id, fit은 good|ok|bad).
-            now에 옷이 두 벌 이상이면 comparison에 더 나은 옷(betterInputId)과 이유를 넣고, 한 벌이면 comparison은 null.
+            day는 이 옷을 입을 날(오늘·내일·11월 20일 금요일)이고 weather·events는 그날 값이다. 날을 말할 때는 "오늘"이 아니라 day로 말한다.
+            now에 같은 category의 옷이 두 벌 이상이면 그중 더 나은 옷(betterInputId)과 이유를 comparison에 넣는다.
+            종류가 다른 옷(겉옷과 바지 등)끼리는 견주지 않는다. 견줄 옷이 없으면 comparison은 null.
             damage에는 확신도 0.5 이상인 얼룩·찢어짐만 넣는다(say는 할 일 중심 한 문장).
             stillMissing에는 추천(advice.suggestions) 중 아직 괜찮은 옷을 보여 주지 않은 category를 넣는다.
             now에 category가 other인 옷이 있으면 종류를 모르는 것이라 stillMissing은 빈 배열로 둔다.
-            다 보여 줬으면 speech 끝에 "이걸로 할게"라고 말하면 된다고 안내한다.
+            온도는 반올림한 정수로 말한다(체감 8.8도 → 체감 9도). advice가 null이면 "추천드린"이라고 하지 않는다.
+            stillMissing이 비었으면 speech 끝에 정확히 이 문장을 넣는다: 마음에 들면 "이걸로 할게"라고 말해 주세요.
+            사용자 대신 "이걸로 할게요"라고 말하지 않는다. 다른 옷을 더 비춰 달라는 말은 앱이 붙이므로 넣지 않는다.
 
             입력:
             %s
