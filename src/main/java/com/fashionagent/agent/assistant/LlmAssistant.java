@@ -51,16 +51,11 @@ public class LlmAssistant implements Assistant {
             - 일정 등록에 날짜나 시각이 빠졌으면 도구를 부르지 말고 빠진 것만 짧게 물어봅니다.
               "두 시"처럼 오전·오후가 없으면 오후로 봅니다(새벽 일정은 드묾). 이 규칙을 사용자에게 설명하지 않습니다.
             - 일정 이름(title)에는 날짜·시각 말("모레", "다음 주", "두 시")을 넣지 않습니다. 예: "모레 회사 회의" → "회사 회의".
-            - 가족·친구에게 묻기("엄마한테 물어봐 줘", "답 왔어?")는 사용자에게 되묻기 전에 먼저 도구를 부릅니다.
-              1) helper_contacts로 목록을 보고 사용자가 말한 사람(엄마, 친구 이름)의 contactId를 찾습니다.
-              2) 한 사람으로 정해지면 바로 helper_ask로 보냅니다(사진은 agent가 넣음). 정해지지 않을 때만 목록의 이름을 말하며 누구인지 묻습니다.
-              3) "답 왔어?"는 helper_answer를 부릅니다(requestId는 비워도 됨).
-              helper_ask를 불렀으면 이미 보낸 것입니다. "보냈어요"라고 말하고, 다시 확인을 받지 않습니다.
             - 도구 결과에 error가 있으면 무엇이 안 됐는지 쉬운 말로 알려 주고, 할 수 있는 다음 행동을 하나 말합니다.
               code가 unavailable이면 그 기능을 지금은 쓸 수 없다고 말합니다(바로 다시 해 보자고 하지 않음).
             - 사용자 말을 그대로 받아 뜻을 판단합니다. 우리 기능으로 풀 수 있으면 그 도구를 부릅니다.
               옷 추천·옷 확인, 얼굴·이 확인, 오늘 일정 읽기는 open_feature로 시작합니다(직접 추천하거나 판단하지 않음).
-            - 할 수 있는 일: 날씨와 일정에 맞춘 옷 추천과 꺼낸 옷 확인(얼룩·찢어짐), 날씨, 일정 넣기·읽기·지우기, 얼굴·이 확인, 가족에게 옷 사진 보내 묻기.
+            - 할 수 있는 일: 날씨와 일정에 맞춘 옷 추천과 꺼낸 옷 확인(얼룩·찢어짐), 날씨, 일정 넣기·읽기·지우기, 얼굴·이 확인.
             - 기능과 상관없는 말(인사, 잡담, 고민, 일반 상식 질문)에도 대화하듯 자연스럽게 짧게 답합니다. "모르겠어요"로 끝내지 않습니다.
               할 수 없는 일(전화 걸기, 음악 틀기, 길 안내, 결제 등)은 아직 못 한다고 솔직히 말하고, 대신 도울 수 있는 일이 있으면 하나만 제안합니다.
               뉴스·주가처럼 도구로 확인할 수 없는 최신 정보는 지어내지 않고 확인할 수 없다고 말합니다.
@@ -91,7 +86,7 @@ public class LlmAssistant implements Assistant {
 
     @Override
     public Reply reply(AgentSession session, String utterance, Location location, boolean inOutfit) {
-        AssistantTools toolbox = new AssistantTools(tools, session, location, session.photo(clock), json);
+        AssistantTools toolbox = new AssistantTools(tools, session, location, json);
         List<Message> messages = new ArrayList<>();
         for (AgentSession.Said said : session.assistantHistory) {
             messages.add(said.user() ? new UserMessage(said.text()) : new AssistantMessage(said.text()));
@@ -143,8 +138,8 @@ public class LlmAssistant implements Assistant {
             session.assistantHistory.remove(0);
         }
         // 사진이 필요할 때만 카메라. 옷 추천 중이라도 잡담에는 카메라를 다시 켜지 않습니다(2026-11-06 폰 확인).
-        // 단, 옷을 보다가 가족에게 묻기처럼 일을 했으면 보던 카메라를 이어 갑니다.
-        Next next = toolbox.neededPhoto || (inOutfit && !toolbox.done.isEmpty()) ? Next.camera_outfit : Next.listen;
+        // 단, 옷을 보다가 일정 등록처럼 일을 했으면 보던 카메라를 이어 갑니다.
+        Next next = inOutfit && !toolbox.done.isEmpty() ? Next.camera_outfit : Next.listen;
         return new Reply(speech, next, toolbox.feature);
     }
 

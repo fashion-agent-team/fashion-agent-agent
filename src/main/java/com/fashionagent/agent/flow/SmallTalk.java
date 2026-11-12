@@ -17,11 +17,11 @@ public final class SmallTalk {
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     /** "뭐 할 수 있어?"의 답. 한 번에 듣기 좋게 짧게. */
-    public static final String CAPABILITIES = "제가 할 수 있는 일은 다섯 가지예요. "
+    public static final String CAPABILITIES = "제가 할 수 있는 일은 네 가지예요. "
             + "오늘 날씨와 일정에 맞춰 옷을 추천하고, 꺼낸 옷을 카메라로 보여 주시면 얼룩이나 찢어진 곳이 없는지 봐 드려요. "
             + "옷장에 저장된 옷도 읽어 드려요. "
             + "오늘 날씨를 알려 드리고, 일정을 넣거나 읽어 드려요. "
-            + "얼굴이나 이에 뭐가 묻었는지 봐 드리고, 옷 사진을 가족에게 보내 물어봐 드릴 수도 있어요. "
+            + "얼굴 화장이나 이에 뭐가 꼈는지 봐 드려요. "
             + "제 목소리가 마음에 안 들면 \"목소리 바꿔 줘\"라고 하시면 돼요. "
             + "예를 들어 \"내일 뭐 입지?\"라고 말해 보세요.";
 

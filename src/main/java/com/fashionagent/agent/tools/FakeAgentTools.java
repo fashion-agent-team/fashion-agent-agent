@@ -43,12 +43,6 @@ public class FakeAgentTools implements AgentTools {
             case ToolNames.SCHEDULE_SET_REMINDER -> reminder(args);
             case ToolNames.FACE_MAKEUP_CHECK -> makeup(String.valueOf(args.get("imageBase64")));
             case ToolNames.TEETH_CHECK -> teeth(String.valueOf(args.get("imageBase64")));
-            case ToolNames.HELPER_CONTACTS -> Map.of("contacts",
-                    List.of(Map.of("contactId", "h_1", "name", "엄마", "relation", "가족")));
-            case ToolNames.HELPER_ASK -> Map.of("requestId", "r_fake", "expiresAt", "2026-11-05T09:00:00+09:00",
-                    "sentTo", "엄마");
-            case ToolNames.HELPER_ANSWER -> Map.of("status", "answered", "answer", "괜찮아, 잘 어울려.",
-                    "answeredBy", "엄마", "answeredAt", "2026-11-04T09:10:00+09:00");
             default -> throw new ToolException(tool, "not_implemented", "가짜 도구에 없는 도구예요.");
         });
     }

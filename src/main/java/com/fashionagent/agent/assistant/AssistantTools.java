@@ -32,17 +32,16 @@ public class AssistantTools {
     private final AgentTools tools;
     private final AgentSession session;
     private final Location location;
-    private final String photo;
     private final JsonMapper json;
 
     /**
-     * 이미 해 버린 일(일정 등록·삭제, 가족에게 보내기)의 안내 문장. GPT가 도구를 부른 뒤 시간 초과나
+     * 이미 해 버린 일(일정 등록·삭제)의 안내 문장. GPT가 도구를 부른 뒤 시간 초과나
      * 사용량 초과로 마지막 답을 못 만들어도, 사용자가 "처리하지 못했어요"만 듣고 같은 일을 또 시키지 않게 이건 말해 줍니다.
      */
     final List<Done> done = new ArrayList<>();
 
     /**
-     * 해 버린 일 하나. GPT 답에 {@code mention} 중 하나도 없으면(예: 보내 놓고 "보내려면 확인이라고 말해 주세요")
+     * 해 버린 일 하나. GPT 답에 {@code mention} 중 하나도 없으면(예: 등록해 놓고 "등록하려면 확인이라고 말해 주세요")
      * 답을 믿지 않고 {@code say}를 읽습니다. 2026-11-04 실제 GPT(gpt-5-mini)에서 이런 답이 나왔습니다.
      */
     record Done(String say, List<String> mention) {
@@ -57,17 +56,11 @@ public class AssistantTools {
     static final int MAX_LIST_DAYS = 14;
     /** schedule_list에서 본 일정 이름(eventId → title). 지운 뒤 "면접을 지웠어요"라고 말하려고. */
     private final Map<String, String> eventTitles = new HashMap<>();
-    /** helper_contacts에서 본 이름(contactId → name). */
-    private final Map<String, String> contactNames = new HashMap<>();
-    /** 가족에게 물으려 했는데 사진이 없었는지. 그러면 카메라를 켭니다. */
-    boolean neededPhoto;
 
-    public AssistantTools(AgentTools tools, AgentSession session, Location location, String photo,
-            JsonMapper json) {
+    public AssistantTools(AgentTools tools, AgentSession session, Location location, JsonMapper json) {
         this.tools = tools;
         this.session = session;
         this.location = location == null ? Location.SEOUL : location;
-        this.photo = photo;
         this.json = json;
     }
 
@@ -170,41 +163,6 @@ public class AssistantTools {
         return out;
     }
 
-    @Tool(name = ToolNames.HELPER_CONTACTS, description = """
-            사용자가 등록한 가족·친구 목록(contactId, name, relation)을 가져옵니다. \
-            "엄마한테 물어봐 줘"처럼 사람을 부를 때 contactId를 찾으려고 먼저 부릅니다.""")
-    public String helperContacts() {
-        String out = call(ToolNames.HELPER_CONTACTS, Map.of(), true);
-        for (JsonNode c : json.readTree(out).path("contacts")) {
-            contactNames.put(c.path("contactId").asString(""), c.path("name").asString(""));
-        }
-        return out;
-    }
-
-    @Tool(name = ToolNames.HELPER_ASK, description = """
-            직전에 카메라로 본 사진과 질문을 가족·친구에게 문자로 보냅니다. 사용자가 원할 때만 부르세요. \
-            사진은 agent가 넣으니 넘기지 않습니다. 질문은 받는 사람이 읽기 좋게 한 문장으로 다듬어 주세요.""")
-    public String helperAsk(
-            @ToolParam(description = "helper_contacts 결과의 contactId") String contactId,
-            @ToolParam(description = "받는 사람에게 보낼 질문. 예: 이 옷 오늘 결혼식에 괜찮은지 봐 줄래?") String question) {
-        if (photo == null) {
-            neededPhoto = true;
-            return error("no_photo", "보낼 사진이 없어요. 사용자에게 먼저 옷이나 얼굴을 카메라에 보여 달라고 하세요.");
-        }
-        String out = call(ToolNames.HELPER_ASK,
-                Map.of("contactId", contactId, "question", question, "imageBase64", photo), true);
-        JsonNode node = json.readTree(out);
-        if (node.has("requestId")) {
-            session.lastHelperRequestId = node.path("requestId").asString();
-            String name = node.path("sentTo").asString(contactNames.get(contactId));
-            String who = name == null || name.isBlank() ? "가족" : name;
-            // 누구에게 보냈는지도 답에 있어야 합니다("보냈어요."만 오면 바꿈).
-            done.add(new Done(who + "에게 사진과 질문을 보냈어요. 답이 왔는지는 \"답 왔어?\"라고 물어봐 주세요.",
-                    List.of("보냈", who)));
-        }
-        return out;
-    }
-
     /** 기능 열기에서 고를 수 있는 이름. */
     static final java.util.Set<String> FEATURES = java.util.Set.of("outfit", "face", "teeth", "schedule_today");
 
@@ -227,19 +185,6 @@ public class AssistantTools {
         }
         feature = n;
         return "{\"opened\":\"" + n + "\"}";
-    }
-
-    @Tool(name = ToolNames.HELPER_ANSWER, description = """
-            가족·친구에게 보낸 질문에 답이 왔는지 확인합니다. "엄마 답 왔어?"에 씁니다. \
-            status가 pending이면 아직, answered면 answer를 읽어 주고, expired면 시간이 지났다고 말합니다.""")
-    public String helperAnswer(
-            @ToolParam(description = "helper_ask 결과의 requestId. 모르면 빈 문자열(가장 최근 질문)", required = false)
-            String requestId) {
-        String id = requestId == null || requestId.isBlank() ? session.lastHelperRequestId : requestId;
-        if (id == null) {
-            return error("no_request", "이 대화에서 보낸 질문이 없어요.");
-        }
-        return call(ToolNames.HELPER_ANSWER, Map.of("requestId", id), true);
     }
 
     private String call(String tool, Map<String, Object> args, boolean forUser) {
