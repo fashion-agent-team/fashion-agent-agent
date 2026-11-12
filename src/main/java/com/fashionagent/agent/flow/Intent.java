@@ -8,7 +8,7 @@ import java.util.List;
  * 나머지({@link #OTHER}: 일정 등록·삭제, 다른 날 일정 등)는 GPT가 도구를 고릅니다.
  */
 public enum Intent {
-    OUTFIT, CHECK, CLOSET, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
+    OUTFIT, CHECK, CLOSET, CLOSET_HISTORY, CLOSET_REMOVE, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
 
     private static final List<String> FINISH_WORDS = List.of("이걸로", "이거로", "이걸입", "이거입", "됐어", "다됐", "그만",
             "끝낼", "마칠");
@@ -20,6 +20,8 @@ public enum Intent {
      */
     private static final List<String> CHECK_WORDS = List.of("옷검사", "옷확인", "옷체크", "옷상태", "옷봐", "옷좀봐",
             "입은옷", "입은거", "입은모습", "옷차림", "검사해", "검사좀");
+    /** "옷장에서 검정 패딩 지워 줘", "옷장에서 버린 바지 빼 줘". */
+    private static final List<String> CLOSET_REMOVE_WORDS = List.of("지워", "지우", "삭제", "빼줘", "빼", "버렸", "없애");
     /** 일정 등록·삭제는 GPT로 보냅니다. */
     private static final List<String> SCHEDULE_CHANGE_WORDS = List.of("넣어", "등록", "추가", "잡아", "지워", "삭제",
             "취소", "빼");
@@ -48,6 +50,13 @@ public enum Intent {
         }
         // "옷장 확인해 줘", "옷장에 뭐 있어?": 옷장 목록. "옷장에서 옷 추천해 줘"는 추천으로.
         // 2026-11-12 박창근 님 폰: 키워드가 없어 GPT로 갔고 옷 추천으로 넘어갔습니다.
+        if (s.contains("옷장") && containsAny(s, CLOSET_REMOVE_WORDS)) {
+            return CLOSET_REMOVE;
+        }
+        // "어제 뭐 입었지?", "지난주에 뭐 입었어?": 입은 날 기록 (2026-11-12 시뮬: '뭐입'에 걸려 추천으로 갔음)
+        if (s.contains("입었") && containsAny(s, List.of("뭐", "뭘", "무슨", "어떤", "무엇"))) {
+            return CLOSET_HISTORY;
+        }
         if (s.contains("옷장") && !containsAny(s, OUTFIT_WORDS) && !containsAny(s, SCHEDULE_CHANGE_WORDS)) {
             return CLOSET;
         }

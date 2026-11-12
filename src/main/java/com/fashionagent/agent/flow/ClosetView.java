@@ -86,6 +86,10 @@ final class ClosetView {
     }
 
     /** "검정 패딩", 색 이름이 없으면 이름만. */
+    static String label(JsonNode g) {
+        return name(g);
+    }
+
     private static String name(JsonNode g) {
         String color = g.path("colorName").asString("");
         String name = g.path("name").asString("옷");
