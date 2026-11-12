@@ -25,6 +25,10 @@ class ClosetViewTest {
         var list = json.readTree("{\"garments\":[],\"total\":0}");
         assertThat(ClosetView.speech(list, null)).startsWith("옷장이 아직 비어 있어요.").contains("이걸로 할게");
         assertThat(ClosetView.speech(list, "bottom")).startsWith("옷장에 하의는 아직 없어요.");
+        // 2026-11-12 e2e: "신발는" → "신발은"
+        assertThat(ClosetView.speech(list, "shoes")).startsWith("옷장에 신발은 아직 없어요.");
+        var one = json.readTree("{\"total\":1,\"garments\":[{\"category\":\"outer\",\"name\":\"패딩\"}]}");
+        assertThat(ClosetView.speech(one, "outer")).startsWith("옷장에 겉옷이 1벌 있어요.");
     }
 
     @Test

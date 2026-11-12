@@ -10,6 +10,7 @@ import java.util.Set;
 import com.fashionagent.agent.model.AdviceJudgement;
 import com.fashionagent.agent.model.CheckJudgement;
 import com.fashionagent.agent.model.Garment;
+import com.fashionagent.agent.model.OutfitAdvice.ClosetPick;
 import com.fashionagent.agent.model.OutfitAdvice.Suggestion;
 import com.fashionagent.agent.model.OutfitCheck.Comparison;
 import com.fashionagent.agent.model.OutfitCheck.Damage;
@@ -67,7 +68,59 @@ public class RuleOutfitJudge implements OutfitJudge {
         if (w.needsUmbrella()) {
             speech.append(" 비 소식이 있으니 우산도 챙기세요.");
         }
-        return new AdviceJudgement(suggestions, List.of(), speech.toString());
+        List<ClosetPick> picks = closetPicks(in.closetCandidates(), w.needsOuter());
+        if (!picks.isEmpty()) {
+            speech.append(" 옷장에 있는 ").append(closetSentence(in.closetCandidates(), picks));
+        }
+        return new AdviceJudgement(suggestions, picks, speech.toString());
+    }
+
+    /**
+     * 옷장 후보(closet_search가 자리·체감 온도·최근 입은 날로 이미 순서를 매김)에서 종류마다 첫 옷을 고릅니다.
+     * 2026-11-12 e2e: GPT 없이(규칙 판단) 추천하면 옷장에 옷이 있어도 전혀 쓰지 않았습니다.
+     */
+    static List<ClosetPick> closetPicks(JsonNode candidates, boolean needsOuter) {
+        if (candidates == null || !candidates.isArray() || candidates.isEmpty()) {
+            return List.of();
+        }
+        List<String> wanted = new ArrayList<>(List.of("top", "bottom"));
+        if (needsOuter) {
+            wanted.add("outer");
+        }
+        List<ClosetPick> picks = new ArrayList<>();
+        boolean dress = false;
+        for (String cat : wanted) {
+            for (JsonNode c : candidates) {
+                String id = c.path("garmentId").asString("");
+                String category = c.path("category").asString("");
+                // 상의 자리에 원피스가 먼저 오면 원피스 하나로 상의·하의를 대신합니다
+                boolean fits = category.equals(cat) || ("top".equals(cat) && "dress".equals(category));
+                if (!id.isBlank() && fits) {
+                    if ("bottom".equals(cat) && dress) {
+                        break;
+                    }
+                    picks.add(new ClosetPick(id, "옷장에 있는 " + Korean.category(cat)));
+                    dress |= "dress".equals(category);
+                    break;
+                }
+            }
+        }
+        return picks;
+    }
+
+    private static String closetSentence(JsonNode candidates, List<ClosetPick> picks) {
+        List<String> labels = new ArrayList<>();
+        for (ClosetPick p : picks) {
+            for (JsonNode c : candidates) {
+                if (p.garmentId().equals(c.path("garmentId").asString(""))) {
+                    String color = c.path("colorName").asString("");
+                    String name = c.path("name").asString("옷");
+                    labels.add(color.isBlank() || name.startsWith(color) ? name : color + " " + name);
+                    break;
+                }
+            }
+        }
+        return Korean.josa(String.join(", ", labels), "이", "가") + " 잘 맞겠어요.";
     }
 
     @Override
@@ -93,8 +146,10 @@ public class RuleOutfitJudge implements OutfitJudge {
         }
 
         Comparison comparison = null;
-        if (in.now().size() >= 2) {
-            Garment best = in.now().stream()
+        // 같은 종류끼리만 견줍니다(2026-11-12 e2e: 패딩과 청바지를 "더 잘 맞아요"로 비교했음).
+        List<Garment> rivals = sameKind(in.now());
+        if (rivals.size() >= 2) {
+            Garment best = rivals.stream()
                     .max(Comparator.comparingInt((Garment g) -> rank(verdictOf(verdicts, g.id())))
                             .thenComparingInt(g -> -damageCount(damage, g.id())))
                     .orElseThrow();
@@ -107,7 +162,7 @@ public class RuleOutfitJudge implements OutfitJudge {
         List<String> sentences = new ArrayList<>();
         if (comparison != null) {
             Garment best = byId(in.now(), comparison.betterInputId());
-            Garment other = in.now().stream().filter(g -> g != best).findFirst().orElseThrow();
+            Garment other = rivals.stream().filter(g -> g != best).findFirst().orElseThrow();
             sentences.add(Korean.josa(Korean.position(best.position()) + " " + best.label(), "이", "가") + " "
                     + Korean.position(other.position()) + " " + other.label() + "보다 " + place + " 더 잘 맞아요.");
         } else if (!in.now().isEmpty()) {
@@ -123,6 +178,15 @@ public class RuleOutfitJudge implements OutfitJudge {
             sentences.add("마음에 들면 \"이걸로 할게\"라고 말해 주세요.");
         }
         return new CheckJudgement(verdicts, comparison, damage, missing, String.join(" ", sentences));
+    }
+
+    /** 두 벌 이상 있는 종류 중 처음 나온 종류의 옷들. 없으면 빈 목록. */
+    static List<Garment> sameKind(List<Garment> now) {
+        Map<String, List<Garment>> byKind = new java.util.LinkedHashMap<>();
+        for (Garment g : now) {
+            byKind.computeIfAbsent(String.valueOf(g.category()), k -> new ArrayList<>()).add(g);
+        }
+        return byKind.values().stream().filter(l -> l.size() >= 2).findFirst().orElse(List.of());
     }
 
     private record Fit(String fit, String note) {
