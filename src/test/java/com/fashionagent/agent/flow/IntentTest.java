@@ -32,13 +32,21 @@ class IntentTest {
     }
 
     @Test
+    void 옷장_보기_2026_11_12_폰() {
+        assertThat(Intent.of("옷장 확인해줘", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("내 옷장에 뭐 있어?", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("옷장에 있는 옷 봐줘", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("옷장 바지 뭐 있어", true)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("옷장에서 옷 추천해 줘", false)).isEqualTo(Intent.OUTFIT);
+    }
+
+    @Test
     void 할_줄_아는_거() {
         assertThat(Intent.of("할 줄 아는 거 말해 봐", false)).isEqualTo(Intent.HELP);
         assertThat(Intent.of("기능 설명해 줘", false)).isEqualTo(Intent.HELP);
         assertThat(Intent.of("뭐 할 수 있어?", false)).isEqualTo(Intent.HELP);
         assertThat(Intent.of("뭘 도와줄 수 있어", false)).isEqualTo(Intent.HELP);
         assertThat(Intent.of("날씨 기능 있어?", false)).isEqualTo(Intent.WEATHER);
-        assertThat(Intent.of("엄마한테 뭐 할 수 있는지 물어봐 줘", false)).isEqualTo(Intent.OTHER);
     }
 
     @Test
@@ -56,11 +64,9 @@ class IntentTest {
     }
 
     @Test
-    void 일정_등록_삭제_다른_날과_가족에게_묻기는_GPT로() {
+    void 일정_등록_삭제_다른_날은_GPT로() {
         assertThat(Intent.of("토요일 두 시에 결혼식 넣어 줘", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("이번 주 일정 뭐야", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("면접 일정 지워 줘", false)).isEqualTo(Intent.OTHER);
-        assertThat(Intent.of("이 옷 괜찮은지 엄마한테 물어봐 줘", true)).isEqualTo(Intent.OTHER);
-        assertThat(Intent.of("엄마 답 왔어?", false)).isEqualTo(Intent.OTHER);
     }
 }

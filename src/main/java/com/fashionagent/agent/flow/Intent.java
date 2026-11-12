@@ -5,10 +5,10 @@ import java.util.List;
 /**
  * 말로 들어온 요청 고르기. 옷 추천 흐름은 GPT가 아니라 키워드로 정해서 발표 때 매번 같게 동작합니다(약속 5절).
  * 날씨·오늘 일정 읽기·얼굴 확인도 키워드로 바로 처리합니다(빠르고 GPT 없이도 됨).
- * 나머지({@link #OTHER}: 일정 등록·삭제, 다른 날 일정, 가족에게 묻기 등)는 GPT가 도구를 고릅니다.
+ * 나머지({@link #OTHER}: 일정 등록·삭제, 다른 날 일정 등)는 GPT가 도구를 고릅니다.
  */
 public enum Intent {
-    OUTFIT, CHECK, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
+    OUTFIT, CHECK, CLOSET, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
 
     private static final List<String> FINISH_WORDS = List.of("이걸로", "이거로", "이걸입", "이거입", "됐어", "다됐", "그만",
             "끝낼", "마칠");
@@ -20,8 +20,6 @@ public enum Intent {
      */
     private static final List<String> CHECK_WORDS = List.of("옷검사", "옷확인", "옷체크", "옷상태", "옷봐", "옷좀봐",
             "입은옷", "입은거", "입은모습", "옷차림", "검사해", "검사좀");
-    /** 가족·친구에게 묻기. 옷 이야기가 섞여도("이 옷 괜찮은지 엄마한테 물어봐") GPT로 보냅니다. */
-    private static final List<String> HELPER_WORDS = List.of("물어", "보내", "답왔", "답장");
     /** 일정 등록·삭제는 GPT로 보냅니다. */
     private static final List<String> SCHEDULE_CHANGE_WORDS = List.of("넣어", "등록", "추가", "잡아", "지워", "삭제",
             "취소", "빼");
@@ -38,9 +36,6 @@ public enum Intent {
     /** inOutfitSession: 옷 추천 대화 중인지 (마무리·"어디야?"는 그때만). */
     public static Intent of(String utterance, boolean inOutfitSession) {
         String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
-        if (containsAny(s, HELPER_WORDS)) {
-            return OTHER;
-        }
         if (inOutfitSession && containsAny(s, FINISH_WORDS)) {
             return FINISH;
         }
@@ -50,6 +45,11 @@ public enum Intent {
         // 옷 추천 중 "입고 볼게", "내려놓고 볼게"
         if (inOutfitSession && OutfitFlow.switchFrom(s) != null) {
             return MODE;
+        }
+        // "옷장 확인해 줘", "옷장에 뭐 있어?": 옷장 목록. "옷장에서 옷 추천해 줘"는 추천으로.
+        // 2026-11-12 박창근 님 폰: 키워드가 없어 GPT로 갔고 옷 추천으로 넘어갔습니다.
+        if (s.contains("옷장") && !containsAny(s, OUTFIT_WORDS) && !containsAny(s, SCHEDULE_CHANGE_WORDS)) {
+            return CLOSET;
         }
         if (containsAny(s, CHECK_WORDS) && !s.contains("얼굴") && !FaceFlow.isTeeth(s)) {
             return CHECK;

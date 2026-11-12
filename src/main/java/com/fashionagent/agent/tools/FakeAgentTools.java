@@ -37,18 +37,13 @@ public class FakeAgentTools implements AgentTools {
             case ToolNames.CLOSET_SAVE -> closetSave(args);
             case ToolNames.CLOSET_WEAR -> Map.of("recorded", ((List<?>) args.get("garmentIds")).size());
             case ToolNames.CLOSET_MERGE -> Map.of("merged", args.get("garmentId"), "into", args.get("intoGarmentId"));
+            case ToolNames.CLOSET_LIST -> Map.of("garments", List.of(), "total", 0);
             case ToolNames.SCHEDULE_ADD -> Map.of("eventId", "e_added", "occasion", "casual",
                     "spokenSummary", "일정 '" + args.get("title") + "'을 등록했어요.");
             case ToolNames.SCHEDULE_DELETE -> Map.of("deleted", true);
             case ToolNames.SCHEDULE_SET_REMINDER -> reminder(args);
             case ToolNames.FACE_MAKEUP_CHECK -> makeup(String.valueOf(args.get("imageBase64")));
             case ToolNames.TEETH_CHECK -> teeth(String.valueOf(args.get("imageBase64")));
-            case ToolNames.HELPER_CONTACTS -> Map.of("contacts",
-                    List.of(Map.of("contactId", "h_1", "name", "엄마", "relation", "가족")));
-            case ToolNames.HELPER_ASK -> Map.of("requestId", "r_fake", "expiresAt", "2026-11-05T09:00:00+09:00",
-                    "sentTo", "엄마");
-            case ToolNames.HELPER_ANSWER -> Map.of("status", "answered", "answer", "괜찮아, 잘 어울려.",
-                    "answeredBy", "엄마", "answeredAt", "2026-11-04T09:10:00+09:00");
             default -> throw new ToolException(tool, "not_implemented", "가짜 도구에 없는 도구예요.");
         });
     }

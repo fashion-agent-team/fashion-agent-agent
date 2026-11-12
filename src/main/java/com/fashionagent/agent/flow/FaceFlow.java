@@ -196,12 +196,12 @@ public class FaceFlow {
         return parts.isEmpty() ? "화장이 양쪽이 조금 달라 보여요. 거울로 한 번 확인해 보세요." : String.join(" ", parts);
     }
 
-    /** 치아가 애매할 때 덧붙이는 말. 사용자가 원하면 GPT 대화가 helper_ask로 직전 사진을 보냅니다. */
-    static final String ASK_HELPER = "가족이나 친구에게 사진을 보내서 물어볼까요?";
+    /** 치아가 애매할 때 덧붙이는 말. 다시 찍으면 더 잘 보일 수 있다고 알려 줍니다(2026-11-11 가족에게 묻기 기능을 뺌). */
+    static final String RETRY_TEETH = "밝은 곳에서 입을 조금 더 크게 벌리고 다시 찍으면 더 잘 볼 수 있어요.";
 
     /**
      * teeth.foreignObject: true(낀 것 있음) / false(없음) / null(애매함, 앱 레포 mcp-tools.md).
-     * 얼굴 사진은 외부 AI로 보내지 않으므로, 애매하면 지어내지 않고 가족에게 물어볼지 제안합니다.
+     * 얼굴 사진은 외부 AI로 보내지 않으므로, 애매하면 지어내지 않고 다시 찍어 보자고 권합니다.
      */
     static String teethSpeech(JsonNode r) {
         JsonNode teeth = r.path("teeth");
@@ -213,7 +213,7 @@ public class FaceFlow {
             return "이에 낀 건 없어 보여요. 깔끔해요.";
         }
         String note = teeth.path("note").asString("");
-        return (note.isBlank() ? "잘 보이지 않아서 확실하지 않아요." : note) + " " + ASK_HELPER;
+        return (note.isBlank() ? "잘 보이지 않아서 확실하지 않아요." : note) + " " + RETRY_TEETH;
     }
 
     private static String compact(String utterance) {
