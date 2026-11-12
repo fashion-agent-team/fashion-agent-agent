@@ -16,6 +16,11 @@ public final class Korean {
         }
         char last = word.charAt(word.length() - 1);
         boolean batchim = last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 != 0;
+        // ㄹ 받침 뒤에는 '으로'가 아니라 '로' (신발로, 바지로). 2026-11-12 시뮬: "갈색 신발으로"
+        boolean rieul = batchim && (last - 0xAC00) % 28 == 8;
+        if (rieul && "으로".equals(withBatchim)) {
+            return word + without;
+        }
         return word + (batchim ? withBatchim : without);
     }
 
