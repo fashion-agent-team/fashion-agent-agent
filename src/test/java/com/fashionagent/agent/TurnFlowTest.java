@@ -225,6 +225,33 @@ class TurnFlowTest {
     }
 
     @Test
+    void 요일로_물으면_요일로_답한다() throws Exception {
+        // 오늘이 무슨 요일이든 오늘·내일·모레가 아닌 요일 하나를 고름
+        var today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul"));
+        var day = today.plusDays(3).getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.KOREAN);
+        JsonNode r = turn("u5e", """
+                {"utterance": "%s 날씨 알려 줘"}""".formatted(day));
+        assertThat(r.path("speech").asString()).startsWith(day + "은 비,");
+
+        // 모레인 요일도 "모레"가 아니라 그 요일로
+        var two = today.plusDays(2).getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.KOREAN);
+        JsonNode r2 = turn("u5e", """
+                {"utterance": "%s 날씨 어때"}""".formatted(two));
+        assertThat(r2.path("speech").asString()).startsWith(two + "은 비,");
+    }
+
+    @Test
+    void 추운지_물으면_춥다_안_춥다부터_답한다() throws Exception {
+        // 가짜 오늘 체감 9.5도
+        JsonNode r = turn("u5f", """
+                {"utterance": "오늘 추워?"}""");
+        assertThat(r.path("speech").asString()).startsWith("조금 쌀쌀해요. 체감 10도예요. 지금 맑음");
+        JsonNode hot = turn("u5f", """
+                {"utterance": "오늘 더워?"}""");
+        assertThat(hot.path("speech").asString()).startsWith("아니요, 덥지 않아요.");
+    }
+
+    @Test
     void 너무_먼_날_날씨는_모른다고_답한다() throws Exception {
         String far = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(40).toString();
         String[] p = far.split("-");

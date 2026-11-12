@@ -62,4 +62,14 @@ class SpokenDateTest {
         assertThat(SpokenDate.label(TODAY.plusDays(2), TODAY)).isEqualTo("모레");
         assertThat(SpokenDate.label(LocalDate.of(2026, 11, 20), TODAY)).isEqualTo("11월 20일 금요일");
     }
+
+    @Test
+    void 요일로_물은_날은_요일로_읽는다() {
+        java.time.LocalDate thu = java.time.LocalDate.of(2026, 11, 12);
+        assertThat(SpokenDate.labelAsAsked("토요일 날씨", thu.plusDays(2), thu)).isEqualTo("토요일");
+        assertThat(SpokenDate.labelAsAsked("다음 주 토요일 날씨", thu.plusDays(9), thu)).isEqualTo("다음 주 토요일");
+        assertThat(SpokenDate.labelAsAsked("모레 날씨", thu.plusDays(2), thu)).isEqualTo("모레");
+        assertThat(SpokenDate.labelAsAsked("내일 날씨", thu.plusDays(1), thu)).isEqualTo("내일");
+        assertThat(SpokenDate.labelAsAsked("목요일 날씨", thu, thu)).isEqualTo("오늘");
+    }
 }

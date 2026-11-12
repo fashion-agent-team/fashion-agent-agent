@@ -96,6 +96,29 @@ public final class SpokenDate {
         return monday.plusWeeks(weeks).with(TemporalAdjusters.nextOrSame(day));
     }
 
+    /**
+     * 사용자가 요일로 물었으면 그 요일 그대로("토요일", "다음 주 토요일"), 아니면 {@link #label}.
+     * 2026-11-12 실제 서버: 목요일에 "토요일 날씨"를 물었는데 "모레는"으로 답해 헷갈렸습니다.
+     */
+    public static String labelAsAsked(String utterance, LocalDate date, LocalDate today) {
+        String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        Matcher m = WEEKDAY.matcher(s);
+        if (date != null && !date.equals(today) && m.find() && !s.contains("내일") && !s.contains("모레")
+                && !s.contains("글피")) {
+            String day = m.group(2) + "요일";
+            String which = m.group(1);
+            if (which == null) {
+                return day;
+            }
+            return switch (which) {
+                case "다음주", "담주" -> "다음 주 " + day;
+                case "다다음주" -> "다다음 주 " + day;
+                default -> "이번 주 " + day;
+            };
+        }
+        return label(date, today);
+    }
+
     /** 말로 읽는 날짜: 오늘·내일·모레, 그 밖은 "11월 20일 금요일". */
     public static String label(LocalDate date, LocalDate today) {
         if (date == null || date.equals(today)) {
