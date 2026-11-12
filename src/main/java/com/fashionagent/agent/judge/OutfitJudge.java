@@ -36,8 +36,18 @@ public interface OutfitJudge {
         }
     }
 
+    /** @param day 이 옷을 입을 날(오늘·내일·11월 20일 금요일). 내일 일정인데 "오늘"이라고 하지 않게(2026-11-12 시뮬). */
     record CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,
-            List<SeenBrief> seenBefore) {
+            List<SeenBrief> seenBefore, String day) {
+
+        public CheckInput {
+            day = day == null || day.isBlank() ? "오늘" : day;
+        }
+
+        public CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,
+                List<SeenBrief> seenBefore) {
+            this(weather, events, advice, now, seenBefore, "오늘");
+        }
     }
 
     record SeenBrief(String garmentId, String category, String name, String colorName, String verdict) {

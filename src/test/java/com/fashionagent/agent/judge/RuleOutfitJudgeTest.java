@@ -101,6 +101,13 @@ class RuleOutfitJudgeTest {
     }
 
     @Test
+    void 내일_입을_옷을_견줄_때는_오늘이라고_하지_않는다_2026_11_12_시뮬() {
+        var out = judge.check(new OutfitJudge.CheckInput(null, json.readTree("[]"), null,
+                List.of(top("g1", "흰색", "white", "smart"), top("g2", "회색", "gray", "casual")), List.of(), "내일"));
+        assertThat(out.speech()).contains("내일 더 잘 맞아요").doesNotContain("오늘");
+    }
+
+    @Test
     void 쌀쌀하면_겉옷을_추천한다() {
         JsonNode weather = json.readTree("{\"apparentTemperature\": 9.5, \"dailyRange\": 11}");
         var out = judge.advise(new OutfitJudge.AdviceInput(weather, json.readTree("[]"), null, null));

@@ -55,6 +55,7 @@ public class LlmOutfitJudge implements OutfitJudge {
     @Override
     public CheckJudgement check(CheckInput in) {
         Map<String, Object> input = new LinkedHashMap<>();
+        input.put("day", in.day());
         input.put("weather", in.weather());
         input.put("events", in.events());
         input.put("advice", in.advice() == null ? null : in.advice().suggestions());
