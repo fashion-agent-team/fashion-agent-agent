@@ -237,26 +237,27 @@ public class TurnService {
             return null;
         }
         String when = day == null ? "지금" : Korean.josa(day, "은", "는");
-        long t = Math.round(apparent);
+        // 오늘은 뒤 문장에 "체감 n도"가 또 나오니 여기서는 빼요(2026-11-12 실제 서버: 두 번 들림).
+        String t = day == null ? "" : " 체감 " + Math.round(apparent) + "도예요.";
         if (cold) {
             if (apparent <= 5) {
-                return "네, " + when + " 추워요. 체감 " + t + "도예요.";
+                return "네, " + when + " 추워요." + t;
             }
             if (apparent <= 12) {
-                return "조금 쌀쌀해요. 체감 " + t + "도예요.";
+                return "조금 쌀쌀해요." + t;
             }
             if (apparent < 20) {
-                return "춥지는 않고 선선해요. 체감 " + t + "도예요.";
+                return "춥지는 않고 선선해요." + t;
             }
-            return "아니요, 춥지 않아요. 체감 " + t + "도예요.";
+            return "아니요, 춥지 않아요." + t;
         }
         if (apparent >= 28) {
-            return "네, " + when + " 더워요. 체감 " + t + "도예요.";
+            return "네, " + when + " 더워요." + t;
         }
         if (apparent >= 23) {
-            return "조금 더워요. 체감 " + t + "도예요.";
+            return "조금 더워요." + t;
         }
-        return "아니요, 덥지 않아요. 체감 " + t + "도예요.";
+        return "아니요, 덥지 않아요." + t;
     }
 
     /** "오늘 일정 뭐야?", "11월 20일 일정 뭐야?" */
