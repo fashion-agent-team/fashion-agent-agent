@@ -30,7 +30,9 @@ public record Garment(
         String subColorName,
         String subColorFamily,
         /** pattern을 정한 쪽: model | gpt(모델이 몰라서 GPT가 봄). */
-        String patternCheckedBy) {
+        String patternCheckedBy,
+        /** 무늬를 확실히 모를 때(pattern=null) 모델 1등 무늬. "호피 무늬 같아요"처럼 약하게만 말함. */
+        String patternGuess) {
 
     public Garment {
         defects = defects == null ? List.of() : List.copyOf(defects);
@@ -40,7 +42,7 @@ public record Garment(
             String pattern, String material, String notes, String formality, List<Defect> defects, Box box,
             String position, Double confidence) {
         this(id, category, name, colorName, colorFamily, tone, pattern, material, notes, formality, defects, box,
-                position, confidence, null, null, null);
+                position, confidence, null, null, null, null);
     }
 
     /** 다른 방향(뒤)에서 찾은 얼룩·찢어짐을 더한 옷. */
@@ -48,12 +50,12 @@ public record Garment(
         var all = new java.util.ArrayList<>(defects);
         all.addAll(more);
         return new Garment(id, category, name, colorName, colorFamily, tone, pattern, material, notes,
-                formality, all, box, position, confidence, subColorName, subColorFamily, patternCheckedBy);
+                formality, all, box, position, confidence, subColorName, subColorFamily, patternCheckedBy, patternGuess);
     }
 
     public Garment withId(String newId) {
         return new Garment(newId, category, name, colorName, colorFamily, tone, pattern, material, notes,
-                formality, defects, box, position, confidence, subColorName, subColorFamily, patternCheckedBy);
+                formality, defects, box, position, confidence, subColorName, subColorFamily, patternCheckedBy, patternGuess);
     }
 
     /**

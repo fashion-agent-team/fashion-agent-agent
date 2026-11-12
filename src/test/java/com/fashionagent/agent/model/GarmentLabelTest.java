@@ -11,7 +11,7 @@ class GarmentLabelTest {
 
     private static Garment g(String color, String sub, String pattern, String name) {
         return new Garment("g1", "top", name, color, "black", "dark", pattern, null, null, "smart", List.of(), null,
-                "center", 0.9, sub, null, "model");
+                "center", 0.9, sub, null, "model", null);
     }
 
     @Test
