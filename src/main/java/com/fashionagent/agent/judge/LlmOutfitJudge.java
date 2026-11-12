@@ -98,6 +98,9 @@ public class LlmOutfitJudge implements OutfitJudge {
         m.put("colorFamily", g.colorFamily());
         m.put("tone", g.tone());
         m.put("pattern", g.pattern());
+        if (g.pattern() == null && g.patternGuess() != null) {
+            m.put("patternGuess", Garment.patternName(g.patternGuess()));
+        }
         if ("gpt".equals(g.patternCheckedBy())) {
             m.put("patternCheckedBy", "gpt");
         }
