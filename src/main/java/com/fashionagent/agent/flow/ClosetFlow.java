@@ -116,7 +116,7 @@ public class ClosetFlow {
                 names.add(ClosetView.label(g));
             }
             String label = dayLabel(day, today);
-            parts.add(label + (label.contains("월") ? "에는 " : "는 ") + Korean.josa(String.join(", ", names), "을", "를") + " 입으셨어요.");
+            parts.add((label.contains("월") ? label + "에는 " : Korean.josa(label, "은", "는") + " ") + Korean.josa(String.join(", ", names), "을", "를") + " 입으셨어요.");
         }
         return String.join(" ", parts);
     }

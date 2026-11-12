@@ -81,6 +81,8 @@ class ClosetFlowTest {
     void noHistory() {
         var r = flow("{\"outfits\":[]}").history(session(), "그저께 뭐 입었어");
         assertThat(r.speech()).startsWith("그저께 입은 옷 기록이 없어요.");
+        assertThat(ClosetFlow.historySpeech(json.readTree("[{\"date\":\"2026-11-12\",\"garments\":[{\"name\":\"니트\"}]}]"), "오늘",
+                LocalDate.of(2026, 11, 12))).isEqualTo("오늘은 니트를 입으셨어요.");
         assertThat(ClosetFlow.dayLabel(LocalDate.of(2026, 11, 5), LocalDate.of(2026, 11, 12))).isEqualTo("11월 5일 목요일");
     }
 
