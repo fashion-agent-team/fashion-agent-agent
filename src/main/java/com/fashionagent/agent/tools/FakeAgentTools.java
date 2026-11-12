@@ -36,6 +36,7 @@ public class FakeAgentTools implements AgentTools {
             case ToolNames.CLOSET_SEARCH -> Map.of("candidates", List.of(), "styleNotes", List.of(), "empty", true);
             case ToolNames.CLOSET_SAVE -> closetSave(args);
             case ToolNames.CLOSET_WEAR -> Map.of("recorded", ((List<?>) args.get("garmentIds")).size());
+            case ToolNames.CLOSET_LIST -> Map.of("garments", List.of(), "total", 0);
             case ToolNames.SCHEDULE_ADD -> Map.of("eventId", "e_added", "occasion", "casual",
                     "spokenSummary", "일정 '" + args.get("title") + "'을 등록했어요.");
             case ToolNames.SCHEDULE_DELETE -> Map.of("deleted", true);
