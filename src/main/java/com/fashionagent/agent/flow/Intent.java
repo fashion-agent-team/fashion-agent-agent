@@ -31,6 +31,14 @@ public enum Intent {
      */
     private static final List<String> MULTI_DAY_WORDS = List.of("이번주", "다음주", "담주", "주말", "이번달", "다음달");
 
+    /**
+     * "날씨"가 없어도 날씨로 바로 답할 말. 2026-11-12 실제 서버: "우산 챙겨야 해?"가 GPT로 가서 8초 걸렸습니다.
+     * "눈"만으로는 얼굴(눈)과 헷갈려서 "눈 와", "눈 올" 같은 꼴만 봅니다.
+     */
+    private static final List<String> WEATHER_WORDS = List.of("우산", "비와", "비가", "비올", "비오", "눈와", "눈이와",
+            "눈올", "눈이올", "눈오", "추워", "추운", "춥", "더워", "더운", "덥", "기온", "온도", "일교차", "쌀쌀", "겉옷챙",
+            "겉옷입어야", "외투챙");
+
     /** "할 줄 아는 거 말해 봐", "기능 설명해 줘" 같은 말. 2026-11-06 진행 님 폰 확인에서 못 알아들었던 말. */
     private static final List<String> HELP_WORDS = List.of("기능", "할줄", "할수있", "뭐해줄", "뭘해줄", "뭐도와", "뭘도와",
             "무엇을도와", "뭐할수", "뭘할수", "무엇을할", "능력", "너소개", "자기소개", "사용법", "어떻게써");
@@ -69,7 +77,11 @@ public enum Intent {
         if (s.contains("얼굴") || s.contains("화장") || FaceFlow.isTeeth(s)) {
             return FACE;
         }
-        if (s.contains("날씨")) {
+        if (s.contains("날씨") || containsAny(s.replace("준비", ""), WEATHER_WORDS)) {
+            // "이번 주 날씨"처럼 여러 날은 GPT가 날짜를 하나씩 봅니다. 하루("내일", "토요일")는 바로 답합니다.
+            if (containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일")) {
+                return OTHER;
+            }
             return WEATHER;
         }
         if ((s.contains("일정") || s.contains("스케줄")) && !containsAny(s, SCHEDULE_CHANGE_WORDS)

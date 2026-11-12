@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.fashionagent.agent.api.Location;
 import com.fashionagent.agent.assistant.Assistant;
+import com.fashionagent.agent.judge.Korean;
 import com.fashionagent.agent.api.TurnRequest;
 import com.fashionagent.agent.api.TurnResponse;
 import com.fashionagent.agent.api.TurnResponse.Next;
@@ -137,7 +138,7 @@ public class TurnService {
             case CLOSET -> closetFlow.list(session, req.utterance());
             case CLOSET_HISTORY -> closetFlow.history(session, req.utterance());
             case CLOSET_REMOVE -> closetFlow.startRemove(session, req.utterance());
-            case WEATHER -> weather(session, req.location());
+            case WEATHER -> weather(session, req.location(), req.utterance());
             case SCHEDULE -> schedule(session, req.utterance());
             case FACE -> face.start(session, req.utterance());
             // "할 줄 아는 거 말해 봐": GPT 여부와 상관없이 매번 같은 안내
@@ -164,21 +165,61 @@ public class TurnService {
         };
     }
 
-    /** "오늘 날씨 어때?" 판단 없이 weather_today 값을 읽어 줍니다. */
-    private TurnResponse weather(AgentSession session, Location location) {
+    /**
+     * "오늘 날씨 어때?", "내일 날씨 어때?", "우산 챙겨야 해?" 판단 없이 날씨 값을 읽어 줍니다.
+     * 다른 날을 물으면 weather_forecast로 그날 예보를 읽습니다. 2026-11-12 실제 서버: "내일 날씨"에 오늘 날씨로 답했습니다.
+     */
+    private TurnResponse weather(AgentSession session, Location location, String utterance) {
         Location at = location == null ? Location.SEOUL : location;
+        var today = java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("Asia/Seoul")));
+        var asked = SpokenDate.from(utterance, today);
+        boolean otherDay = asked != null && !asked.equals(today);
+        String label = SpokenDate.label(asked, today);
         try {
-            JsonNode w = tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", at.lat(), "lon", at.lon()));
-            String speech = "지금 " + w.path("condition").asString("") + ", " + Math.round(w.path("temperature").asDouble())
-                    + "도이고 체감 " + Math.round(w.path("apparentTemperature").asDouble()) + "도예요. 최저 "
-                    + Math.round(w.path("minTemperature").asDouble()) + "도, 최고 "
-                    + Math.round(w.path("maxTemperature").asDouble()) + "도예요. "
-                    + w.path("clothingAdvice").asString("");
+            JsonNode w = otherDay
+                    ? tools.call(ToolNames.WEATHER_FORECAST, Map.of("lat", at.lat(), "lon", at.lon(), "date", asked.toString()))
+                    : tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", at.lat(), "lon", at.lon()));
+            String speech = weatherSpeech(w, otherDay ? label : null, utterance);
             sessions.save(session);
-            return new TurnResponse(session.sessionId, speech.trim(), Next.listen, Result.of("weather"));
+            return new TurnResponse(session.sessionId, speech, Next.listen, Result.of("weather"));
         } catch (ToolException e) {
+            if ("out_of_range".equals(e.code())) {
+                return say(session, label + " 날씨는 아직 알 수 없어요. 16일 안쪽 날씨만 알려 드릴 수 있어요.", Next.listen);
+            }
             return say(session, "미안해요, 지금은 날씨를 못 가져왔어요. 조금 있다가 다시 물어봐 주실래요?", Next.listen);
         }
+    }
+
+    /** day가 null이면 지금 날씨, 아니면 "내일은 비, 최저 3도 최고 13도예요" 꼴. 우산을 물었으면 우산 답을 먼저. */
+    static String weatherSpeech(JsonNode w, String day, String utterance) {
+        String condition = w.path("condition").asString("");
+        long min = Math.round(w.path("minTemperature").asDouble());
+        long max = Math.round(w.path("maxTemperature").asDouble());
+        int rain = w.path("precipitationProbability").asInt(0);
+        boolean umbrella = w.path("needsUmbrella").asBoolean(false);
+        String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        boolean askedRain = u.contains("우산") || u.contains("비") || u.contains("눈와") || u.contains("눈올")
+                || u.contains("눈오") || u.contains("눈이");
+
+        StringBuilder sb = new StringBuilder();
+        if (askedRain) {
+            sb.append(umbrella
+                    ? "우산 챙기세요. 비나 눈 올 확률이 " + rain + "%예요. "
+                    : "우산은 안 챙기셔도 돼요. 비 올 확률이 " + rain + "%예요. ");
+        }
+        if (day == null) {
+            sb.append("지금 ").append(condition).append(", ")
+                    .append(Math.round(w.path("temperature").asDouble())).append("도이고 체감 ")
+                    .append(Math.round(w.path("apparentTemperature").asDouble())).append("도예요. ");
+        } else {
+            sb.append(Korean.josa(day, "은", "는")).append(" ").append(condition).append(", ");
+        }
+        sb.append("최저 ").append(min).append("도, 최고 ").append(max).append("도예요. ");
+        if (!askedRain && umbrella) {
+            sb.append("비 올 확률이 ").append(rain).append("%라 우산을 챙기세요. ");
+        }
+        sb.append(w.path("clothingAdvice").asString(""));
+        return sb.toString().trim();
     }
 
     /** "오늘 일정 뭐야?", "11월 20일 일정 뭐야?" */

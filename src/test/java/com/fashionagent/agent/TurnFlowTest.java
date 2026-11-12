@@ -203,6 +203,37 @@ class TurnFlowTest {
     }
 
     @Test
+    void 내일_날씨는_그날_예보로_답한다() throws Exception {
+        JsonNode r = turn("u5b", """
+                {"utterance": "내일 날씨 어때?"}""");
+        // 가짜 예보: 비, 최저 3도 최고 13도, 비 70%
+        assertThat(r.path("speech").asString()).startsWith("내일은 비, 최저 3도, 최고 13도예요.")
+                .contains("우산을 챙기세요").doesNotContain("체감");
+        assertThat(r.path("result").path("type").asString()).isEqualTo("weather");
+    }
+
+    @Test
+    void 우산을_물으면_우산부터_답한다() throws Exception {
+        JsonNode today = turn("u5c", """
+                {"utterance": "우산 챙겨야 해?"}""");
+        assertThat(today.path("speech").asString()).startsWith("우산은 안 챙기셔도 돼요. 비 올 확률이 10%예요.");
+        assertThat(today.path("result").path("type").asString()).isEqualTo("weather");
+
+        JsonNode tomorrow = turn("u5c", """
+                {"utterance": "내일 우산 필요해?"}""");
+        assertThat(tomorrow.path("speech").asString()).startsWith("우산 챙기세요. 비나 눈 올 확률이 70%예요. 내일은 비");
+    }
+
+    @Test
+    void 너무_먼_날_날씨는_모른다고_답한다() throws Exception {
+        String far = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(40).toString();
+        String[] p = far.split("-");
+        JsonNode r = turn("u5d", """
+                {"utterance": "%s월 %s일 날씨 어때?"}""".formatted(Integer.parseInt(p[1]), Integer.parseInt(p[2])));
+        assertThat(r.path("speech").asString()).contains("아직 알 수 없어요").contains("16일");
+    }
+
+    @Test
     void 얼굴_확인은_얼굴과_이_중_먼저_묻고_화장을_본다() throws Exception {
         JsonNode ask = turn("u6", """
                 {"utterance": "얼굴 확인해 줘"}""");
