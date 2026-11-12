@@ -18,6 +18,7 @@ public final class ToolNames {
     public static final String CLOSET_SEARCH = "closet_search";
     public static final String CLOSET_SAVE = "closet_save";
     public static final String CLOSET_WEAR = "closet_wear";
+    public static final String CLOSET_MERGE = "closet_merge";
     public static final String HELPER_CONTACTS = "helper_contacts";
     public static final String HELPER_ASK = "helper_ask";
     public static final String HELPER_ANSWER = "helper_answer";

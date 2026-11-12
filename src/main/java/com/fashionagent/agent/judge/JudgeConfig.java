@@ -35,4 +35,13 @@ public class JudgeConfig {
         return new FallbackOutfitJudge(new LlmOutfitJudge(builder, json), rules, agentExecutor,
                 props.judgeTimeout());
     }
+
+    /** 옷장 서버가 애매하다고 한 같은 옷을 사진으로 확인. GPT가 없으면 확인하지 않음(합치지 않음). */
+    @Bean
+    public SameGarmentJudge sameGarmentJudge(AgentProperties props, ObjectProvider<ChatClient.Builder> chat,
+            ExecutorService agentExecutor) {
+        ChatClient.Builder builder = props.usesLlm() ? chat.getIfAvailable() : null;
+        return builder == null ? SameGarmentJudge.NONE
+                : new LlmSameGarmentJudge(builder, agentExecutor, props.judgeTimeout());
+    }
 }

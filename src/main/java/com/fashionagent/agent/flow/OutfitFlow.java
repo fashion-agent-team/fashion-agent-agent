@@ -22,6 +22,7 @@ import com.fashionagent.agent.api.TurnResponse.Result;
 import com.fashionagent.agent.config.AgentProperties;
 import com.fashionagent.agent.judge.Korean;
 import com.fashionagent.agent.judge.OutfitJudge;
+import com.fashionagent.agent.judge.SameGarmentJudge;
 import com.fashionagent.agent.judge.OutfitJudge.AdviceInput;
 import com.fashionagent.agent.judge.OutfitJudge.CheckInput;
 import com.fashionagent.agent.judge.OutfitJudge.SeenBrief;
@@ -60,6 +61,7 @@ public class OutfitFlow {
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private final AgentTools tools;
+    private final SameGarmentJudge sameGarment;
     private final OutfitJudge judge;
     private final SessionStore sessions;
     private final AgentProperties props;
@@ -68,7 +70,8 @@ public class OutfitFlow {
     private final Clock clock;
 
     public OutfitFlow(AgentTools tools, OutfitJudge judge, SessionStore sessions, AgentProperties props,
-            ExecutorService agentExecutor, JsonMapper json, Clock clock) {
+            ExecutorService agentExecutor, JsonMapper json, Clock clock, SameGarmentJudge sameGarment) {
+        this.sameGarment = sameGarment;
         this.tools = tools;
         this.judge = judge;
         this.sessions = sessions;
@@ -425,6 +428,7 @@ public class OutfitFlow {
             Garment garment = json.treeToValue(g, Garment.class);
             now.add(garment.withId(prefix + garment.id()));
             keepEmbedding(session, inspect, g, prefix + garment.id());
+            keepThumbnail(session, imageBase64, garment, prefix + garment.id());
         }
         String source = inspect.path("source").asString(null);
 
@@ -562,6 +566,7 @@ public class OutfitFlow {
             Garment garment = json.treeToValue(g, Garment.class);
             now.add(garment.withId(prefix + garment.id()));
             keepEmbedding(session, inspect, g, prefix + garment.id());
+            keepThumbnail(session, imageBase64, garment, prefix + garment.id());
         }
         String source = inspect.path("source").asString(null);
 
@@ -694,6 +699,7 @@ public class OutfitFlow {
         session.seen = new ArrayList<>();
         session.lastDamage = new ArrayList<>();
         session.embeddings = new java.util.HashMap<>();
+        session.thumbnails = new java.util.HashMap<>();
         if (!WORN.equals(session.outfitMode)) {
             // 2026-11-06 진행 님 요청: 내려놓고 고른 사람에게 입은 모습도 볼지 묻기
             session.wornOfferAsked = true;
@@ -770,17 +776,37 @@ public class OutfitFlow {
         session.embeddings.put(id, v);
     }
 
-    /** closet_save 입력: 고른 옷 JSON에 그 옷의 사진 벡터를 붙입니다. */
+    /** 옷 부분 작은 사진은 closet_save에만 넘깁니다(애매한 같은 옷을 GPT가 사진으로 비교). 못 만들면 넘기지 않습니다. */
+    private static void keepThumbnail(AgentSession session, String imageBase64, Garment garment, String id) {
+        String t = Thumbnails.crop(imageBase64, garment.box());
+        if (t != null) {
+            session.thumbnails.put(id, t);
+        }
+    }
+
     static Map<String, Object> saveArgs(List<Map<String, Object>> garments, Map<String, List<Double>> embeddings, String model) {
+        return saveArgs(garments, embeddings, model, Map.of());
+    }
+
+    /** closet_save 입력: 고른 옷 JSON에 그 옷의 사진 벡터와 작은 사진을 붙입니다. */
+    static Map<String, Object> saveArgs(List<Map<String, Object>> garments, Map<String, List<Double>> embeddings, String model,
+            Map<String, String> thumbnails) {
         Map<String, Object> args = new LinkedHashMap<>();
         boolean any = false;
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> g : garments) {
-            List<Double> v = model == null ? null : embeddings.get(String.valueOf(g.get("id")));
-            if (v != null) {
+            String id = String.valueOf(g.get("id"));
+            List<Double> v = model == null ? null : embeddings.get(id);
+            String t = thumbnails.get(id);
+            if (v != null || t != null) {
                 g = new LinkedHashMap<>(g);
+            }
+            if (v != null) {
                 g.put("embedding", v);
                 any = true;
+            }
+            if (t != null) {
+                g.put("thumbnail", t);
             }
             out.add(g);
         }
@@ -800,16 +826,53 @@ public class OutfitFlow {
                 garments.add(json.convertValue(g, Map.class));
             }
             JsonNode saved = tools.callForUser(ToolNames.CLOSET_SAVE, userId,
-                    saveArgs(garments, session.embeddings, session.embeddingModel));
+                    saveArgs(garments, session.embeddings, session.embeddingModel, session.thumbnails));
             List<String> ids = new ArrayList<>();
             for (JsonNode s : saved.path("saved")) {
-                ids.add(s.path("garmentId").asString());
+                String id = s.path("garmentId").asString();
+                String into = confirmSame(session, s);
+                if (into != null && !ids.contains(into)) {
+                    id = into;
+                }
+                ids.add(id);
             }
+            ids = ids.stream().distinct().toList();
             tools.callForUser(ToolNames.CLOSET_WEAR, userId, Map.of("garmentIds", ids, "date", day.toString()));
             return true;
         } catch (ToolException e) {
             log.warn("옷장 기록 실패 (추천은 계속): {}", e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * closet_save가 "애매하게 비슷한 옷"(maybeSameAs)을 알려 주면 GPT에게 두 사진을 보여 같은 옷인지 묻고, 같으면 closet_merge로
+     * 합칩니다(2026-11-12 박창근 님 결정). 사진을 GPT에 보내므로 GPT 사용에 동의한 사람만. 합친 옷 id를, 아니면 null을 돌려줍니다.
+     */
+    private String confirmSame(AgentSession session, JsonNode saved) {
+        JsonNode maybe = saved.path("maybeSameAs");
+        if (maybe.isMissingNode() || maybe.isNull() || !Boolean.TRUE.equals(session.gptConsent)) {
+            return null;
+        }
+        String now = session.thumbnails.get(saved.path("inputId").asString(""));
+        String theirs = maybe.path("thumbnail").asString(null);
+        String into = maybe.path("garmentId").asString(null);
+        String id = saved.path("garmentId").asString(null);
+        if (now == null || theirs == null || into == null || id == null) {
+            return null;
+        }
+        String desc = String.join(", ", java.util.stream.Stream.of(maybe.path("colorName").asString(null),
+                maybe.path("name").asString(null), maybe.path("pattern").asString(null), maybe.path("material").asString(null))
+                .filter(x -> x != null && !x.isBlank()).toList());
+        if (!sameGarment.same(now, theirs, desc)) {
+            return null;
+        }
+        try {
+            tools.callForUser(ToolNames.CLOSET_MERGE, session.userId, Map.of("garmentId", id, "intoGarmentId", into));
+            return into;
+        } catch (ToolException e) {
+            log.warn("closet_merge 실패(따로 둠): {}", e.getMessage());
+            return null;
         }
     }
 

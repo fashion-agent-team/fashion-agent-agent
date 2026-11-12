@@ -71,6 +71,8 @@ public class AgentSession {
      * GPT·앱 응답에는 넣지 않으려고 Garment와 따로 둡니다. 옷을 고르고 나면 비웁니다.
      */
     public java.util.Map<String, List<Double>> embeddings = new java.util.HashMap<>();
+    /** 옷 id → 옷 부분 작은 JPEG(base64). closet_save에만 넘김(같은 옷이 애매할 때 GPT 비교용). GPT 판단 입력·앱 응답에는 안 넣음. */
+    public java.util.Map<String, String> thumbnails = new java.util.HashMap<>();
     /** clothes_inspect 응답의 embeddingModel (예: marqo-fashionSigLIP). */
     public String embeddingModel;
     /**
