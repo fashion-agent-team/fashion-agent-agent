@@ -174,7 +174,7 @@ public class TurnService {
         var today = java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("Asia/Seoul")));
         var asked = SpokenDate.from(utterance, today);
         boolean otherDay = asked != null && !asked.equals(today);
-        String label = SpokenDate.label(asked, today);
+        String label = SpokenDate.labelAsAsked(utterance, asked, today);
         try {
             JsonNode w = otherDay
                     ? tools.call(ToolNames.WEATHER_FORECAST, Map.of("lat", at.lat(), "lon", at.lon(), "date", asked.toString()))
@@ -202,6 +202,10 @@ public class TurnService {
                 || u.contains("눈오") || u.contains("눈이");
 
         StringBuilder sb = new StringBuilder();
+        String feel = feeling(u, w.path("apparentTemperature").asDouble(), day);
+        if (feel != null) {
+            sb.append(feel).append(" ");
+        }
         if (askedRain) {
             sb.append(umbrella
                     ? "우산 챙기세요. 비나 눈 올 확률이 " + rain + "%예요. "
@@ -220,6 +224,39 @@ public class TurnService {
         }
         sb.append(w.path("clothingAdvice").asString(""));
         return sb.toString().trim();
+    }
+
+    /**
+     * "추워?", "더워?"에는 체감 온도로 먼저 한마디 답합니다. 2026-11-12 실제 서버: 날씨만 읽어 줘서 답이 안 됐습니다.
+     * 기준은 mcp-weather의 옷 조언과 비슷하게 잡았습니다(체감 5도 이하 추움, 12도 이하 쌀쌀, 28도 이상 더움).
+     */
+    static String feeling(String u, double apparent, String day) {
+        boolean cold = u.contains("추워") || u.contains("춥") || u.contains("추운") || u.contains("쌀쌀");
+        boolean hot = u.contains("더워") || u.contains("덥") || u.contains("더운");
+        if (cold == hot) {
+            return null;
+        }
+        String when = day == null ? "지금" : Korean.josa(day, "은", "는");
+        long t = Math.round(apparent);
+        if (cold) {
+            if (apparent <= 5) {
+                return "네, " + when + " 추워요. 체감 " + t + "도예요.";
+            }
+            if (apparent <= 12) {
+                return "조금 쌀쌀해요. 체감 " + t + "도예요.";
+            }
+            if (apparent < 20) {
+                return "춥지는 않고 선선해요. 체감 " + t + "도예요.";
+            }
+            return "아니요, 춥지 않아요. 체감 " + t + "도예요.";
+        }
+        if (apparent >= 28) {
+            return "네, " + when + " 더워요. 체감 " + t + "도예요.";
+        }
+        if (apparent >= 23) {
+            return "조금 더워요. 체감 " + t + "도예요.";
+        }
+        return "아니요, 덥지 않아요. 체감 " + t + "도예요.";
     }
 
     /** "오늘 일정 뭐야?", "11월 20일 일정 뭐야?" */
