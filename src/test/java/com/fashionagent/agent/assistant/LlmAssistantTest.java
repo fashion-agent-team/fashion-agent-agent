@@ -152,39 +152,6 @@ class LlmAssistantTest {
     }
 
     @Test
-    void 가족에게_묻기_사진은_agent가_넣는다() {
-        var model = new ScriptedModel(List.of(
-                new String[] { "helper_contacts", "{}" },
-                new String[] { "helper_ask", "{\"contactId\":\"h_1\",\"question\":\"이 옷 괜찮아?\"}" }),
-                results -> "엄마에게 사진과 질문을 보냈어요.", 0);
-        var session = new AgentSession("s2", "user-2");
-        session.keepPhoto("PHOTO_BASE64", clock);
-
-        var reply = assistant(model, Duration.ofSeconds(5)).reply(session, "엄마한테 이 옷 괜찮은지 물어봐 줘",
-                null, true);
-
-        assertThat(calls).containsExactly("helper_contacts {userId=user-2}",
-                "helper_ask {contactId=h_1, imageBase64=PHOTO_BASE64, question=이 옷 괜찮아?, userId=user-2}");
-        assertThat(session.lastHelperRequestId).isEqualTo("r_fake");
-        assertThat(reply.next()).isEqualTo(Next.camera_outfit);
-    }
-
-    @Test
-    void 사진이_없으면_보내지_않고_카메라를_켠다() {
-        var model = new ScriptedModel(List.<String[]>of(
-                new String[] { "helper_ask", "{\"contactId\":\"h_1\",\"question\":\"이 옷 괜찮아?\"}" }),
-                results -> results.get(0).contains("no_photo") ? "먼저 옷을 카메라에 보여 주세요." : "보냈어요.", 0);
-        var session = new AgentSession("s3", "user-3");
-        session.keepPhoto("OLD", Clock.offset(clock, Duration.ofMinutes(-11)));
-
-        var reply = assistant(model, Duration.ofSeconds(5)).reply(session, "엄마한테 물어봐 줘", null, false);
-
-        assertThat(calls).isEmpty();
-        assertThat(reply.speech()).isEqualTo("먼저 옷을 카메라에 보여 주세요.");
-        assertThat(reply.next()).isEqualTo(Next.camera_outfit);
-    }
-
-    @Test
     void 날씨는_앱이_보낸_위치로() {
         var model = new ScriptedModel(List.<String[]>of(new String[] { "weather_today", "{}" }),
                 results -> "맑아요.", 0);
@@ -219,20 +186,6 @@ class LlmAssistantTest {
     }
 
     @Test
-    void 보낸_뒤_답이_늦어도_보냈다고_말해준다() {
-        var model = new ScriptedModel(List.of(
-                new String[] { "helper_contacts", "{}" },
-                new String[] { "helper_ask", "{\"contactId\":\"h_1\",\"question\":\"이 옷 괜찮아?\"}" }),
-                results -> "늦은 답", 2000);
-        var session = new AgentSession("s7", "u");
-        session.keepPhoto("PHOTO", clock);
-
-        var reply = assistant(model, Duration.ofMillis(300)).reply(session, "엄마한테 물어봐 줘", null, false);
-
-        assertThat(reply.speech()).startsWith("엄마에게 사진과 질문을 보냈어요.");
-    }
-
-    @Test
     void 사용량_초과면_다시_말해달라고_하지_않는다() {
         ChatModel quota = new ChatModel() {
             @Override
@@ -252,21 +205,6 @@ class LlmAssistantTest {
         var reply = assistant.reply(new AgentSession("s8", "u"), "내일 일정 뭐야?", null, false);
 
         assertThat(reply.speech()).isEqualTo(LlmAssistant.QUOTA_SPEECH);
-    }
-
-    @Test
-    void 보내_놓고_확인을_묻는_답이면_보냈다고_고쳐_말한다() {
-        // 2026-11-04 실제 GPT: helper_ask를 부르고도 "보내고 싶으면 확인이라고 말해 주세요"라고 답함
-        var model = new ScriptedModel(List.of(
-                new String[] { "helper_contacts", "{}" },
-                new String[] { "helper_ask", "{\"contactId\":\"h_1\",\"question\":\"이 옷 괜찮아?\"}" }),
-                results -> "엄마한테 물어볼게요. 보내고 싶으면 확인이라고 말해 주세요.", 0);
-        var session = new AgentSession("s9", "u");
-        session.keepPhoto("PHOTO", clock);
-
-        var reply = assistant(model, Duration.ofSeconds(5)).reply(session, "엄마한테 물어봐 줘", null, false);
-
-        assertThat(reply.speech()).startsWith("엄마에게 사진과 질문을 보냈어요.").doesNotContain("확인이라고");
     }
 
     @Test
@@ -299,20 +237,6 @@ class LlmAssistantTest {
         assertThat(LlmAssistant.tidy("일정이 없어요.\n일정이 없어요.")).isEqualTo("일정이 없어요.");
         assertThat(LlmAssistant.tidy("첫 문장이에요.\n\n둘째 문장이에요.")).isEqualTo("첫 문장이에요. 둘째 문장이에요.");
         assertThat(LlmAssistant.tidy("누구에게 물어볼까요요? 이름을 말해 주세요요")).isEqualTo("누구에게 물어볼까요? 이름을 말해 주세요");
-    }
-
-    @Test
-    void 누구에게_보냈는지_빠지면_넣어_말한다() {
-        var model = new ScriptedModel(List.of(
-                new String[] { "helper_contacts", "{}" },
-                new String[] { "helper_ask", "{\"contactId\":\"h_1\",\"question\":\"이 옷 괜찮아?\"}" }),
-                results -> "보냈어요.", 0);
-        var session = new AgentSession("s12", "u");
-        session.keepPhoto("PHOTO", clock);
-
-        var reply = assistant(model, Duration.ofSeconds(5)).reply(session, "엄마한테 물어봐 줘", null, false);
-
-        assertThat(reply.speech()).startsWith("엄마에게 사진과 질문을 보냈어요.");
     }
 
     @Test

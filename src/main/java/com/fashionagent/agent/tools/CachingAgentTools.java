@@ -20,7 +20,7 @@ import tools.jackson.databind.JsonNode;
  * <li>weather_forecast: 같은 동네·날짜면 30분</li>
  * <li>schedule_list: 같은 사용자·날짜면 2분. 그 사용자가 일정을 넣거나 지우면 바로 비웁니다.</li>
  * </ul>
- * 사진 검사·옷장·가족에게 묻기는 기억하지 않습니다.
+ * 사진 검사·옷장은 기억하지 않습니다.
  */
 public class CachingAgentTools implements AgentTools, AutoCloseable {
 

@@ -18,9 +18,6 @@ public final class ToolNames {
     public static final String CLOSET_SEARCH = "closet_search";
     public static final String CLOSET_SAVE = "closet_save";
     public static final String CLOSET_WEAR = "closet_wear";
-    public static final String HELPER_CONTACTS = "helper_contacts";
-    public static final String HELPER_ASK = "helper_ask";
-    public static final String HELPER_ANSWER = "helper_answer";
 
     /** 도구 이름의 앞부분이 서버 이름입니다. clothes_inspect → clothes-state 처럼 다른 것만 적습니다. */
     private static final Map<String, String> SERVER_OF_PREFIX = Map.of(

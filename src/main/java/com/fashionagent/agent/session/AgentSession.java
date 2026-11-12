@@ -30,11 +30,6 @@ public class AgentSession {
     public List<OutfitCheck.Damage> lastDamage = new ArrayList<>();
     /** 지금까지 받은 사진 수. 옷 id 앞에 붙입니다. */
     public int photoCount;
-    /** 직전에 받은 사진 base64와 받은 시각(epoch ms). 가족에게 묻기에 10분만 씁니다(약속 5-2절). */
-    public String lastPhoto;
-    public long lastPhotoAt;
-    /** 가족에게 마지막으로 보낸 질문 id ("엄마 답 왔어?"). */
-    public String lastHelperRequestId;
     /** 얼굴 확인에서 "얼굴을 볼까요, 이를 확인할까요?"를 물은 횟수. 0이면 묻지 않은 상태. */
     public int faceChoiceAsked;
     /**
@@ -91,21 +86,6 @@ public class AgentSession {
         this.sessionId = sessionId;
         this.userId = userId;
     }
-
-    /** 10분 안에 받은 직전 사진, 없으면 null. */
-    public String photo(java.time.Clock clock) {
-        if (lastPhoto == null || clock.millis() - lastPhotoAt > PHOTO_TTL_MS) {
-            return null;
-        }
-        return lastPhoto;
-    }
-
-    public void keepPhoto(String imageBase64, java.time.Clock clock) {
-        lastPhoto = imageBase64;
-        lastPhotoAt = clock.millis();
-    }
-
-    private static final long PHOTO_TTL_MS = 10 * 60 * 1000;
 
     public record Said(boolean user, String text) {
     }
