@@ -38,4 +38,44 @@ class ClosetCallsTest {
         var none = OutfitFlow.saveArgs(List.of(b), Map.of(), null);
         assertThat(none).doesNotContainKey("embeddingModel");
     }
+
+    @Test
+    @DisplayName("closet_save: 작은 사진이 있는 옷에만 thumbnail(벡터 없어도)")
+    void saveArgsThumbnail() {
+        Map<String, Object> a = new LinkedHashMap<>(Map.of("id", "p1_g1", "category", "top"));
+        Map<String, Object> b = new LinkedHashMap<>(Map.of("id", "p1_g2", "category", "bottom"));
+        var args = OutfitFlow.saveArgs(List.of(a, b), Map.of(), null, Map.of("p1_g2", "AAAA"));
+        @SuppressWarnings("unchecked")
+        var gs = (List<Map<String, Object>>) args.get("garments");
+        assertThat(gs.get(0)).doesNotContainKey("thumbnail");
+        assertThat(gs.get(1)).containsEntry("thumbnail", "AAAA");
+        assertThat(args).doesNotContainKey("embeddingModel");
+    }
+
+    @Test
+    @DisplayName("작은 사진: box 부분만 잘라 긴 변 256px JPEG, 48KB 이하. box가 없거나 사진이 아니면 null")
+    void thumbnail() throws Exception {
+        var img = new java.awt.image.BufferedImage(1000, 800, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        var rnd = new java.util.Random(1);
+        for (int y = 0; y < 800; y++) {
+            for (int x = 0; x < 1000; x++) {
+                img.setRGB(x, y, rnd.nextInt(0xffffff));
+            }
+        }
+        var bytes = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(img, "png", bytes);
+        String photo = java.util.Base64.getEncoder().encodeToString(bytes.toByteArray());
+
+        String t = Thumbnails.crop(photo, new com.fashionagent.agent.model.Garment.Box(0.1, 0.1, 0.5, 0.8));
+        byte[] jpeg = java.util.Base64.getDecoder().decode(t);
+        assertThat(jpeg.length).isLessThanOrEqualTo(48 * 1024);
+        assertThat(jpeg[0] & 0xff).isEqualTo(0xff);
+        assertThat(jpeg[1] & 0xff).isEqualTo(0xd8);
+        var back = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(jpeg));
+        assertThat(Math.max(back.getWidth(), back.getHeight())).isEqualTo(256);
+        assertThat(back.getHeight()).isGreaterThan(back.getWidth());   // 세로로 긴 옷 부분
+
+        assertThat(Thumbnails.crop(photo, null)).isNull();
+        assertThat(Thumbnails.crop("not-an-image", new com.fashionagent.agent.model.Garment.Box(0, 0, 1, 1))).isNull();
+    }
 }
