@@ -59,7 +59,8 @@ public class LlmOutfitJudge implements OutfitJudge {
         input.put("weather", in.weather());
         input.put("events", in.events());
         input.put("advice", in.advice() == null ? null : in.advice().suggestions());
-        input.put("now", in.now().stream().map(LlmOutfitJudge::forPrompt).toList());
+        boolean many = in.now().size() >= 2;
+        input.put("now", in.now().stream().map(g -> forPrompt(g, many)).toList());
         input.put("seenBefore", in.seenBefore());
         CheckJudgement out = chat.prompt()
                 .user(Prompts.CHECK.formatted(json.writeValueAsString(input)))
@@ -79,17 +80,27 @@ public class LlmOutfitJudge implements OutfitJudge {
                 out.speech());
     }
 
-    /** GPT에는 판단에 필요한 값만 (box 좌표 등은 뺌). */
-    private static Map<String, Object> forPrompt(Garment g) {
+    /**
+     * GPT에는 판단에 필요한 값만 (box 좌표 등은 뺌). label은 읽어 줄 이름(색·무늬·종류)이라 GPT가 그대로 쓰게 합니다.
+     * 옷이 한 벌이면 position을 넣지 않습니다. 2026-11-12: 한 벌인데 "중앙 검정 셔츠"라고 읽음.
+     */
+    static Map<String, Object> forPrompt(Garment g, boolean withPosition) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", g.id());
-        m.put("position", g.position());
+        m.put("label", g.label());
+        if (withPosition) {
+            m.put("position", Korean.position(g.position()).isEmpty() ? null : Korean.position(g.position()));
+        }
         m.put("category", g.category());
         m.put("name", g.name());
         m.put("colorName", g.colorName());
+        m.put("subColorName", g.subColorName());
         m.put("colorFamily", g.colorFamily());
         m.put("tone", g.tone());
         m.put("pattern", g.pattern());
+        if ("gpt".equals(g.patternCheckedBy())) {
+            m.put("patternCheckedBy", "gpt");
+        }
         m.put("material", g.material());
         m.put("formality", g.formality());
         m.put("defects", g.defects());

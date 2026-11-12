@@ -442,7 +442,7 @@ public class OutfitFlow {
 
         List<SeenBrief> before = session.seen.stream()
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
-                        s.garment().colorName(), s.fit()))
+                        s.garment().colorName(), s.fit(), s.garment().label()))
                 .toList();
         CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, now, before,
                 SpokenDate.label(targetDay(session), today())));
@@ -589,7 +589,7 @@ public class OutfitFlow {
         List<Garment> outfit = List.copyOf(session.wornGarments);
         List<SeenBrief> before = session.seen.stream()
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
-                        s.garment().colorName(), s.fit()))
+                        s.garment().colorName(), s.fit(), s.garment().label()))
                 .toList();
         CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, outfit, before,
                 SpokenDate.label(targetDay(session), today())));

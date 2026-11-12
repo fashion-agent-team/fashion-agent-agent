@@ -143,4 +143,16 @@ class RuleOutfitJudgeTest {
         assertThat(out.stillMissing()).isEmpty();
         assertThat(out.speech()).contains("겉옷을 입으셨는지").doesNotContain("겉옷도 보여");
     }
+
+    @Test
+    void 무지_plain은_무늬로_치지_않는다_조문에_무지_검정은_good() {
+        Garment plain = new Garment("g1", "top", "셔츠", "검정", "black", "dark", "plain", null, null, "smart", List.of(),
+                null, null, 0.9);
+        Garment check = new Garment("g1", "top", "셔츠", "검정", "black", "dark", "check", null, null, "smart", List.of(),
+                null, null, 0.9);
+        var ok = judge.check(new OutfitJudge.CheckInput(null, events("mourning"), null, List.of(plain), List.of()));
+        var bad = judge.check(new OutfitJudge.CheckInput(null, events("mourning"), null, List.of(check), List.of()));
+        assertThat(ok.verdicts().get(0).fit()).isEqualTo("good");
+        assertThat(bad.verdicts().get(0).fit()).isEqualTo("bad");
+    }
 }

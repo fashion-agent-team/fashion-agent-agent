@@ -194,7 +194,7 @@ public class RuleOutfitJudge implements OutfitJudge {
 
     private static Fit fit(Garment g, Occasion occasion) {
         String formality = g.formality() == null ? "unknown" : g.formality();
-        boolean patterned = g.pattern() != null && !g.pattern().isBlank();
+        boolean patterned = g.patterned(); // "plain"(무지)은 무늬가 아님
         boolean dark = Set.of("black", "gray", "navy").contains(g.colorFamily());
         return switch (occasion) {
             case mourning -> dark && !patterned

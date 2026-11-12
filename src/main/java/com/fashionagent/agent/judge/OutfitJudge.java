@@ -50,6 +50,10 @@ public interface OutfitJudge {
         }
     }
 
-    record SeenBrief(String garmentId, String category, String name, String colorName, String verdict) {
+    /** label: 읽어 줄 이름(색·무늬·종류, Garment.label). */
+    record SeenBrief(String garmentId, String category, String name, String colorName, String verdict, String label) {
+        SeenBrief(String garmentId, String category, String name, String colorName, String verdict) {
+            this(garmentId, category, name, colorName, verdict, null);
+        }
     }
 }
