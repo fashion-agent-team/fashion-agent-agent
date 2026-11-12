@@ -55,9 +55,9 @@ public class AgentSession {
     public boolean wornOfferAsked;
     /** 이번 대화에서 고른 옷을 옷장에 기록했는지. 입은 모습까지 본 뒤 또 기록하지 않게. */
     public boolean recorded;
-    /** 입고 한 바퀴에서 다음에 볼 방향: front | side | back. null이면 front. */
+    /** 입고 한 바퀴에서 다음에 볼 방향: front | back. null이면 front. */
     public String wornStep;
-    /** 입고 한 바퀴에서 이번 바퀴에 본 옷 (앞모습 옷이 기준, 옆·뒤 얼룩을 더함). */
+    /** 입고 한 바퀴에서 이번 바퀴에 본 옷 (앞모습 옷이 기준, 뒤 얼룩을 더함). */
     public List<Garment> wornGarments = new ArrayList<>();
     /** 개별 기능 대화의 최근 몇 마디. GPT가 되물은 뒤 이어 듣기 위해. */
     public List<Said> assistantHistory = new ArrayList<>();

@@ -50,7 +50,7 @@ import tools.jackson.databind.json.JsonMapper;
  * 옷을 보여 주는 방식은 두 가지이고 사용자가 고릅니다(앱이 기억해서 outfitMode로 보냄).
  * <ul>
  * <li>laid: 옷을 내려놓고 위에서 비추기 → camera_outfit, 한 장마다 판단</li>
- * <li>worn: 입고 폰을 세워 둔 채 한 바퀴 돌기 → camera_worn, 앞·옆·뒤 세 장을 받은 뒤 한 번 판단 ({@link #checkWorn})</li>
+ * <li>worn: 입고 폰을 세워 둔 채 한 바퀴 돌기 → camera_worn, 앞·뒤 두 장을 받은 뒤 한 번 판단 ({@link #checkWorn})</li>
  * </ul>
  */
 @Component
@@ -529,15 +529,14 @@ public class OutfitFlow {
         return s.isEmpty() ? MORE : s + " " + MORE;
     }
 
-    // ── 2단계(입고 한 바퀴): 앞·옆·뒤 ─────────────────────────────────
+    // ── 2단계(입고 한 바퀴): 앞·뒤 ───────────────────────────────────
 
-    static final String WORN_SIDE = "이제 옆으로 돌아 주세요.";
     static final String WORN_BACK = "이제 뒤로 돌아 주세요.";
     static final String WORN_AGAIN = " 갈아입으면 앞모습부터 다시 볼게요.";
 
     /**
-     * 입고 한 바퀴. 앞모습에서 옷을 알아보고, 옆·뒤에서는 얼룩·찢어짐을 더 찾습니다.
-     * 세 장을 다 받으면 한 번만 판단합니다(GPT 호출 1번).
+     * 입고 한 바퀴. 앞모습에서 옷을 알아보고, 뒤에서는 얼룩·찢어짐을 더 찾습니다.
+     * 두 장을 다 받으면 한 번만 판단합니다(GPT 호출 1번). 옆모습은 2026-11-12 정지원 님 요청으로 뺐습니다.
      */
     public TurnResponse checkWorn(AgentSession session, String imageBase64) {
         session.photoCount++;
@@ -575,9 +574,9 @@ public class OutfitFlow {
 
         mergeWorn(session.wornGarments, now);
         if (!"back".equals(view)) {
-            session.wornStep = "front".equals(view) ? "side" : "back";
+            session.wornStep = "back";
             sessions.save(session);
-            return new TurnResponse(session.sessionId, "front".equals(view) ? WORN_SIDE : WORN_BACK,
+            return new TurnResponse(session.sessionId, WORN_BACK,
                     Next.camera_worn, null);
         }
 
@@ -606,7 +605,7 @@ public class OutfitFlow {
                 new Result("outfit_check", null, result, WORN));
     }
 
-    /** 앞모습 옷을 기준으로 두고, 옆·뒤에서 본 같은 종류 옷의 얼룩을 더합니다. 처음 보는 종류면 더합니다. */
+    /** 앞모습 옷을 기준으로 두고, 뒤에서 본 같은 종류 옷의 얼룩을 더합니다. 처음 보는 종류면 더합니다. */
     static void mergeWorn(List<Garment> outfit, List<Garment> now) {
         for (Garment g : now) {
             int i = -1;
