@@ -699,6 +699,7 @@ public class OutfitFlow {
         if (overruled) {
             chosen = anyChosen(pool);
         }
+        chosen = withoutUnknown(chosen);
         if (chosen.isEmpty()) {
             return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 한번 보여 주실래요?",
                     cameraFor(session.outfitMode), null);
@@ -758,6 +759,17 @@ public class OutfitFlow {
         }
         sessions.save(session);
         return null;
+    }
+
+    /**
+     * 종류를 모르는 옷("흰색 옷", category other)은 다른 옷이 있으면 기록하지 않습니다
+     * (2026-11-12 시뮬: "흰색 옷, 네이비 원피스로 기록해 둘게요" — 옷장에 이름 없는 옷이 쌓임).
+     */
+    static List<Garment> withoutUnknown(List<Garment> chosen) {
+        List<Garment> known = chosen.stream()
+                .filter(g -> !("other".equals(g.category()) && (g.name() == null || "옷".equals(g.name().strip()))))
+                .toList();
+        return known.isEmpty() ? chosen : known;
     }
 
     /** 고를 후보. 입고 한 바퀴면 마지막 바퀴에 본 옷만, 아니면 본 옷 전부. */

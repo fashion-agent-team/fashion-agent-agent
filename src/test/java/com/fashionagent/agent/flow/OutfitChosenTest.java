@@ -55,4 +55,12 @@ class OutfitChosenTest {
         session.outfitMode = "laid";
         assertThat(OutfitFlow.finishPool(session)).hasSize(4);
     }
+
+    @Test
+    void 종류_모르는_옷은_다른_옷이_있으면_빼고_기록() {
+        var unknown = seen("p1_g1", "other", "옷", "ok").garment();
+        var dress = seen("p1_g2", "dress", "원피스", "ok").garment();
+        assertThat(names(OutfitFlow.withoutUnknown(List.of(unknown, dress)))).containsExactly("원피스");
+        assertThat(names(OutfitFlow.withoutUnknown(List.of(unknown)))).containsExactly("옷");
+    }
 }
