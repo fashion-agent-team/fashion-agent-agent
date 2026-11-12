@@ -599,6 +599,7 @@ public class OutfitFlow {
             session.seen.add(new AgentSession.Seen(g, fit));
         }
         session.lastDamage = new ArrayList<>(j.damage());
+        session.lastWornIds = new ArrayList<>(outfit.stream().map(Garment::id).toList());
         session.wornStep = null;
         session.wornGarments = new ArrayList<>();
         sessions.save(session);
@@ -688,12 +689,15 @@ public class OutfitFlow {
     // ── "이걸로 할게" ─────────────────────────────────────────────────
 
     public TurnResponse finish(AgentSession session) {
-        List<Garment> chosen = chosen(session);
+        // 입고 한 바퀴는 지금 입은 옷이 답입니다. 갈아입기 전 바퀴의 옷을 섞지 않습니다
+        // (2026-11-12 시뮬: 두 바퀴 뒤 "이걸로 할게"에 첫 바퀴 자켓과 둘째 바퀴 옷을 함께 기록함).
+        List<AgentSession.Seen> pool = finishPool(session);
+        List<Garment> chosen = chosen(pool);
         // 아쉽다고 말한 옷만 봤어도 사용자가 "이걸로 할게"라고 하면 그 옷으로 합니다(2026-11-12 시뮬: 입은 모습이
         // 날씨에 가볍다고 했더니 기록을 거절하고 다시 보여 달라고만 했음).
-        boolean overruled = chosen.isEmpty() && !session.seen.isEmpty();
+        boolean overruled = chosen.isEmpty() && !pool.isEmpty();
         if (overruled) {
-            chosen = anyChosen(session);
+            chosen = anyChosen(pool);
         }
         if (chosen.isEmpty()) {
             return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 한번 보여 주실래요?",
@@ -705,6 +709,7 @@ public class OutfitFlow {
         String picked = (overruled ? "좋아요, 입고 싶은 옷으로 하세요. " : "좋아요. ")
                 + Korean.josa(names, "으로", "로") + (recorded ? " 기록해 둘게요." : " 정했어요.");
         session.seen = new ArrayList<>();
+        session.lastWornIds = null;
         session.lastDamage = new ArrayList<>();
         session.embeddings = new java.util.HashMap<>();
         session.thumbnails = new java.util.HashMap<>();
@@ -755,25 +760,64 @@ public class OutfitFlow {
         return null;
     }
 
+    /** 고를 후보. 입고 한 바퀴면 마지막 바퀴에 본 옷만, 아니면 본 옷 전부. */
+    static List<AgentSession.Seen> finishPool(AgentSession session) {
+        if (WORN.equals(session.outfitMode) && session.lastWornIds != null && !session.lastWornIds.isEmpty()) {
+            List<AgentSession.Seen> last = session.seen.stream()
+                    .filter(s -> session.lastWornIds.contains(s.garment().id())).toList();
+            if (!last.isEmpty()) {
+                return last;
+            }
+        }
+        return session.seen;
+    }
+
     /** 종류마다 가장 잘 맞는 옷 하나 (같으면 나중에 본 옷). bad는 뺍니다. */
     static List<Garment> chosen(AgentSession session) {
+        return chosen(session.seen);
+    }
+
+    static List<Garment> chosen(List<AgentSession.Seen> seen) {
         Map<String, AgentSession.Seen> best = new LinkedHashMap<>();
-        for (AgentSession.Seen s : session.seen) {
+        for (AgentSession.Seen s : seen) {
             if ("bad".equals(s.fit())) {
                 continue;
             }
             best.merge(s.garment().category(), s, (old, neu) -> rank(neu.fit()) >= rank(old.fit()) ? neu : old);
         }
+        return onePieceOrSeparates(best, seen);
+    }
+
+    /**
+     * 원피스와 상의·하의를 함께 고르지 않습니다(2026-11-12 시뮬: 원피스·치마·티셔츠를 한 번에 기록함).
+     * 더 잘 맞는 쪽, 같으면 나중에 본 쪽을 남깁니다.
+     */
+    static List<Garment> onePieceOrSeparates(Map<String, AgentSession.Seen> best, List<AgentSession.Seen> seen) {
+        AgentSession.Seen dress = best.get("dress");
+        List<AgentSession.Seen> parts = java.util.stream.Stream.of(best.get("top"), best.get("bottom"))
+                .filter(java.util.Objects::nonNull).toList();
+        if (dress != null && !parts.isEmpty()) {
+            int partRank = parts.stream().mapToInt(p -> rank(p.fit())).max().orElse(0);
+            int partLast = parts.stream().mapToInt(seen::lastIndexOf).max().orElse(-1);
+            boolean keepDress = rank(dress.fit()) != partRank ? rank(dress.fit()) > partRank
+                    : seen.lastIndexOf(dress) > partLast;
+            if (keepDress) {
+                best.remove("top");
+                best.remove("bottom");
+            } else {
+                best.remove("dress");
+            }
+        }
         return best.values().stream().map(AgentSession.Seen::garment).toList();
     }
 
     /** 맞음·아쉬움을 가리지 않고 종류마다 가장 나은(같으면 나중에 본) 옷. 사용자가 아쉬운 옷을 고집할 때. */
-    static List<Garment> anyChosen(AgentSession session) {
+    static List<Garment> anyChosen(List<AgentSession.Seen> seen) {
         Map<String, AgentSession.Seen> best = new LinkedHashMap<>();
-        for (AgentSession.Seen s : session.seen) {
+        for (AgentSession.Seen s : seen) {
             best.merge(s.garment().category(), s, (old, neu) -> rank(neu.fit()) >= rank(old.fit()) ? neu : old);
         }
-        return best.values().stream().map(AgentSession.Seen::garment).toList();
+        return onePieceOrSeparates(best, seen);
     }
 
     private static int rank(String fit) {

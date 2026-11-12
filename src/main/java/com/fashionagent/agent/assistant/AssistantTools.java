@@ -56,6 +56,8 @@ public class AssistantTools {
     static final int MAX_LIST_DAYS = 14;
     /** schedule_list에서 본 일정 이름(eventId → title). 지운 뒤 "면접을 지웠어요"라고 말하려고. */
     private final Map<String, String> eventTitles = new HashMap<>();
+    /** schedule_list에서 본 일정 전체(eventId → 일정). 시각을 바꿀 때 이름·장소·알림을 그대로 옮기려고. */
+    private final Map<String, JsonNode> events = new HashMap<>();
 
     public AssistantTools(AgentTools tools, AgentSession session, Location location, JsonMapper json) {
         this.tools = tools;
@@ -145,6 +147,7 @@ public class AssistantTools {
         String out = call(ToolNames.SCHEDULE_LIST, args, true);
         for (JsonNode e : json.readTree(out).path("events")) {
             eventTitles.put(e.path("eventId").asString(""), e.path("title").asString(""));
+            events.put(e.path("eventId").asString(""), e);
         }
         return out;
     }
@@ -161,6 +164,71 @@ public class AssistantTools {
                     known ? List.of("지웠|삭제", title) : List.of("지웠|삭제")));
         }
         return out;
+    }
+
+    @Tool(name = "schedule_change", description = """
+            일정의 날짜·시각을 바꿉니다. "결혼식 11시로 바꿔 줘", "회의를 목요일로 옮겨 줘" 같은 말에 씁니다. \
+            먼저 schedule_list로 그 일정의 eventId를 찾고, 어느 일정인지 분명할 때만 부르세요. \
+            이름·장소·알림 설정은 그대로 둡니다. 날짜를 말하지 않았으면 원래 날짜에 새 시각만 넣으세요.""")
+    public String scheduleChange(
+            @ToolParam(description = "schedule_list 결과의 eventId") String eventId,
+            @ToolParam(description = "새 시작 시각 ISO-8601, +09:00 포함. 예: 2026-11-17T11:00:00+09:00") String start) {
+        JsonNode old = events.get(eventId);
+        if (old == null) {
+            return error("unknown_event", "먼저 schedule_list로 바꿀 일정을 찾아 주세요.");
+        }
+        java.time.OffsetDateTime when;
+        try {
+            when = java.time.OffsetDateTime.parse(start.strip());
+        } catch (RuntimeException e) {
+            return error("bad_start", "시각은 2026-11-17T11:00:00+09:00 형식이어야 해요.");
+        }
+        String title = old.path("title").asString("");
+        // 일정 서버에 고치기 도구가 없어서 새 시각으로 넣고 옛 일정을 지웁니다(2026-11-12 시뮬: "11시로 바꿔줘"에 일정이 없다고 답함).
+        Map<String, Object> args = new HashMap<>();
+        args.put("title", title);
+        args.put("start", start.strip());
+        String place = old.path("place").asString("");
+        if (!place.isBlank()) {
+            args.put("place", place);
+        }
+        JsonNode added = json.readTree(call(ToolNames.SCHEDULE_ADD, args, true));
+        String newId = added.path("eventId").asString("");
+        if (added.has("error") || newId.isBlank()) {
+            return json.writeValueAsString(added);
+        }
+        Integer days = old.path("remindDaysBefore").isNumber() ? old.path("remindDaysBefore").asInt() : null;
+        boolean remind = old.path("remind").asBoolean(true);
+        if (!remind || days != null) {
+            Map<String, Object> r = new HashMap<>();
+            r.put("eventId", newId);
+            r.put("remind", remind);
+            if (days != null) {
+                r.put("daysBefore", days);
+            }
+            call(ToolNames.SCHEDULE_SET_REMINDER, r, true);
+        }
+        JsonNode deleted = json.readTree(call(ToolNames.SCHEDULE_DELETE, Map.of("eventId", eventId), true));
+        if (!deleted.path("deleted").asBoolean(false)) {
+            // 새 일정은 들어갔는데 옛 일정이 남으면 두 개가 됩니다. 새 것을 지워 원래대로 둡니다.
+            call(ToolNames.SCHEDULE_DELETE, Map.of("eventId", newId), true);
+            return error("change_failed", "일정을 바꾸지 못했어요. 원래 일정은 그대로예요.");
+        }
+        events.remove(eventId);
+        String label = spokenTime(when);
+        done.add(new Done("일정 '" + title + "'을 " + label + "로 바꿨어요.", List.of("바꿨|옮겼|변경", title)));
+        return json.writeValueAsString(Map.of("changed", true, "eventId", newId, "title", title, "when", label));
+    }
+
+    /** "11월 17일 화요일 오전 11시", 분이 있으면 "오후 2시 30분". */
+    static String spokenTime(java.time.OffsetDateTime t) {
+        var local = t.atZoneSameInstant(java.time.ZoneId.of("Asia/Seoul"));
+        int h = local.getHour();
+        String ampm = h < 12 ? "오전" : "오후";
+        int h12 = h % 12 == 0 ? 12 : h % 12;
+        return local.getMonthValue() + "월 " + local.getDayOfMonth() + "일 "
+                + local.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.KOREAN) + " "
+                + ampm + " " + h12 + "시" + (local.getMinute() == 0 ? "" : " " + local.getMinute() + "분");
     }
 
     /** 기능 열기에서 고를 수 있는 이름. */

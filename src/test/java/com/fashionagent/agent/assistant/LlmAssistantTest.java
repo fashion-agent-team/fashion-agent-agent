@@ -251,4 +251,31 @@ class LlmAssistantTest {
 
         assertThat(reply.speech()).isEqualTo("금요일 면접 일정을 삭제했어요.");
     }
+
+    @Test
+    void 일정_시각을_바꾸면_새로_넣고_옛_일정을_지운다() {
+        var model = new ScriptedModel(List.of(
+                new String[] { "schedule_list", "{\"date\":\"2026-11-06\"}" },
+                new String[] { "schedule_change",
+                        "{\"eventId\":\"e_fake\",\"start\":\"2026-11-06T11:00:00+09:00\"}" }),
+                results -> "늦은 답", 2000);
+
+        var reply = assistant(model, Duration.ofMillis(300)).reply(new AgentSession("s14", "u"), "면접 11시로 바꿔 줘",
+                null, false);
+
+        assertThat(calls).anyMatch(c -> c.startsWith("schedule_add {place=강남 사무실, start=2026-11-06T11:00:00+09:00, title=면접"));
+        assertThat(calls).anyMatch(c -> c.equals("schedule_delete {eventId=e_fake, userId=u}"));
+        assertThat(reply.speech()).isEqualTo("일정 '면접'을 11월 6일 금요일 오전 11시로 바꿨어요.");
+    }
+
+    @Test
+    void 목록에서_보지_않은_일정은_바꾸지_않는다() {
+        var model = new ScriptedModel(List.<String[]>of(new String[] { "schedule_change",
+                "{\"eventId\":\"e_x\",\"start\":\"2026-11-06T11:00:00+09:00\"}" }), results -> results.get(0), 0);
+
+        var reply = assistant(model, Duration.ofSeconds(5)).reply(new AgentSession("s15", "u"), "바꿔 줘", null, false);
+
+        assertThat(calls).isEmpty();
+        assertThat(reply.speech()).contains("unknown_event");
+    }
 }
