@@ -126,6 +126,14 @@ public class TurnService {
             }
         }
 
+        // "다 보여 줬어" 뒤 "~로 할까요?"에 대한 답
+        if (session.pickAsked) {
+            TurnResponse answered = outfit.answerPick(session, req.utterance());
+            if (answered != null) {
+                return answered;
+            }
+        }
+
         // "입은 모습도 확인해 보실래요?"에 대한 답
         if (session.wornOfferAsked) {
             TurnResponse answered = outfit.answerWornOffer(session, req.utterance());
@@ -147,6 +155,7 @@ public class TurnService {
             case CHECK -> outfit.startCheck(session, req.location(), req.utterance());
             case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
             case FINISH -> outfit.finish(session);
+            case SHOWN -> outfit.shown(session);
             case WHERE -> outfit.where(session);
             case CLOSET -> closetFlow.list(session, req.utterance());
             case CLOSET_HISTORY -> closetFlow.history(session, req.utterance());

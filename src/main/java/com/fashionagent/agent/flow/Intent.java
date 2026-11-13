@@ -8,18 +8,24 @@ import java.util.List;
  * 나머지({@link #OTHER}: 일정 등록·삭제, 다른 날 일정 등)는 GPT가 도구를 고릅니다.
  */
 public enum Intent {
-    OUTFIT, CHECK, CLOSET, CLOSET_HISTORY, CLOSET_REMOVE, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
+    OUTFIT, CHECK, SHOWN, CLOSET, CLOSET_HISTORY, CLOSET_REMOVE, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
 
     private static final List<String> FINISH_WORDS = List.of("이걸로", "이거로", "이걸입", "이거입", "됐어", "다됐", "그만",
             "끝낼", "마칠");
+    /**
+     * 옷을 다 보여 줬다는 말. 2026-11-13 실서버 시뮬: "다 보여 줬어"가 GPT로 가서 처음 추천을 다시 하고(17초) 본 옷을 잊었음.
+     */
+    private static final List<String> SHOWN_WORDS = List.of("다보여", "다보였", "다찍", "다봤", "더없어", "이게다", "이거다야",
+            "이게전부", "이거전부");
     private static final List<String> OUTFIT_WORDS = List.of("뭐입", "뭘입", "옷추천", "추천해", "코디", "입을까", "입지",
             "옷골라");
     /**
      * "옷 검사해 줘"처럼 꺼낸 옷을 바로 봐 달라는 말. 추천을 길게 말하지 않고 바로 카메라로 갑니다.
      * 2026-11-09 리허설: "옷 검사"가 키워드에 없어 GPT로 갔고, 얼굴 확인으로 넘어갔습니다.
+     * 2026-11-13 실서버 시뮬: "이 옷 어때"가 GPT로 가서 카메라 대신 오늘 추천을 길게 말했습니다.
      */
     private static final List<String> CHECK_WORDS = List.of("옷검사", "옷확인", "옷체크", "옷상태", "옷봐", "옷좀봐",
-            "입은옷", "입은거", "입은모습", "옷차림", "검사해", "검사좀");
+            "입은옷", "입은거", "입은모습", "옷차림", "검사해", "검사좀", "옷어때", "옷어떄", "옷괜찮", "옷어울");
     /** "옷장에서 검정 패딩 지워 줘", "옷장에서 버린 바지 빼 줘". */
     private static final List<String> CLOSET_REMOVE_WORDS = List.of("지워", "지우", "삭제", "빼줘", "빼", "버렸", "없애");
     /** 일정 등록·삭제는 GPT로 보냅니다. 2026-11-12: "일정 없애 줘"가 오늘 일정 읽기로 갔습니다. */
@@ -48,6 +54,9 @@ public enum Intent {
         String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
         if (inOutfitSession && containsAny(s, FINISH_WORDS)) {
             return FINISH;
+        }
+        if (inOutfitSession && containsAny(s, SHOWN_WORDS)) {
+            return SHOWN;
         }
         if (inOutfitSession && s.contains("어디")) {
             return WHERE;

@@ -15,6 +15,9 @@ class IntentTest {
     @Test
     void 마무리와_어디야는_옷_추천_중일_때만() {
         assertThat(Intent.of("이걸로 할게", true)).isEqualTo(Intent.FINISH);
+        assertThat(Intent.of("다 보여 줬어", true)).isEqualTo(Intent.SHOWN);
+        assertThat(Intent.of("이게 다야", true)).isEqualTo(Intent.SHOWN);
+        assertThat(Intent.of("다 보여 줬어", false)).isNotEqualTo(Intent.SHOWN);
         assertThat(Intent.of("이걸로 할게", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("얼룩 어디야?", true)).isEqualTo(Intent.WHERE);
         assertThat(Intent.of("입고 볼게", true)).isEqualTo(Intent.MODE);
@@ -26,6 +29,9 @@ class IntentTest {
     @Test
     void 옷_검사는_바로_확인으로_간다_리허설() {
         assertThat(Intent.of("옷 검사해 줘", false)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("이 옷 어때", false)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("이 옷 어때?", true)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("얼굴 어때", false)).isNotEqualTo(Intent.CHECK);
         assertThat(Intent.of("옷검사 해 줘", false)).isEqualTo(Intent.CHECK);
         assertThat(Intent.of("내가 입은 옷 확인해 줘", false)).isEqualTo(Intent.CHECK);
         assertThat(Intent.of("얼굴 검사해 줘", false)).isEqualTo(Intent.FACE);
