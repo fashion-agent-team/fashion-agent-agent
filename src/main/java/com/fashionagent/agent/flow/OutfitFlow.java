@@ -455,7 +455,7 @@ public class OutfitFlow {
         session.lastDamage = new ArrayList<>(j.damage());
         sessions.save(session);
         var result = new OutfitCheck(now, j.verdicts(), j.comparison(), j.damage(), j.stillMissing(), null, source);
-        if (askGpt(session, now, imageBase64)) {
+        if (askGpt(session, now, hasPendingHelper(inspect), imageBase64)) {
             sessions.save(session);
             return new TurnResponse(session.sessionId, j.speech() + " " + GPT_ASK, Next.camera_outfit,
                     new Result("outfit_check", null, result));
@@ -471,19 +471,36 @@ public class OutfitFlow {
     /** 애매한 얼룩으로 보는 확신도 범위(옷 상태 서버가 GPT로 확인하는 범위와 같음). */
     static final double GPT_MIN = 0.2, GPT_MAX = 0.5;
 
-    /** 아직 묻지 않았고 GPT가 확인하지 않은 애매한 얼룩이 있으면 물을 준비를 하고 true. */
-    private static boolean askGpt(AgentSession session, List<Garment> garments, String imageBase64) {
+    /**
+     * 아직 묻지 않았고 애매한 부분이 있으면 물을 준비를 하고 true. 애매한 부분은
+     * <ul>
+     *   <li>옷 상태 서버가 pendingHelper로 돌려준 얼룩 후보(GPT 없이는 0.3~0.5라 defects에 안 들어옴)</li>
+     *   <li>무늬를 모르는 옷(pattern 없음, patternGuess만 있음)</li>
+     *   <li>defects 안의 GPT가 확인하지 않은 0.2~0.5 얼룩(예전 서버 호환)</li>
+     * </ul>
+     * 2026-11-13: 서버는 0.5 미만 얼룩을 defects에 넣지 않아 예전 조건만으로는 한 번도 묻지 못했습니다.
+     */
+    private static boolean askGpt(AgentSession session, List<Garment> garments, boolean pendingHelper,
+            String imageBase64) {
         if (session.gptConsent != null || session.gptAsked) {
             return false;
         }
-        boolean unsure = garments.stream().flatMap(g -> g.defects().stream())
-                .anyMatch(d -> !d.byGpt() && d.confidence() >= GPT_MIN && d.confidence() < GPT_MAX);
+        boolean unsure = pendingHelper
+                || garments.stream().anyMatch(g -> g.pattern() == null && g.patternGuess() != null)
+                || garments.stream().flatMap(g -> g.defects().stream())
+                        .anyMatch(d -> !d.byGpt() && d.confidence() >= GPT_MIN && d.confidence() < GPT_MAX);
         if (!unsure) {
             return false;
         }
         session.gptAsked = true;
         session.gptAskImage = imageBase64;
         return true;
+    }
+
+    /** 옷 상태 서버가 확인하지 못한 애매한 얼룩 후보를 돌려줬는지. */
+    static boolean hasPendingHelper(JsonNode inspect) {
+        JsonNode p = inspect.path("pendingHelper");
+        return p.isObject() && p.path("candidates").isArray() && !p.path("candidates").isEmpty();
     }
 
     /** "더 정확한 AI에게 물어봐도 될까요?"에 대한 답. 좋다면 방금 사진을 GPT 확인으로 다시 봅니다. 답이 아니면 null. */
@@ -579,6 +596,10 @@ public class OutfitFlow {
         }
 
         mergeWorn(session.wornGarments, now);
+        if ("front".equals(view)) {
+            session.wornUnsure = false;
+        }
+        session.wornUnsure |= hasPendingHelper(inspect);
         if (!"back".equals(view)) {
             session.wornStep = "back";
             sessions.save(session);
@@ -604,7 +625,9 @@ public class OutfitFlow {
         session.wornGarments = new ArrayList<>();
         sessions.save(session);
         var result = new OutfitCheck(outfit, j.verdicts(), j.comparison(), j.damage(), j.stillMissing(), null, source);
-        if (askGpt(session, outfit, null)) {
+        boolean wornUnsure = session.wornUnsure;
+        session.wornUnsure = false;
+        if (askGpt(session, outfit, wornUnsure, null)) {
             sessions.save(session);
             return new TurnResponse(session.sessionId, j.speech() + " " + GPT_ASK, Next.camera_worn,
                     new Result("outfit_check", null, result, WORN));

@@ -527,4 +527,36 @@ class TurnFlowTest {
                 {"image": "UNSURE1", "imageKind": "outfit", "allowGpt": false}""");
         assertThat(later.path("speech").asString()).doesNotContain("더 정확한 AI에게");
     }
+
+    @Test
+    void 무늬를_모르는_옷이_나와도_GPT_확인을_묻는다() throws Exception {
+        JsonNode first = turn("u-gpt4", """
+                {"image": "PATTERN?1", "imageKind": "outfit"}""");
+        assertThat(first.path("speech").asString()).contains("더 정확한 AI에게");
+    }
+
+    @Test
+    void 입고_한_바퀴에서_앞모습에_애매한_얼룩이_있으면_다_본_뒤에_묻는다() throws Exception {
+        String sid = turn("u-gpt5", """
+                {"utterance": "입고 볼게 오늘 뭐 입지"}""").path("sessionId").asString();
+        JsonNode front = turn("u-gpt5", """
+                {"sessionId": "%s", "image": "UNSURE1", "imageKind": "worn"}""".formatted(sid));
+        assertThat(front.path("speech").asString()).contains("뒤로").doesNotContain("더 정확한 AI에게");
+        JsonNode back = turn("u-gpt5", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
+        assertThat(back.path("speech").asString()).contains("더 정확한 AI에게");
+        assertThat(back.path("next").asString()).isEqualTo("camera_worn");
+
+        JsonNode yes = turn("u-gpt5", """
+                {"sessionId": "%s", "utterance": "좋아"}""".formatted(sid));
+        assertThat(yes.path("gptConsent").asBoolean()).isTrue();
+        assertThat(yes.path("next").asString()).isEqualTo("camera_worn");
+    }
+
+    @Test
+    void 애매한_부분이_없으면_묻지_않는다() throws Exception {
+        JsonNode first = turn("u-gpt6", """
+                {"image": "AAAA", "imageKind": "outfit"}""");
+        assertThat(first.path("speech").asString()).doesNotContain("더 정확한 AI에게");
+    }
 }
