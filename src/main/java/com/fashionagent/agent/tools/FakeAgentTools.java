@@ -135,14 +135,33 @@ public class FakeAgentTools implements AgentTools {
 
     private static Map<String, Object> inspect(String image, boolean allowGpt) {
         if (image.startsWith("UNSURE")) {
-            // 애매한 얼룩: GPT 확인을 허락하면 GPT가 얼룩이라고 확인한 것으로 돌려줍니다.
-            var stain = allowGpt
-                    ? Map.<String, Object>of("kind", "stain", "where", "앞", "confidence", 0.7, "checkedBy", "gpt")
-                    : Map.<String, Object>of("kind", "stain", "where", "앞", "confidence", 0.35);
-            return Map.of("garments", List.of(map("id", "g1", "category", "top", "name", "셔츠", "colorName", "흰색",
+            // 실제 옷 상태 서버처럼: 애매한 얼룩(0.2~0.5)은 defects가 아니라 pendingHelper로 줍니다.
+            // GPT 확인을 허락하면 GPT가 얼룩이라고 확인한 것으로 defects에 넣어 돌려줍니다.
+            var shirt = map("id", "g1", "category", "top", "name", "셔츠", "colorName", "흰색",
                     "colorFamily", "white", "tone", "light", "formality", "smart", "position", "center",
-                    "defects", List.of(stain), "confidence", 0.95)),
-                    "lighting", "ok", "source", "model", "modelVersion", "fake");
+                    "defects", allowGpt
+                            ? List.of(Map.of("kind", "stain", "where", "앞", "confidence", 0.7, "checkedBy", "gpt"))
+                            : List.of(),
+                    "confidence", 0.95);
+            var out = map("garments", List.of(shirt), "lighting", "ok", "source", "model", "modelVersion", "fake");
+            if (!allowGpt) {
+                out.put("pendingHelper", map("garmentId", "g1", "note", "확실하지 않은 부분이 있어요.",
+                        "candidates", List.of(Map.of("kind", "stain", "where", "앞", "confidence", 0.35))));
+            }
+            return out;
+        }
+        if (image.startsWith("PATTERN")) {
+            // 무늬를 확실히 모름(pattern 없음, 1등만 patternGuess). GPT를 허락하면 GPT가 본 무늬.
+            var top = map("id", "g1", "category", "top", "name", "셔츠", "colorName", "베이지",
+                    "colorFamily", "beige", "tone", "light", "formality", "smart", "position", "center",
+                    "defects", List.of(), "confidence", 0.9);
+            if (allowGpt) {
+                top.put("pattern", "animal");
+                top.put("patternCheckedBy", "gpt");
+            } else {
+                top.put("patternGuess", "animal");
+            }
+            return map("garments", List.of(top), "lighting", "ok", "source", "model", "modelVersion", "fake");
         }
         if (image.startsWith("DARK")) {
             return Map.of("garments", List.of(), "lighting", "dark", "source", "model", "modelVersion", "fake");

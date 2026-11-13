@@ -527,4 +527,19 @@ class TurnFlowTest {
                 {"image": "UNSURE1", "imageKind": "outfit", "allowGpt": false}""");
         assertThat(later.path("speech").asString()).doesNotContain("더 정확한 AI에게");
     }
+
+    @Test
+    void 무늬를_모르면_GPT_확인을_묻고_좋다면_무늬를_다시_본다() throws Exception {
+        JsonNode first = turn("u-gpt4", """
+                {"image": "PATTERN1", "imageKind": "outfit"}""");
+        assertThat(first.path("speech").asString()).contains("더 정확한 AI에게");
+        String sid = first.path("sessionId").asString();
+
+        JsonNode yes = turn("u-gpt4", """
+                {"sessionId": "%s", "utterance": "좋아"}""".formatted(sid));
+        assertThat(yes.path("gptConsent").asBoolean()).isTrue();
+        assertThat(yes.path("speech").asString()).startsWith("고마워요. 한 번 더 확인해 봤어요.");
+        assertThat(yes.path("result").path("outfitCheck").path("garments").get(0).path("pattern").asString())
+                .isEqualTo("animal");
+    }
 }

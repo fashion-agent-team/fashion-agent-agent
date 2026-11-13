@@ -59,6 +59,8 @@ public class AgentSession {
     public String wornStep;
     /** 입고 한 바퀴에서 이번 바퀴에 본 옷 (앞모습 옷이 기준, 뒤 얼룩을 더함). */
     public List<Garment> wornGarments = new ArrayList<>();
+    /** 입고 한 바퀴에서 이번 바퀴(앞·뒤)에 옷 상태 서버가 애매하다고 한 것(pendingHelper)이 있었는지. */
+    public boolean wornUnsure;
     /** 입고 한 바퀴에서 마지막으로 다 본(앞·뒤) 옷의 id. "이걸로 할게"는 이 옷만 고릅니다. */
     public List<String> lastWornIds;
     /** 개별 기능 대화의 최근 몇 마디. GPT가 되물은 뒤 이어 듣기 위해. */

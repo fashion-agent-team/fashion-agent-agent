@@ -455,7 +455,7 @@ public class OutfitFlow {
         session.lastDamage = new ArrayList<>(j.damage());
         sessions.save(session);
         var result = new OutfitCheck(now, j.verdicts(), j.comparison(), j.damage(), j.stillMissing(), null, source);
-        if (askGpt(session, now, imageBase64)) {
+        if (askGpt(session, now, imageBase64, unsure(inspect, now, true))) {
             sessions.save(session);
             return new TurnResponse(session.sessionId, j.speech() + " " + GPT_ASK, Next.camera_outfit,
                     new Result("outfit_check", null, result));
@@ -471,12 +471,30 @@ public class OutfitFlow {
     /** 애매한 얼룩으로 보는 확신도 범위(옷 상태 서버가 GPT로 확인하는 범위와 같음). */
     static final double GPT_MIN = 0.2, GPT_MAX = 0.5;
 
-    /** 아직 묻지 않았고 GPT가 확인하지 않은 애매한 얼룩이 있으면 물을 준비를 하고 true. */
-    private static boolean askGpt(AgentSession session, List<Garment> garments, String imageBase64) {
+    /**
+     * 옷 상태 서버가 애매하다고 돌려준 것이 있는지. 서버는 확신도 0.5 미만 얼룩을 defects가 아니라 pendingHelper로 주고
+     * (tell-threshold 0.5), 무늬를 모르면 pattern 없이 patternGuess만 줍니다. 무늬는 내려놓은 사진만 GPT에게 물으므로
+     * laid일 때만 셉니다(2026-11-13: 이 둘을 안 봐서 실제 서버에서는 동의 질문이 한 번도 나오지 않았음).
+     */
+    static boolean unsure(JsonNode inspect, List<Garment> garments, boolean laid) {
+        JsonNode pending = inspect.path("pendingHelper");
+        if (!pending.isMissingNode() && !pending.isNull()) {
+            return true;
+        }
+        return laid && garments.stream().anyMatch(g -> (g.pattern() == null || g.pattern().isBlank())
+                && g.patternGuess() != null && !g.patternGuess().isBlank());
+    }
+
+    /**
+     * 아직 묻지 않았고 GPT가 확인하지 않은 애매한 것(서버가 준 pendingHelper·모르는 무늬, 또는 0.2~0.5 얼룩)이 있으면
+     * 물을 준비를 하고 true.
+     */
+    private static boolean askGpt(AgentSession session, List<Garment> garments, String imageBase64,
+            boolean serverUnsure) {
         if (session.gptConsent != null || session.gptAsked) {
             return false;
         }
-        boolean unsure = garments.stream().flatMap(g -> g.defects().stream())
+        boolean unsure = serverUnsure || garments.stream().flatMap(g -> g.defects().stream())
                 .anyMatch(d -> !d.byGpt() && d.confidence() >= GPT_MIN && d.confidence() < GPT_MAX);
         if (!unsure) {
             return false;
@@ -579,6 +597,7 @@ public class OutfitFlow {
         }
 
         mergeWorn(session.wornGarments, now);
+        session.wornUnsure = ("front".equals(view) ? false : session.wornUnsure) || unsure(inspect, now, false);
         if (!"back".equals(view)) {
             session.wornStep = "back";
             sessions.save(session);
@@ -604,7 +623,9 @@ public class OutfitFlow {
         session.wornGarments = new ArrayList<>();
         sessions.save(session);
         var result = new OutfitCheck(outfit, j.verdicts(), j.comparison(), j.damage(), j.stillMissing(), null, source);
-        if (askGpt(session, outfit, null)) {
+        boolean wornUnsure = session.wornUnsure;
+        session.wornUnsure = false;
+        if (askGpt(session, outfit, null, wornUnsure)) {
             sessions.save(session);
             return new TurnResponse(session.sessionId, j.speech() + " " + GPT_ASK, Next.camera_worn,
                     new Result("outfit_check", null, result, WORN));
