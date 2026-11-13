@@ -29,6 +29,9 @@ class IntentTest {
     @Test
     void 옷_검사는_바로_확인으로_간다_리허설() {
         assertThat(Intent.of("옷 검사해 줘", false)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("이 옷 어때", false)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("이 옷 어때?", true)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("얼굴 어때", false)).isNotEqualTo(Intent.CHECK);
         assertThat(Intent.of("옷검사 해 줘", false)).isEqualTo(Intent.CHECK);
         assertThat(Intent.of("내가 입은 옷 확인해 줘", false)).isEqualTo(Intent.CHECK);
         assertThat(Intent.of("얼굴 검사해 줘", false)).isEqualTo(Intent.FACE);

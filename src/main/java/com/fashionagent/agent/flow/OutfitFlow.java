@@ -774,12 +774,34 @@ public class OutfitFlow {
 
     /** "이걸로 할게"가 기록할 옷: 마지막 바퀴(입고 볼 때) 중 잘 맞는 옷, 없으면 본 옷, 이름 모르는 옷은 다른 옷이 있으면 뺌. */
     private static List<Garment> picks(AgentSession session) {
-        List<AgentSession.Seen> pool = finishPool(session);
-        List<Garment> chosen = chosen(pool);
-        if (chosen.isEmpty() && !pool.isEmpty()) {
-            chosen = anyChosen(pool);
+        return withoutUnknown(pick(finishPool(session)).garments());
+    }
+
+    /** 고른 옷과, 날씨에 안 맞는다고 했던 옷을 사용자가 그대로 고른 것인지. */
+    record Pick(List<Garment> garments, boolean overruled) {
+    }
+
+    /**
+     * 종류마다 가장 잘 맞는 옷. 안 맞는다고 한 옷만 본 종류도 사용자가 보여 준 옷이니 넣습니다
+     * (2026-11-13 실서버 시뮬: 티셔츠와 바지를 보여 주고 "이걸로 할게"라고 했더니 날씨에 얇은 티셔츠를 빼고 바지만 기록함).
+     * 원피스와 상의·하의는 함께 넣지 않습니다.
+     */
+    static Pick pick(List<AgentSession.Seen> pool) {
+        List<Garment> chosen = new ArrayList<>(chosen(pool));
+        boolean overruled = false;
+        java.util.Set<String> cats = new java.util.HashSet<>();
+        chosen.forEach(g -> cats.add(g.category()));
+        for (Garment g : anyChosen(pool)) {
+            String c = g.category();
+            boolean clash = "dress".equals(c) ? cats.contains("top") || cats.contains("bottom")
+                    : ("top".equals(c) || "bottom".equals(c)) && cats.contains("dress");
+            if (!cats.contains(c) && !clash) {
+                chosen.add(g);
+                cats.add(c);
+                overruled = true;
+            }
         }
-        return withoutUnknown(chosen);
+        return new Pick(chosen, overruled);
     }
 
     // ── "이걸로 할게" ─────────────────────────────────────────────────
@@ -787,15 +809,11 @@ public class OutfitFlow {
     public TurnResponse finish(AgentSession session) {
         // 입고 한 바퀴는 지금 입은 옷이 답입니다. 갈아입기 전 바퀴의 옷을 섞지 않습니다
         // (2026-11-12 시뮬: 두 바퀴 뒤 "이걸로 할게"에 첫 바퀴 자켓과 둘째 바퀴 옷을 함께 기록함).
-        List<AgentSession.Seen> pool = finishPool(session);
-        List<Garment> chosen = chosen(pool);
         // 아쉽다고 말한 옷만 봤어도 사용자가 "이걸로 할게"라고 하면 그 옷으로 합니다(2026-11-12 시뮬: 입은 모습이
         // 날씨에 가볍다고 했더니 기록을 거절하고 다시 보여 달라고만 했음).
-        boolean overruled = chosen.isEmpty() && !pool.isEmpty();
-        if (overruled) {
-            chosen = anyChosen(pool);
-        }
-        chosen = withoutUnknown(chosen);
+        Pick pick = pick(finishPool(session));
+        boolean overruled = pick.overruled();
+        List<Garment> chosen = withoutUnknown(pick.garments());
         if (chosen.isEmpty()) {
             return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 한번 보여 주실래요?",
                     cameraFor(session.outfitMode), null);
