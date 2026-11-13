@@ -109,6 +109,9 @@ public class AgentSession {
      */
     public com.fashionagent.agent.api.TurnResponse.Next lastNext;
 
+    /** "이거 무슨 색이야?"로 카메라를 켠 중. 이때 온 옷 사진은 색·무늬만 읽어 줍니다(2026-11-13). */
+    public boolean colorCheck;
+
     public AgentSession() {
     }
 

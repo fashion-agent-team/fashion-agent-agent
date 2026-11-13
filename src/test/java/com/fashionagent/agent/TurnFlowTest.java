@@ -81,6 +81,36 @@ class TurnFlowTest {
     }
 
     @Test
+    void 무슨_색이냐고_물으면_카메라를_켜고_색만_읽어준다() throws Exception {
+        JsonNode start = turn("u_color", """
+                {"utterance": "이거 무슨 색이야?"}""");
+        assertThat(start.path("next").asString()).isEqualTo("camera_outfit");
+        assertThat(start.path("speech").asString()).contains("색 봐 드릴게요");
+        String sid = start.path("sessionId").asString();
+
+        // 두 벌을 비추면 위치와 색·무늬·종류만. 추천·비교 없이.
+        JsonNode seen = turn("u_color", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "outfit", "autoCaptured": true}""".formatted(sid));
+        assertThat(seen.path("next").asString()).isEqualTo("camera_outfit");
+        assertThat(seen.path("speech").asString())
+                .startsWith("왼쪽은 흰색 셔츠, 오른쪽은 빨간색 체크 셔츠예요.")
+                .contains("얼룩")
+                .doesNotContain("면접")
+                .doesNotContain("기록");
+
+        JsonNode done = turn("u_color", """
+                {"sessionId": "%s", "utterance": "됐어 고마워"}""".formatted(sid));
+        assertThat(done.path("next").asString()).isEqualTo("done");
+    }
+
+    @Test
+    void 무슨_색_입을지는_색_확인이_아니라_추천() throws Exception {
+        JsonNode advice = turn("u_color2", """
+                {"utterance": "오늘 무슨 색 입을까?"}""");
+        assertThat(advice.path("result").path("type").asString()).isEqualTo("outfit_advice");
+    }
+
+    @Test
     void 날짜를_말하면_그날_일정과_예보로_추천한다() throws Exception {
         var day = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(5);
         String said = day.getMonthValue() + "월 " + day.getDayOfMonth() + "일";

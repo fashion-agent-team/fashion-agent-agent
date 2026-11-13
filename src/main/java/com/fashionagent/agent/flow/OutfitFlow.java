@@ -935,7 +935,7 @@ public class OutfitFlow {
 
     private static boolean otherFeature(String utterance) {
         return switch (Intent.of(utterance, false)) {
-            case WEATHER, SCHEDULE, FACE, HELP, OUTFIT -> true;
+            case WEATHER, SCHEDULE, FACE, HELP, OUTFIT, COLOR -> true;
             default -> false;
         };
     }

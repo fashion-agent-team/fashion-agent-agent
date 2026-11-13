@@ -13,6 +13,16 @@ class IntentTest {
     }
 
     @Test
+    void 무슨_색이냐는_색_확인() {
+        assertThat(Intent.of("이거 무슨 색이야?", false)).isEqualTo(Intent.COLOR);
+        assertThat(Intent.of("이 옷 색깔 뭐야", false)).isEqualTo(Intent.COLOR);
+        assertThat(Intent.of("어떤 색이야?", true)).isEqualTo(Intent.COLOR);
+        // 무엇을 입을지는 추천, 옷장 이야기는 옷장
+        assertThat(Intent.of("내일 무슨 색 입을까?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("옷장에 무슨 색 옷 있어?", false)).isEqualTo(Intent.CLOSET);
+    }
+
+    @Test
     void 마무리와_어디야는_옷_추천_중일_때만() {
         assertThat(Intent.of("이걸로 할게", true)).isEqualTo(Intent.FINISH);
         assertThat(Intent.of("다 보여 줬어", true)).isEqualTo(Intent.SHOWN);
