@@ -75,12 +75,14 @@ public class LlmOutfitJudge implements OutfitJudge {
         Set<String> ids = in.now().stream().map(Garment::id).collect(Collectors.toSet());
         var comparison = in.now().size() >= 2 && out.comparison() != null
                 && ids.contains(out.comparison().betterInputId()) ? out.comparison() : null;
+        var verdicts = out.verdicts().stream().filter(v -> ids.contains(v.inputId())).toList();
         return new CheckJudgement(
-                out.verdicts().stream().filter(v -> ids.contains(v.inputId())).toList(),
+                verdicts,
                 comparison,
                 out.damage().stream().filter(d -> ids.contains(d.inputId())).toList(),
                 out.stillMissing(),
-                Korean.spoken(out.speech()));
+                // 안 맞는 옷에 "잘 고르셨어요"로 시작하면 뺍니다.
+                Korean.spoken(PraiseGuard.strip(out.speech(), verdicts)));
     }
 
     /**
