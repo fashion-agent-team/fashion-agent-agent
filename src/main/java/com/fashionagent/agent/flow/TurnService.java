@@ -69,6 +69,9 @@ public class TurnService {
         if (req.allowGpt() != null || !session.gptDecided) {
             session.gptConsent = req.allowGpt();
         }
+        if (req.colorDetail() != null) {
+            session.colorDetail = req.colorDetail();
+        }
 
         if (req.hasImage()) {
             session.checkOffered = false;
@@ -83,6 +86,17 @@ public class TurnService {
                 return outfit.checkWorn(session, req.image());
             }
             return outfit.check(session, req.image());
+        }
+
+        // "색 설명 짧게 해 줘", "색 설명 자세히 해 줘" (2026-11-13)
+        Boolean detail = com.fashionagent.agent.judge.ColorFeel.detailCommand(req.utterance());
+        if (detail != null) {
+            session.colorDetail = detail;
+            sessions.save(session);
+            return new TurnResponse(session.sessionId,
+                    detail ? com.fashionagent.agent.judge.ColorFeel.SAY_DETAILED
+                            : com.fashionagent.agent.judge.ColorFeel.SAY_SHORT,
+                    Next.listen, Result.of("color_detail"), null, detail);
         }
 
         // 일정을 넣은 뒤 "일정 전에 알림을 드릴까요?", "며칠 전에 미리 알려 드릴까요?"에 대한 답
