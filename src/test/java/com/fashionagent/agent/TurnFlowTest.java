@@ -419,7 +419,7 @@ class TurnFlowTest {
         assertThat(front.path("next").asString()).isEqualTo("camera_worn");
 
         JsonNode back = turn("w1", """
-                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn", "allowGpt": false}""".formatted(sid));
         assertThat(back.path("next").asString()).isEqualTo("camera_worn");
         JsonNode oc = back.path("result").path("outfitCheck");
         assertThat(oc.path("garments")).hasSize(2);
@@ -558,5 +558,50 @@ class TurnFlowTest {
         JsonNode first = turn("u-gpt6", """
                 {"image": "AAAA", "imageKind": "outfit"}""");
         assertThat(first.path("speech").asString()).doesNotContain("더 정확한 AI에게");
+    }
+
+    @Test
+    void 입고_한_바퀴_처음엔_옷_실수_확인을_위해_GPT_동의를_묻는다() throws Exception {
+        String sid = turn("u-wear1", """
+                {"utterance": "입고 볼게 오늘 뭐 입지"}""").path("sessionId").asString();
+        turn("u-wear1", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
+        JsonNode back = turn("u-wear1", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn"}""".formatted(sid));
+        assertThat(back.path("speech").asString()).contains("뒤집어 입었는지").contains("얼굴 쪽은 가리고");
+
+        JsonNode yes = turn("u-wear1", """
+                {"sessionId": "%s", "utterance": "좋아"}""".formatted(sid));
+        assertThat(yes.path("gptConsent").asBoolean()).isTrue();
+        assertThat(yes.path("speech").asString()).contains("앞모습부터 한 번 더");
+        assertThat(yes.path("next").asString()).isEqualTo("camera_worn");
+    }
+
+    @Test
+    void 동의했으면_앞뒤에서_본_옷_실수를_한_번씩_말한다() throws Exception {
+        String sid = turn("u-wear2", """
+                {"utterance": "입고 볼게 오늘 뭐 입지", "allowGpt": true}""").path("sessionId").asString();
+        JsonNode front = turn("u-wear2", """
+                {"sessionId": "%s", "image": "WEAR1", "imageKind": "worn", "allowGpt": true}""".formatted(sid));
+        assertThat(front.path("speech").asString()).contains("뒤로").doesNotContain("단추");
+        JsonNode back = turn("u-wear2", """
+                {"sessionId": "%s", "image": "WEAR2", "imageKind": "worn", "allowGpt": true}""".formatted(sid));
+        String speech = back.path("speech").asString();
+        assertThat(speech).contains("흰색 셔츠 단추가 한 칸씩 어긋나게 잠긴 것 같아요")
+                .contains("흰색 셔츠 택이 밖으로 나와 있는 것 같아요")
+                .doesNotContain("더 정확한 AI에게").endsWith("앞모습부터 다시 볼게요.");
+        assertThat(speech.split("택이", -1)).hasSize(2);
+    }
+
+    @Test
+    void 옷_실수가_없으면_아무_말도_더하지_않는다() throws Exception {
+        String sid = turn("u-wear3", """
+                {"utterance": "입고 볼게 오늘 뭐 입지", "allowGpt": true}""").path("sessionId").asString();
+        turn("u-wear3", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn", "allowGpt": true}""".formatted(sid));
+        JsonNode back = turn("u-wear3", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "worn", "allowGpt": true}""".formatted(sid));
+        assertThat(back.path("speech").asString()).doesNotContain("같아요. 솔기").doesNotContain("택이")
+                .doesNotContain("단추가");
     }
 }

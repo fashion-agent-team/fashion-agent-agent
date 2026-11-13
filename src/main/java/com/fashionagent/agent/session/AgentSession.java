@@ -61,6 +61,11 @@ public class AgentSession {
     public List<Garment> wornGarments = new ArrayList<>();
     /** 입고 한 바퀴(앞·뒤) 중 옷 상태 서버가 애매한 얼룩 후보를 돌려줬는지. 다 본 뒤 GPT 확인을 묻는 데 씁니다. */
     public boolean wornUnsure;
+    /**
+     * 입고 한 바퀴(앞·뒤)에서 옷 상태 서버가 본 옷 실수(뒤집어 입음·앞뒤 바뀜·단추 어긋남·택). 같은 옷 종류·실수는 한 번만.
+     * 앞모습에서 비우고, 뒤까지 본 뒤 판단 말 뒤에 붙여 읽습니다(2026-11-13 정지원 님).
+     */
+    public List<WearNote> wornWearNotes = new ArrayList<>();
     /** 입고 한 바퀴에서 마지막으로 다 본(앞·뒤) 옷의 id. "이걸로 할게"는 이 옷만 고릅니다. */
     public List<String> lastWornIds;
     /** 개별 기능 대화의 최근 몇 마디. GPT가 되물은 뒤 이어 듣기 위해. */
@@ -108,5 +113,9 @@ public class AgentSession {
     }
 
     public record Seen(Garment garment, String fit) {
+    }
+
+    /** kind: inside_out | backwards | buttons_misaligned | tag_out. label은 읽어 줄 옷 이름(예: 흰색 셔츠). */
+    public record WearNote(String kind, String category, String label, String view) {
     }
 }

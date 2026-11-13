@@ -468,6 +468,11 @@ public class OutfitFlow {
     static final String GPT_ASK = "애매한 부분을 더 정확한 AI에게 한 번 더 물어봐도 될까요? 옷 사진 조각은 학습에 쓰일 수 있어요. "
             + "\"좋아\" 또는 \"아니\"라고 말씀해 주세요.";
 
+    /** 입고 한 바퀴를 처음 다 봤을 때 묻는 말. 옷 실수 확인은 GPT 없이는 못 해서 애매한 얼룩이 없어도 한 번 묻습니다. */
+    static final String GPT_ASK_WORN = "옷을 뒤집어 입었는지, 단추가 어긋났는지도 더 정확한 AI에게 물어봐도 될까요? "
+            + "얼굴 쪽은 가리고 옷 부분만 보내요. 애매한 얼룩 조각은 학습에 쓰일 수 있어요. "
+            + "\"좋아\" 또는 \"아니\"라고 말씀해 주세요.";
+
     /** 애매한 얼룩으로 보는 확신도 범위(옷 상태 서버가 GPT로 확인하는 범위와 같음). */
     static final double GPT_MIN = 0.2, GPT_MAX = 0.5;
 
@@ -482,10 +487,16 @@ public class OutfitFlow {
      */
     private static boolean askGpt(AgentSession session, List<Garment> garments, boolean pendingHelper,
             String imageBase64) {
+        return askGpt(session, garments, pendingHelper, imageBase64, false);
+    }
+
+    /** wear=true(입고 한 바퀴)면 옷 실수 확인 때문에 애매한 부분이 없어도 묻습니다. */
+    private static boolean askGpt(AgentSession session, List<Garment> garments, boolean pendingHelper,
+            String imageBase64, boolean wear) {
         if (session.gptConsent != null || session.gptAsked) {
             return false;
         }
-        boolean unsure = pendingHelper
+        boolean unsure = wear || pendingHelper
                 || garments.stream().anyMatch(g -> g.pattern() == null && g.patternGuess() != null)
                 || garments.stream().flatMap(g -> g.defects().stream())
                         .anyMatch(d -> !d.byGpt() && d.confidence() >= GPT_MIN && d.confidence() < GPT_MAX);
@@ -524,6 +535,13 @@ public class OutfitFlow {
             sessions.save(session);
             return new TurnResponse(session.sessionId, "알겠어요. 애매한 부분은 따로 물어보지 않을게요. " + after,
                     camera, null, false);
+        }
+        if (image == null && worn) {
+            session.wornStep = null;
+            session.wornGarments = new ArrayList<>();
+            sessions.save(session);
+            return new TurnResponse(session.sessionId,
+                    "고마워요. 앞모습부터 한 번 더 서 주시면 옷 실수도 같이 볼게요. " + WORN_HINT, camera, null, true);
         }
         if (image == null) {
             sessions.save(session);
@@ -565,6 +583,7 @@ public class OutfitFlow {
         String view = session.wornStep == null ? "front" : session.wornStep;
         if ("front".equals(view)) {
             session.wornGarments = new ArrayList<>();
+            session.wornWearNotes = new ArrayList<>();
         }
         JsonNode inspect;
         try {
@@ -596,6 +615,7 @@ public class OutfitFlow {
         }
 
         mergeWorn(session.wornGarments, now);
+        addWearNotes(session.wornWearNotes, inspect, now, prefix, view);
         if ("front".equals(view)) {
             session.wornUnsure = false;
         }
@@ -627,13 +647,60 @@ public class OutfitFlow {
         var result = new OutfitCheck(outfit, j.verdicts(), j.comparison(), j.damage(), j.stillMissing(), null, source);
         boolean wornUnsure = session.wornUnsure;
         session.wornUnsure = false;
-        if (askGpt(session, outfit, wornUnsure, null)) {
+        String speech = j.speech() + wearSpeech(session.wornWearNotes);
+        session.wornWearNotes = new ArrayList<>();
+        if (askGpt(session, outfit, wornUnsure, null, true)) {
             sessions.save(session);
-            return new TurnResponse(session.sessionId, j.speech() + " " + GPT_ASK, Next.camera_worn,
+            return new TurnResponse(session.sessionId, speech + " " + GPT_ASK_WORN, Next.camera_worn,
                     new Result("outfit_check", null, result, WORN));
         }
-        return new TurnResponse(session.sessionId, j.speech() + WORN_AGAIN, Next.camera_worn,
+        sessions.save(session);
+        return new TurnResponse(session.sessionId, speech + WORN_AGAIN, Next.camera_worn,
                 new Result("outfit_check", null, result, WORN));
+    }
+
+    /**
+     * 옷 상태 서버의 wearIssues를 모읍니다. garmentId로 이번 사진 옷을 찾아 이름을 붙이고, 같은 옷 종류·같은 실수는
+     * 앞·뒤에서 두 번 나와도 한 번만 둡니다.
+     */
+    static void addWearNotes(List<AgentSession.WearNote> notes, JsonNode inspect, List<Garment> now, String prefix,
+            String view) {
+        for (JsonNode w : inspect.path("wearIssues")) {
+            String kind = w.path("kind").asString(null);
+            if (wearSentence(kind, "옷", view) == null) {
+                continue;
+            }
+            String id = prefix + w.path("garmentId").asString("");
+            Garment g = now.stream().filter(x -> id.equals(x.id())).findFirst().orElse(null);
+            String category = g != null ? g.category() : w.path("category").asString("other");
+            String label = g != null ? g.label() : "옷";
+            if (notes.stream().noneMatch(n -> n.kind().equals(kind) && java.util.Objects.equals(n.category(), category))) {
+                notes.add(new AgentSession.WearNote(kind, category, label, view));
+            }
+        }
+    }
+
+    /** 옷 실수 문장들(앞에 빈칸 하나). 없으면 "". 사진 한 장 판단이라 "~것 같아요"로 말하고 손으로 확인해 보라고 합니다. */
+    static String wearSpeech(List<AgentSession.WearNote> notes) {
+        if (notes == null || notes.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (AgentSession.WearNote n : notes.stream().limit(3).toList()) {
+            sb.append(' ').append(wearSentence(n.kind(), n.label(), n.view()));
+        }
+        return sb.toString();
+    }
+
+    static String wearSentence(String kind, String label, String view) {
+        String l = label == null || label.isBlank() ? "옷" : label;
+        return switch (kind == null ? "" : kind) {
+            case "inside_out" -> Korean.josa(l, "이", "가") + " 뒤집혀서 안쪽이 밖으로 나온 것 같아요. 솔기가 겉에 있는지 만져 보세요.";
+            case "backwards" -> Korean.josa(l, "을", "를") + " 앞뒤 바꿔 입은 것 같아요. 목 뒤 택이나 지퍼 위치를 만져 보세요.";
+            case "buttons_misaligned" -> l + " 단추가 한 칸씩 어긋나게 잠긴 것 같아요. 맨 아래 단추부터 짝이 맞는지 만져 보세요.";
+            case "tag_out" -> l + " 택이 " + ("back".equals(view) ? "뒤쪽 " : "") + "밖으로 나와 있는 것 같아요. 안으로 넣어 주세요.";
+            default -> null;
+        };
     }
 
     /** 앞모습 옷을 기준으로 두고, 뒤에서 본 같은 종류 옷의 얼룩을 더합니다. 처음 보는 종류면 더합니다. */
