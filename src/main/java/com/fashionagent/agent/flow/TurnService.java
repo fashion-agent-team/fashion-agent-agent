@@ -134,6 +134,7 @@ public class TurnService {
             case CHECK -> outfit.startCheck(session, req.location(), req.utterance());
             case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
             case FINISH -> outfit.finish(session);
+            case SHOWN -> outfit.shown(session);
             case WHERE -> outfit.where(session);
             case CLOSET -> closetFlow.list(session, req.utterance());
             case CLOSET_HISTORY -> closetFlow.history(session, req.utterance());

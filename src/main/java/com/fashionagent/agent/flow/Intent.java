@@ -8,10 +8,15 @@ import java.util.List;
  * 나머지({@link #OTHER}: 일정 등록·삭제, 다른 날 일정 등)는 GPT가 도구를 고릅니다.
  */
 public enum Intent {
-    OUTFIT, CHECK, CLOSET, CLOSET_HISTORY, CLOSET_REMOVE, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
+    OUTFIT, CHECK, SHOWN, CLOSET, CLOSET_HISTORY, CLOSET_REMOVE, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
 
     private static final List<String> FINISH_WORDS = List.of("이걸로", "이거로", "이걸입", "이거입", "됐어", "다됐", "그만",
             "끝낼", "마칠");
+    /**
+     * 옷을 다 보여 줬다는 말. 2026-11-13 실서버 시뮬: "다 보여 줬어"가 GPT로 가서 처음 추천을 다시 하고(17초) 본 옷을 잊었음.
+     */
+    private static final List<String> SHOWN_WORDS = List.of("다보여", "다보였", "다찍", "다봤", "더없어", "이게다", "이거다야",
+            "이게전부", "이거전부");
     private static final List<String> OUTFIT_WORDS = List.of("뭐입", "뭘입", "옷추천", "추천해", "코디", "입을까", "입지",
             "옷골라");
     /**
@@ -48,6 +53,9 @@ public enum Intent {
         String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
         if (inOutfitSession && containsAny(s, FINISH_WORDS)) {
             return FINISH;
+        }
+        if (inOutfitSession && containsAny(s, SHOWN_WORDS)) {
+            return SHOWN;
         }
         if (inOutfitSession && s.contains("어디")) {
             return WHERE;

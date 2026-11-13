@@ -709,6 +709,17 @@ public class OutfitFlow {
         };
     }
 
+    /** "다 보여 줬어": 본 옷을 짧게 말하고 "이걸로 할게"를 기다립니다. 처음 추천으로 돌아가지 않습니다. */
+    public TurnResponse shown(AgentSession session) {
+        List<String> names = session.seen.stream().map(s -> s.garment().label()).distinct().toList();
+        if (names.isEmpty()) {
+            return new TurnResponse(session.sessionId, "아직 옷을 못 봤어요. 옷을 카메라에 비춰 주실래요?",
+                    cameraFor(session.outfitMode), null);
+        }
+        sessions.save(session);
+        return new TurnResponse(session.sessionId, "좋아요. " + Korean.josa(String.join(", ", names), "을", "를") + " 봤어요. 마음에 들면 \"이걸로 할게\"라고 말해 주세요.", Next.listen, null);
+    }
+
     // ── "이걸로 할게" ─────────────────────────────────────────────────
 
     public TurnResponse finish(AgentSession session) {
