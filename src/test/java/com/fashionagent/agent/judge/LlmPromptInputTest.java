@@ -38,4 +38,17 @@ class LlmPromptInputTest {
         assertThat(m.get("label")).isEqualTo("검정·회색 셔츠");
         assertThat(m.get("patternGuess")).isEqualTo("호피 무늬");
     }
+
+    @Test
+    @DisplayName("내 정보(wearer)는 있을 때만 GPT 입력에 넣는다 (2026-11-13)")
+    void wearer() {
+        var json = tools.jackson.databind.json.JsonMapper.builder().build();
+        var input = new java.util.LinkedHashMap<String, Object>();
+        LlmOutfitJudge.putWearer(input, null);
+        LlmOutfitJudge.putWearer(input, json.createObjectNode());
+        assertThat(input).doesNotContainKey("wearer");
+
+        LlmOutfitJudge.putWearer(input, json.readTree("{\"gender\":\"남자\",\"heightCm\":180}"));
+        assertThat(input.get("wearer").toString()).contains("남자").contains("180");
+    }
 }

@@ -46,12 +46,19 @@ public class TurnService {
     }
 
     public TurnResponse handle(String userId, TurnRequest req) {
+        return handle(userId, req, null);
+    }
+
+    /** @param wearer 게이트웨이가 붙인 내 정보(X-User-Profile 풀어 둔 것). 없으면 null이고 그대로 둡니다. */
+    public TurnResponse handle(String userId, TurnRequest req, JsonNode wearer) {
         AgentSession session = req.sessionId() == null ? null
                 : sessions.find(userId, req.sessionId()).orElse(null);
         boolean inOutfit = session != null && (session.advice != null || !session.seen.isEmpty());
         if (session == null) {
             session = new AgentSession("s_" + UUID.randomUUID(), userId);
         }
+        // 회원정보를 바꾸면 다음 말부터 바로 쓰이게 매번 새 값으로 바꿉니다.
+        session.wearer = wearer;
         // 이번 대화에서 이미 답했으면 그 답을 쓰고, 아니면 앱이 기억한 답(없으면 null = 아직 안 물음).
         if (req.allowGpt() != null || !session.gptDecided) {
             session.gptConsent = req.allowGpt();

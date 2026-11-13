@@ -178,6 +178,25 @@ class TurnFlowTest {
         assertThat(other.path("next").asString()).isNotEqualTo("done");
     }
 
+    @Autowired
+    com.fashionagent.agent.session.SessionStore sessions;
+
+    @Test
+    void 게이트웨이가_붙인_내_정보는_세션에_두고_다음_말에서_바뀌면_바꾼다() throws Exception {
+        String first = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(
+                "{\"gender\":\"남자\",\"heightCm\":180,\"name\":\"진행\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String out = mvc.perform(post("/api/v1/agent/turn").header("X-User-Id", "u-wearer").header("X-User-Profile", first)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"utterance\": \"오늘 뭐 입지?\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String sid = json.readTree(out).path("sessionId").asString();
+        var session = sessions.find("u-wearer", sid).orElseThrow();
+        assertThat(session.wearer.path("heightCm").asInt()).isEqualTo(180);
+        assertThat(session.wearer.has("name")).isFalse();
+
+        turn("u-wearer", "{\"sessionId\": \"%s\", \"utterance\": \"아니요\"}".formatted(sid));
+        assertThat(sessions.find("u-wearer", sid).map(s -> s.wearer).orElse(null)).isNull();
+    }
+
     @Test
     void X_User_Id가_없으면_401() throws Exception {
         mvc.perform(post("/api/v1/agent/turn").contentType(MediaType.APPLICATION_JSON)

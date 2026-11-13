@@ -282,7 +282,7 @@ public class OutfitFlow {
         AdviceJudgement judged = judge.advise(new AdviceInput(session.weather, session.events,
                 session.closet == null ? null : session.closet.path("candidates"),
                 session.closet == null ? null : session.closet.path("styleNotes"),
-                label, weatherNote[0]));
+                label, weatherNote[0], session.wearer));
         // 날짜 → 날씨 → 일정 → 추천 순서는 코드가 정합니다(2026-11-09 발표 피드백: 문장이 이상했음).
         AdviceJudgement advice = new AdviceJudgement(judged.suggestions(), judged.closetPicks(),
                 adviceSpeech(label, session.weather, weatherNote[0], session.events, judged.speech()));
@@ -445,7 +445,7 @@ public class OutfitFlow {
                         s.garment().colorName(), s.fit(), s.garment().label()))
                 .toList();
         CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, now, before,
-                SpokenDate.label(targetDay(session), today())));
+                SpokenDate.label(targetDay(session), today()), session.wearer));
 
         for (Garment g : now) {
             String fit = j.verdicts().stream().filter(v -> v.inputId().equals(g.id()))
@@ -613,7 +613,7 @@ public class OutfitFlow {
                         s.garment().colorName(), s.fit(), s.garment().label()))
                 .toList();
         CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, outfit, before,
-                SpokenDate.label(targetDay(session), today())));
+                SpokenDate.label(targetDay(session), today()), session.wearer));
         for (Garment g : outfit) {
             String fit = j.verdicts().stream().filter(v -> v.inputId().equals(g.id()))
                     .map(OutfitCheck.Verdict::fit).findFirst().orElse("ok");
