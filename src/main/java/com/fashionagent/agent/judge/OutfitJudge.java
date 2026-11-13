@@ -24,8 +24,14 @@ public interface OutfitJudge {
      * day: 옷을 입을 날을 말로 읽은 것("오늘", "내일", "11월 20일 금요일").
      * weatherNote: weather가 null인 까닭을 사용자에게 말할 문장(예보가 아직 없는 날 등). 없으면 null.
      */
+    /** @param wearer 옷 판단에 쓰는 내 정보(성별·나이대·키·몸무게·직업, 게이트웨이 X-User-Profile). 없으면 null. */
     record AdviceInput(JsonNode weather, JsonNode events, JsonNode closetCandidates, JsonNode styleNotes,
-            String day, String weatherNote) {
+            String day, String weatherNote, JsonNode wearer) {
+
+        public AdviceInput(JsonNode weather, JsonNode events, JsonNode closetCandidates, JsonNode styleNotes,
+                String day, String weatherNote) {
+            this(weather, events, closetCandidates, styleNotes, day, weatherNote, null);
+        }
 
         public AdviceInput(JsonNode weather, JsonNode events, JsonNode closetCandidates, JsonNode styleNotes) {
             this(weather, events, closetCandidates, styleNotes, "오늘", null);
@@ -38,10 +44,15 @@ public interface OutfitJudge {
 
     /** @param day 이 옷을 입을 날(오늘·내일·11월 20일 금요일). 내일 일정인데 "오늘"이라고 하지 않게(2026-11-12 시뮬). */
     record CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,
-            List<SeenBrief> seenBefore, String day) {
+            List<SeenBrief> seenBefore, String day, JsonNode wearer) {
 
         public CheckInput {
             day = day == null || day.isBlank() ? "오늘" : day;
+        }
+
+        public CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,
+                List<SeenBrief> seenBefore, String day) {
+            this(weather, events, advice, now, seenBefore, day, null);
         }
 
         public CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,

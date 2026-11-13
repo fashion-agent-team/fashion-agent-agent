@@ -48,10 +48,17 @@ public class TurnService {
     }
 
     public TurnResponse handle(String userId, TurnRequest req) {
+        return handle(userId, req, null);
+    }
+
+    /** @param wearer 게이트웨이가 붙인 내 정보(X-User-Profile 풀어 둔 것). 없으면 null이고 그대로 둡니다. */
+    public TurnResponse handle(String userId, TurnRequest req, JsonNode wearer) {
         AgentSession found = req.sessionId() == null ? null
                 : sessions.find(userId, req.sessionId()).orElse(null);
         boolean inOutfit = found != null && (found.advice != null || !found.seen.isEmpty());
         AgentSession session = found != null ? found : new AgentSession("s_" + UUID.randomUUID(), userId);
+        // 회원정보를 바꾸면 다음 말부터 바로 쓰이게 매번 새 값으로 바꿉니다.
+        session.wearer = wearer;
         TurnResponse res = turn(session, req, inOutfit);
         // 다음 턴에 카메라를 보던 중인지 알 수 있게 이번 next를 기억합니다.
         if (res.next() != session.lastNext) {

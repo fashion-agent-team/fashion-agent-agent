@@ -11,6 +11,7 @@ import com.fashionagent.agent.model.AdviceJudgement;
 import com.fashionagent.agent.model.CheckJudgement;
 import com.fashionagent.agent.model.Garment;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -38,6 +39,7 @@ public class LlmOutfitJudge implements OutfitJudge {
         input.put("events", in.events());
         input.put("closetCandidates", in.closetCandidates());
         input.put("styleNotes", in.styleNotes());
+        putWearer(input, in.wearer());
         AdviceJudgement out = chat.prompt()
                 .user(Prompts.ADVICE.formatted(json.writeValueAsString(input)))
                 .call()
@@ -62,6 +64,7 @@ public class LlmOutfitJudge implements OutfitJudge {
         boolean many = in.now().size() >= 2;
         input.put("now", in.now().stream().map(g -> forPrompt(g, many)).toList());
         input.put("seenBefore", in.seenBefore());
+        putWearer(input, in.wearer());
         CheckJudgement out = chat.prompt()
                 .user(Prompts.CHECK.formatted(json.writeValueAsString(input)))
                 .call()
@@ -84,6 +87,13 @@ public class LlmOutfitJudge implements OutfitJudge {
      * GPT에는 판단에 필요한 값만 (box 좌표 등은 뺌). label은 읽어 줄 이름(색·무늬·종류)이라 GPT가 그대로 쓰게 합니다.
      * 옷이 한 벌이면 position을 넣지 않습니다. 2026-11-12: 한 벌인데 "중앙 검정 셔츠"라고 읽음.
      */
+    /** 내 정보가 있을 때만 넣습니다(건너뛴 칸은 게이트웨이가 이미 뺌). 이름·생년월일은 오지 않습니다. */
+    static void putWearer(Map<String, Object> input, JsonNode wearer) {
+        if (wearer != null && wearer.isObject() && !wearer.isEmpty()) {
+            input.put("wearer", wearer);
+        }
+    }
+
     static Map<String, Object> forPrompt(Garment g, boolean withPosition) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", g.id());

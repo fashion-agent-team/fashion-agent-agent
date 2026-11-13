@@ -36,6 +36,8 @@ public class AgentSession {
      * GPT 확인·학습 저장 동의(앱이 요청마다 allowGpt로 보냄). true면 애매한 얼룩을 GPT로 확인합니다.
      * null이면 아직 묻지 않았고, 처음 애매한 얼룩이 나오면 묻습니다(2026-11-10 진행 님).
      */
+    /** 옷 판단에 쓰는 내 정보(게이트웨이 X-User-Profile, 성별·나이대·키·몸무게·직업). 없으면 null. */
+    public JsonNode wearer;
     public Boolean gptConsent;
     /** 색 설명 방식(앱이 요청마다 colorDetail로 보냄). false면 이름만, 그 밖엔 감각·느낌까지. */
     public Boolean colorDetail;
