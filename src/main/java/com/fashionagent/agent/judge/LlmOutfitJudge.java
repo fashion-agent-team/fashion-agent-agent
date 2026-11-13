@@ -1,10 +1,16 @@
 package com.fashionagent.agent.judge;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 
 import com.fashionagent.agent.model.AdviceJudgement;
@@ -20,12 +26,49 @@ import tools.jackson.databind.json.JsonMapper;
  */
 public class LlmOutfitJudge implements OutfitJudge {
 
+    private static final Logger log = LoggerFactory.getLogger(LlmOutfitJudge.class);
+
+    /** 마지막 판단 뒤 이만큼은 연결을 데워 둡니다(대화 중엔 늘 빠르게, 밤새 쉴 땐 부르지 않게). */
+    static final Duration KEEP_WARM_FOR = Duration.ofMinutes(30);
+    /** OpenAI 연결·지시문 캐시가 식기 전에 다시 부르는 간격. */
+    static final Duration WARM_EVERY = Duration.ofMinutes(4);
+
     private final ChatClient chat;
     private final JsonMapper json;
+    private volatile long lastUsedNanos = System.nanoTime();
 
     public LlmOutfitJudge(ChatClient.Builder builder, JsonMapper json) {
         this.chat = builder.defaultSystem(Prompts.SYSTEM).build();
         this.json = json;
+    }
+
+    /**
+     * 켜질 때 한 번, 그 뒤 판단을 쓴 지 {@link #KEEP_WARM_FOR} 안이면 {@link #WARM_EVERY}마다 아주 짧은 GPT 호출을 합니다.
+     * 2026-11-13 측정: 첫 판단은 2.1초, 그다음부터 1.0~1.4초(연결 맺기·지시문 캐시). 데워 두면 첫 판단도 빨라집니다.
+     * 지시문(SYSTEM)이 같아서 OpenAI 지시문 캐시도 함께 데워집니다. 실패해도 괜찮습니다(로그만).
+     */
+    public void startWarming() {
+        ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "gpt-warm");
+            t.setDaemon(true);
+            return t;
+        });
+        timer.schedule(this::warm, 0, TimeUnit.SECONDS);
+        timer.scheduleWithFixedDelay(() -> {
+            if (System.nanoTime() - lastUsedNanos < KEEP_WARM_FOR.toNanos()) {
+                warm();
+            }
+        }, WARM_EVERY.toSeconds(), WARM_EVERY.toSeconds(), TimeUnit.SECONDS);
+    }
+
+    void warm() {
+        long started = System.nanoTime();
+        try {
+            chat.prompt().user(Prompts.WARM).call().content();
+            log.info("[시간] GPT 데우기 {}ms", (System.nanoTime() - started) / 1_000_000);
+        } catch (RuntimeException e) {
+            log.info("GPT 데우기 실패(괜찮음): {}", e.toString());
+        }
     }
 
     @Override
@@ -40,10 +83,13 @@ public class LlmOutfitJudge implements OutfitJudge {
         input.put("closetCandidates", in.closetCandidates());
         input.put("styleNotes", in.styleNotes());
         putWearer(input, in.wearer());
+        long started = System.nanoTime();
+        lastUsedNanos = started;
         AdviceJudgement out = chat.prompt()
                 .user(Prompts.ADVICE.formatted(json.writeValueAsString(input)))
                 .call()
                 .entity(AdviceJudgement.class);
+        log.info("[시간] GPT 추천 {}ms", (System.nanoTime() - started) / 1_000_000);
         if (out == null || out.speech() == null || out.speech().isBlank()) {
             throw new IllegalStateException("GPT 추천 결과가 비었어요.");
         }
@@ -66,10 +112,13 @@ public class LlmOutfitJudge implements OutfitJudge {
         input.put("seenBefore", in.seenBefore());
         putWearer(input, in.wearer());
         input.put("colorHarmony", colorForPrompt(in.colorHarmony()));
+        long started = System.nanoTime();
+        lastUsedNanos = started;
         CheckJudgement out = chat.prompt()
                 .user(Prompts.CHECK.formatted(json.writeValueAsString(input)))
                 .call()
                 .entity(CheckJudgement.class);
+        log.info("[시간] GPT 옷 확인 {}ms (옷 {}벌)", (System.nanoTime() - started) / 1_000_000, in.now().size());
         if (out == null || out.speech() == null || out.speech().isBlank()) {
             throw new IllegalStateException("GPT 확인 결과가 비었어요.");
         }

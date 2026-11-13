@@ -16,6 +16,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param judgeTimeout GPT 답을 기다리는 시간 (약속: 25초)
  * @param sessionTtl   대화 상태 보관 시간 (약속: 30분)
  * @param mcp          MCP 서버 이름 → 주소 (예: weather → http://localhost:8091/mcp)
+ * @param gptWarm      GPT 연결을 데워 둘지(켜질 때 + 대화 뒤 30분 동안 4분마다 짧은 호출, 2026-11-13 응답 시간)
  */
 @ConfigurationProperties("agent")
 public record AgentProperties(
@@ -25,7 +26,8 @@ public record AgentProperties(
         @DefaultValue("false") boolean closetSearch,
         @DefaultValue("25s") Duration judgeTimeout,
         @DefaultValue("30m") Duration sessionTtl,
-        Map<String, String> mcp) {
+        Map<String, String> mcp,
+        @DefaultValue("true") boolean gptWarm) {
 
     public AgentProperties {
         mcp = mcp == null ? Map.of() : Map.copyOf(mcp);
