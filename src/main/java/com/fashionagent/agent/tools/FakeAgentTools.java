@@ -129,19 +129,38 @@ public class FakeAgentTools implements AgentTools {
         var slacks = map("id", "g2", "category", "bottom", "name", "슬랙스", "colorName", "남색",
                 "colorFamily", "navy", "tone", "dark", "formality", "formal", "position", "center",
                 "defects", List.of(), "confidence", 0.9);
-        return Map.of("garments", "front".equals(view) ? List.of(shirt, slacks) : List.of(shirt),
+        var out = map("garments", "front".equals(view) ? List.of(shirt, slacks) : List.of(shirt),
                 "framing", "", "lighting", "ok", "source", "model", "modelVersion", "fake");
+        if (image.startsWith("UNSURE") && "front".equals(view)) {
+            // 앞모습에서만 애매한 얼룩 후보. 뒤까지 다 본 뒤에 GPT 확인을 묻는지 봅니다.
+            out.put("pendingHelper", map("garmentId", "g2", "candidates",
+                    List.of(Map.of("kind", "stain", "where", "무릎", "confidence", 0.4)), "note", "확실하지 않아요"));
+        }
+        return out;
     }
 
     private static Map<String, Object> inspect(String image, boolean allowGpt) {
         if (image.startsWith("UNSURE")) {
-            // 애매한 얼룩: GPT 확인을 허락하면 GPT가 얼룩이라고 확인한 것으로 돌려줍니다.
-            var stain = allowGpt
-                    ? Map.<String, Object>of("kind", "stain", "where", "앞", "confidence", 0.7, "checkedBy", "gpt")
-                    : Map.<String, Object>of("kind", "stain", "where", "앞", "confidence", 0.35);
-            return Map.of("garments", List.of(map("id", "g1", "category", "top", "name", "셔츠", "colorName", "흰색",
+            // 애매한 얼룩: 실제 서버처럼 GPT 없이는 defects에 넣지 않고 pendingHelper로 돌려줍니다.
+            // GPT 확인을 허락하면 GPT가 얼룩이라고 확인한 것으로 돌려줍니다.
+            List<Object> defects = allowGpt
+                    ? List.of(Map.<String, Object>of("kind", "stain", "where", "앞", "confidence", 0.7, "checkedBy", "gpt"))
+                    : List.of();
+            var out = map("garments", List.of(map("id", "g1", "category", "top", "name", "셔츠", "colorName", "흰색",
                     "colorFamily", "white", "tone", "light", "formality", "smart", "position", "center",
-                    "defects", List.of(stain), "confidence", 0.95)),
+                    "defects", defects, "confidence", 0.95)),
+                    "lighting", "ok", "source", "model", "modelVersion", "fake");
+            if (!allowGpt) {
+                out.put("pendingHelper", map("garmentId", "g1", "candidates",
+                        List.of(Map.of("kind", "stain", "where", "앞", "confidence", 0.35)), "note", "확실하지 않아요"));
+            }
+            return out;
+        }
+        if (image.startsWith("PATTERN?")) {
+            // 무늬를 모름(pattern 없음, 호피 같아 보임). 얼룩은 없음.
+            return Map.of("garments", List.of(map("id", "g1", "category", "top", "name", "셔츠", "colorName", "회색",
+                    "colorFamily", "gray", "tone", "mid", "formality", "casual", "position", "center",
+                    "patternGuess", "animal", "defects", List.of(), "confidence", 0.9)),
                     "lighting", "ok", "source", "model", "modelVersion", "fake");
         }
         if (image.startsWith("DARK")) {
