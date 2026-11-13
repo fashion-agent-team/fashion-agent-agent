@@ -19,4 +19,12 @@ class KoreanTest {
         assertThat(Korean.josa("오늘", "은", "는")).isEqualTo("오늘은");
         assertThat(Korean.josa("신발", "은", "는")).isEqualTo("신발은");
     }
+
+    @org.junit.jupiter.api.Test
+    void 읽을_문장의_종류_코드는_한국어로() {
+        org.assertj.core.api.Assertions.assertThat(Korean.spoken("상의는 아직 보이지 않아서 top도 같이 보면 더 좋아요."))
+                .isEqualTo("상의는 아직 보이지 않아서 상의도 같이 보면 더 좋아요.");
+        org.assertj.core.api.Assertions.assertThat(Korean.spoken("Bottom과 outer를 보여 주세요")).isEqualTo("하의와 겉옷을 보여 주세요");
+        org.assertj.core.api.Assertions.assertThat(Korean.spoken("stopwatch tops")).isEqualTo("stopwatch tops");
+    }
 }
