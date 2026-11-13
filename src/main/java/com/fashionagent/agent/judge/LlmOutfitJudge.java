@@ -49,7 +49,7 @@ public class LlmOutfitJudge implements OutfitJudge {
                 : in.closetCandidates().valueStream().map(c -> c.path("garmentId").asString("")).collect(Collectors.toSet());
         // 옷장에 없는 옷을 지어내면 뺍니다.
         return new AdviceJudgement(out.suggestions(),
-                out.closetPicks().stream().filter(p -> allowed.contains(p.garmentId())).toList(), out.speech());
+                out.closetPicks().stream().filter(p -> allowed.contains(p.garmentId())).toList(), Korean.spoken(out.speech()));
     }
 
     @Override
@@ -77,7 +77,7 @@ public class LlmOutfitJudge implements OutfitJudge {
                 comparison,
                 out.damage().stream().filter(d -> ids.contains(d.inputId())).toList(),
                 out.stillMissing(),
-                out.speech());
+                Korean.spoken(out.speech()));
     }
 
     /**
