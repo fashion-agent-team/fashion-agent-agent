@@ -172,6 +172,11 @@ public class RuleOutfitJudge implements OutfitJudge {
         damage.stream().filter(d -> !"ok".equals(d.action())).findFirst()
                 .or(() -> damage.stream().findFirst())
                 .ifPresent(d -> sentences.add(d.say()));
+        // GPT가 안 될 때도 색 어울림 점수는 말합니다(옷 상태 서버가 색상환 규칙으로 계산).
+        if (in.colorHarmony() != null && in.colorHarmony().path("score").isNumber()) {
+            String reason = in.colorHarmony().path("scoreReason").asString("");
+            sentences.add("어울림 " + in.colorHarmony().path("score").asInt() + "점이에요." + (reason.isBlank() ? "" : " " + reason));
+        }
         if (!missing.isEmpty()) {
             sentences.add(String.join(", ", missing.stream().map(Korean::category).toList()) + "도 보여 주세요.");
         } else {

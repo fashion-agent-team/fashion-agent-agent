@@ -445,8 +445,9 @@ public class OutfitFlow {
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
                         s.garment().colorName(), s.fit(), s.garment().label()))
                 .toList();
+        JsonNode color = colorCheck(session, wearing(now, session.seen), inspect);
         CheckJudgement j = withColors(session, now, judge.check(new CheckInput(session.weather, session.events,
-                session.advice, now, before, SpokenDate.label(targetDay(session), today()), session.wearer)));
+                session.advice, now, before, SpokenDate.label(targetDay(session), today()), session.wearer, color)));
 
         for (Garment g : now) {
             String fit = j.verdicts().stream().filter(v -> v.inputId().equals(g.id()))
@@ -659,8 +660,9 @@ public class OutfitFlow {
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
                         s.garment().colorName(), s.fit(), s.garment().label()))
                 .toList();
+        JsonNode color = colorCheck(session, outfit, inspect);
         CheckJudgement j = withColors(session, outfit, judge.check(new CheckInput(session.weather, session.events,
-                session.advice, outfit, before, SpokenDate.label(targetDay(session), today()), session.wearer)));
+                session.advice, outfit, before, SpokenDate.label(targetDay(session), today()), session.wearer, color)));
         for (Garment g : outfit) {
             String fit = j.verdicts().stream().filter(v -> v.inputId().equals(g.id()))
                     .map(OutfitCheck.Verdict::fit).findFirst().orElse("ok");
@@ -1168,6 +1170,57 @@ public class OutfitFlow {
     }
 
     /** 도구 하나가 실패해도 나머지로 계속합니다 (판단 쪽이 null을 "모름"으로 다룸). */
+    /**
+     * 같이 입을 옷의 색 조합과 어울림 점수(0~100)를 옷 상태 서버 규칙(outfit_color_check, 색상환 이론)으로 계산합니다.
+     * GPT는 이 점수를 근거로 "어울림 92점이에요. 기본색에 포인트 색 하나라 깔끔해요"처럼 말합니다. 실패하면 null(점수 없이 판단).
+     */
+    private JsonNode colorCheck(AgentSession session, List<Garment> wearing, JsonNode inspect) {
+        if (wearing.size() < 2) {
+            return null;
+        }
+        // MCP는 입력을 스키마로 검사해서, 색 판단에 쓰는 필드만 보냅니다.
+        List<Map<String, Object>> garments = wearing.stream().map(g -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", g.id());
+            m.put("category", g.category() == null ? "other" : g.category());
+            m.put("colorFamily", g.colorFamily() == null ? "unknown" : g.colorFamily());
+            putIfPresent(m, "name", g.name());
+            putIfPresent(m, "colorName", g.colorName());
+            putIfPresent(m, "tone", g.tone());
+            putIfPresent(m, "pattern", g.patterned() ? g.pattern() : null);
+            return m;
+        }).limit(10).toList();
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("garments", garments);
+        args.put("occasion", Occasion.strictest(session.events).name());
+        args.put("lighting", inspect.path("lighting").asString("ok"));
+        return safe(ToolNames.OUTFIT_COLOR_CHECK, () -> tools.call(ToolNames.OUTFIT_COLOR_CHECK, args));
+    }
+
+    private static void putIfPresent(Map<String, Object> m, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            m.put(key, value);
+        }
+    }
+
+    /**
+     * 지금 사진의 옷 + 앞서 보여 준 옷 중 지금 사진에 없는 종류(입기로 한 옷). 같은 종류는 가장 최근에 본, 어울린다고 한 옷 하나.
+     * 예: 바지를 먼저 보여 주고 셔츠 두 벌을 비교하면 셔츠 두 벌 + 바지.
+     */
+    static List<Garment> wearing(List<Garment> now, List<AgentSession.Seen> seen) {
+        List<Garment> out = new ArrayList<>(now);
+        java.util.Set<String> have = new java.util.HashSet<>();
+        now.forEach(g -> have.add(g.category()));
+        for (int i = seen.size() - 1; i >= 0; i--) {
+            AgentSession.Seen s = seen.get(i);
+            String category = s.garment().category();
+            if (!"bad".equals(s.fit()) && category != null && !"other".equals(category) && have.add(category)) {
+                out.add(s.garment());
+            }
+        }
+        return out;
+    }
+
     private static JsonNode safe(String what, Supplier<JsonNode> call) {
         try {
             return call.get();

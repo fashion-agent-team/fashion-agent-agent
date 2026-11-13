@@ -42,9 +42,12 @@ public interface OutfitJudge {
         }
     }
 
-    /** @param day 이 옷을 입을 날(오늘·내일·11월 20일 금요일). 내일 일정인데 "오늘"이라고 하지 않게(2026-11-12 시뮬). */
+    /**
+     * @param day 이 옷을 입을 날(오늘·내일·11월 20일 금요일). 내일 일정인데 "오늘"이라고 하지 않게(2026-11-12 시뮬).
+     * @param colorHarmony outfit_color_check 결과(색 조합 판단·어울림 점수 0~100·까닭). 부르지 못했으면 null.
+     */
     record CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,
-            List<SeenBrief> seenBefore, String day, JsonNode wearer) {
+            List<SeenBrief> seenBefore, String day, JsonNode wearer, JsonNode colorHarmony) {
 
         public CheckInput {
             day = day == null || day.isBlank() ? "오늘" : day;
@@ -52,7 +55,7 @@ public interface OutfitJudge {
 
         public CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,
                 List<SeenBrief> seenBefore, String day) {
-            this(weather, events, advice, now, seenBefore, day, null);
+            this(weather, events, advice, now, seenBefore, day, null, null);
         }
 
         public CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,

@@ -34,6 +34,9 @@ public class FakeAgentTools implements AgentTools {
                     ? inspectWorn(String.valueOf(args.get("imageBase64")), String.valueOf(args.get("view")),
                             Boolean.TRUE.equals(args.get("allowGpt")))
                     : inspect(String.valueOf(args.get("imageBase64")), Boolean.TRUE.equals(args.get("allowGpt")));
+            case ToolNames.OUTFIT_COLOR_CHECK -> Map.of("verdict", "good", "issues", List.of(),
+                    "speech", "색 조합이 잘 어울려요.", "score", 90, "scheme", "기본색 조합",
+                    "scoreReason", "기본색끼리라 어디에나 무난하게 어울려요.", "outfits", List.of());
             case ToolNames.CLOSET_SEARCH -> Map.of("candidates", List.of(), "styleNotes", List.of(), "empty", true);
             case ToolNames.CLOSET_SAVE -> closetSave(args);
             case ToolNames.CLOSET_WEAR -> Map.of("recorded", ((List<?>) args.get("garmentIds")).size());
