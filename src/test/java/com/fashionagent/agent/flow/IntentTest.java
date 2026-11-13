@@ -96,5 +96,9 @@ class IntentTest {
         assertThat(Intent.of("토요일 두 시에 결혼식 넣어 줘", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("이번 주 일정 뭐야", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("면접 일정 지워 줘", false)).isEqualTo(Intent.OTHER);
+        // 2026-11-12 진행 님 폰: "없애"는 일정 지우기인데 오늘 일정 읽기로 갔습니다.
+        assertThat(Intent.of("일정 없애 줘", true)).isEqualTo(Intent.OTHER);
+        assertThat(Intent.of("내일 일정 없애줘", false)).isEqualTo(Intent.OTHER);
+        assertThat(Intent.of("일정 지우고 싶어", false)).isEqualTo(Intent.OTHER);
     }
 }

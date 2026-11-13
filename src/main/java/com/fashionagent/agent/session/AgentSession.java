@@ -90,6 +90,11 @@ public class AgentSession {
     public List<String> closetRemoveNames;
     /** true면 한 벌을 골라 "지울까요?"를 물은 상태. false면 "몇째 옷을 지울까요?"를 물은 상태. */
     public boolean closetRemoveConfirm;
+    /**
+     * 지난 턴에 앱에 보낸 next. 카메라를 보던 중인지 알려고 씁니다.
+     * 2026-11-12 진행 님 폰: 옷 추천을 들은 뒤(카메라는 안 켬) 일정을 지웠더니 카메라가 켜졌습니다.
+     */
+    public com.fashionagent.agent.api.TurnResponse.Next lastNext;
 
     public AgentSession() {
     }

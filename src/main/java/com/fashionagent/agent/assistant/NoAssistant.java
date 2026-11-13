@@ -24,7 +24,7 @@ public class NoAssistant implements Assistant {
     }
 
     @Override
-    public Reply reply(AgentSession session, String utterance, Location location, boolean inOutfit) {
+    public Reply reply(AgentSession session, String utterance, Location location, boolean cameraOn) {
         String talk = SmallTalk.reply(utterance, clock);
         // 옷과 상관없는 말에는 카메라를 다시 켜지 않습니다(2026-11-06 폰 확인).
         return new Reply(talk != null ? talk : SmallTalk.UNKNOWN, Next.listen);
