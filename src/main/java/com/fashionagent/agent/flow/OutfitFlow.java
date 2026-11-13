@@ -20,6 +20,7 @@ import com.fashionagent.agent.api.TurnResponse;
 import com.fashionagent.agent.api.TurnResponse.Next;
 import com.fashionagent.agent.api.TurnResponse.Result;
 import com.fashionagent.agent.config.AgentProperties;
+import com.fashionagent.agent.judge.ColorFeel;
 import com.fashionagent.agent.judge.Korean;
 import com.fashionagent.agent.judge.OutfitJudge;
 import com.fashionagent.agent.judge.SameGarmentJudge;
@@ -444,8 +445,8 @@ public class OutfitFlow {
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
                         s.garment().colorName(), s.fit(), s.garment().label()))
                 .toList();
-        CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, now, before,
-                SpokenDate.label(targetDay(session), today())));
+        CheckJudgement j = withColors(session, now, judge.check(new CheckInput(session.weather, session.events,
+                session.advice, now, before, SpokenDate.label(targetDay(session), today()))));
 
         for (Garment g : now) {
             String fit = j.verdicts().stream().filter(v -> v.inputId().equals(g.id()))
@@ -462,6 +463,32 @@ public class OutfitFlow {
         }
         return new TurnResponse(session.sessionId, withMore(j.speech()), Next.camera_outfit,
                 new Result("outfit_check", null, result));
+    }
+
+    /**
+     * 판단 문장 첫 문장 뒤에 색 설명(감각·느낌)과, 중요한 일정이면 그 자리에 어울리는 색인지 넣습니다(2026-11-13 진행 님).
+     * 두 벌을 견줬으면 더 나은 옷의 색부터 말합니다.
+     */
+    static CheckJudgement withColors(AgentSession session, List<Garment> garments, CheckJudgement j) {
+        if (session.colorsTold == null) {
+            session.colorsTold = new ArrayList<>();
+        }
+        if (session.colorsToldEvent == null) {
+            session.colorsToldEvent = new ArrayList<>();
+        }
+        List<Garment> order = new ArrayList<>(garments);
+        if (j.comparison() != null) {
+            order.sort(java.util.Comparator.comparing(g -> !g.id().equals(j.comparison().betterInputId())));
+        }
+        Occasion occasion = Occasion.strictest(session.events);
+        String title = Occasion.titleOf(session.events, occasion);
+        List<String> extra = ColorFeel.sentences(order, !Boolean.FALSE.equals(session.colorDetail), occasion, title,
+                session.colorsTold, session.colorsToldEvent);
+        if (extra.isEmpty()) {
+            return j;
+        }
+        return new CheckJudgement(j.verdicts(), j.comparison(), j.damage(), j.stillMissing(),
+                ColorFeel.insertAfterFirst(j.speech(), extra));
     }
 
     /** 2026-11-10 진행 님 대사: 처음 애매한 얼룩이 나왔을 때 한 번만 묻는다. */
@@ -612,8 +639,8 @@ public class OutfitFlow {
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
                         s.garment().colorName(), s.fit(), s.garment().label()))
                 .toList();
-        CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, outfit, before,
-                SpokenDate.label(targetDay(session), today())));
+        CheckJudgement j = withColors(session, outfit, judge.check(new CheckInput(session.weather, session.events,
+                session.advice, outfit, before, SpokenDate.label(targetDay(session), today()))));
         for (Garment g : outfit) {
             String fit = j.verdicts().stream().filter(v -> v.inputId().equals(g.id()))
                     .map(OutfitCheck.Verdict::fit).findFirst().orElse("ok");

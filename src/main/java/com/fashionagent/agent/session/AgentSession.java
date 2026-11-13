@@ -37,6 +37,12 @@ public class AgentSession {
      * null이면 아직 묻지 않았고, 처음 애매한 얼룩이 나오면 묻습니다(2026-11-10 진행 님).
      */
     public Boolean gptConsent;
+    /** 색 설명 방식(앱이 요청마다 colorDetail로 보냄). false면 이름만, 그 밖엔 감각·느낌까지. */
+    public Boolean colorDetail;
+    /** 이번 대화에서 이미 풀어 말한 색 계열. 같은 색을 또 설명하지 않게. */
+    public List<String> colorsTold = new ArrayList<>();
+    /** 이번 대화에서 "일정에 어울리는 색"을 이미 말한 색 계열. */
+    public List<String> colorsToldEvent = new ArrayList<>();
     /** "더 정확한 AI에게 물어봐도 될까요?"를 물었는지. 답을 기다리는 동안 true. */
     public boolean gptAsked;
     /** 이번 대화에서 GPT 확인 동의에 답했는지(앱이 다음 요청부터 기억한 답을 보냅니다). */
