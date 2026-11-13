@@ -7,10 +7,16 @@ import com.fashionagent.agent.model.OutfitCheck;
 /** POST /api/v1/agent/turn 응답 (openapi.yaml TurnResponse). 앱은 speech만 읽어도 동작합니다. */
 public record TurnResponse(String sessionId, String speech, Next next, Result result,
         /** 사용자가 이번 턴에 GPT 확인·학습 저장에 답했으면 그 답. 앱이 기억해 다음부터 allowGpt로 보냅니다. */
-        @JsonInclude(JsonInclude.Include.NON_NULL) Boolean gptConsent) {
+        @JsonInclude(JsonInclude.Include.NON_NULL) Boolean gptConsent,
+        /** 사용자가 이번 턴에 "색 설명 짧게/자세히"라고 했으면 그 값. 앱이 기억해 다음부터 colorDetail로 보냅니다. */
+        @JsonInclude(JsonInclude.Include.NON_NULL) Boolean colorDetail) {
 
     public TurnResponse(String sessionId, String speech, Next next, Result result) {
-        this(sessionId, speech, next, result, null);
+        this(sessionId, speech, next, result, null, null);
+    }
+
+    public TurnResponse(String sessionId, String speech, Next next, Result result, Boolean gptConsent) {
+        this(sessionId, speech, next, result, gptConsent, null);
     }
 
     public enum Next {

@@ -34,4 +34,31 @@ public final class Korean {
 
     private Korean() {
     }
+
+    private static final java.util.regex.Pattern CATEGORY_WORD =
+            java.util.regex.Pattern.compile("(?<![A-Za-z])(top|bottom|outer|dress|shoes)(?![A-Za-z])(으로|과|와|을|를|이|가|은|는|로)?", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /**
+     * GPT가 읽어 줄 문장에 종류 코드(top 등)를 그대로 쓰면 한국어로 바꿉니다.
+     * 2026-11-13 실서버 시뮬: "상의는 아직 보이지 않아서 top도 같이 보면 더 좋아요".
+     */
+    public static String spoken(String speech) {
+        if (speech == null) {
+            return null;
+        }
+        return CATEGORY_WORD.matcher(speech).replaceAll(m -> {
+            String ko = CATEGORY.get(m.group(1).toLowerCase(java.util.Locale.ROOT));
+            String p = m.group(2);
+            if (p == null) {
+                return ko;
+            }
+            return switch (p) {
+                case "과", "와" -> josa(ko, "과", "와");
+                case "을", "를" -> josa(ko, "을", "를");
+                case "이", "가" -> josa(ko, "이", "가");
+                case "은", "는" -> josa(ko, "은", "는");
+                default -> josa(ko, "으로", "로");
+            };
+        });
+    }
 }

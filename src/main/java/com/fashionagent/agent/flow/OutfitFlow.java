@@ -20,6 +20,7 @@ import com.fashionagent.agent.api.TurnResponse;
 import com.fashionagent.agent.api.TurnResponse.Next;
 import com.fashionagent.agent.api.TurnResponse.Result;
 import com.fashionagent.agent.config.AgentProperties;
+import com.fashionagent.agent.judge.ColorFeel;
 import com.fashionagent.agent.judge.Korean;
 import com.fashionagent.agent.judge.OutfitJudge;
 import com.fashionagent.agent.judge.SameGarmentJudge;
@@ -282,7 +283,7 @@ public class OutfitFlow {
         AdviceJudgement judged = judge.advise(new AdviceInput(session.weather, session.events,
                 session.closet == null ? null : session.closet.path("candidates"),
                 session.closet == null ? null : session.closet.path("styleNotes"),
-                label, weatherNote[0]));
+                label, weatherNote[0], session.wearer));
         // 날짜 → 날씨 → 일정 → 추천 순서는 코드가 정합니다(2026-11-09 발표 피드백: 문장이 이상했음).
         AdviceJudgement advice = new AdviceJudgement(judged.suggestions(), judged.closetPicks(),
                 adviceSpeech(label, session.weather, weatherNote[0], session.events, judged.speech()));
@@ -444,8 +445,9 @@ public class OutfitFlow {
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
                         s.garment().colorName(), s.fit(), s.garment().label()))
                 .toList();
-        CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, now, before,
-                SpokenDate.label(targetDay(session), today())));
+        JsonNode color = colorCheck(session, wearing(now, session.seen), inspect);
+        CheckJudgement j = withColors(session, now, judge.check(new CheckInput(session.weather, session.events,
+                session.advice, now, before, SpokenDate.label(targetDay(session), today()), session.wearer, color)));
 
         for (Garment g : now) {
             String fit = j.verdicts().stream().filter(v -> v.inputId().equals(g.id()))
@@ -464,8 +466,39 @@ public class OutfitFlow {
                 new Result("outfit_check", null, result));
     }
 
+    /**
+     * 판단 문장 첫 문장 뒤에 색 설명(감각·느낌)과, 중요한 일정이면 그 자리에 어울리는 색인지 넣습니다(2026-11-13 진행 님).
+     * 두 벌을 견줬으면 더 나은 옷의 색부터 말합니다.
+     */
+    static CheckJudgement withColors(AgentSession session, List<Garment> garments, CheckJudgement j) {
+        if (session.colorsTold == null) {
+            session.colorsTold = new ArrayList<>();
+        }
+        if (session.colorsToldEvent == null) {
+            session.colorsToldEvent = new ArrayList<>();
+        }
+        List<Garment> order = new ArrayList<>(garments);
+        if (j.comparison() != null) {
+            order.sort(java.util.Comparator.comparing(g -> !g.id().equals(j.comparison().betterInputId())));
+        }
+        Occasion occasion = Occasion.strictest(session.events);
+        String title = Occasion.titleOf(session.events, occasion);
+        List<String> extra = ColorFeel.sentences(order, !Boolean.FALSE.equals(session.colorDetail), occasion, title,
+                session.colorsTold, session.colorsToldEvent);
+        if (extra.isEmpty()) {
+            return j;
+        }
+        return new CheckJudgement(j.verdicts(), j.comparison(), j.damage(), j.stillMissing(),
+                ColorFeel.insertAfterFirst(j.speech(), extra));
+    }
+
     /** 2026-11-10 진행 님 대사: 처음 애매한 얼룩이 나왔을 때 한 번만 묻는다. */
     static final String GPT_ASK = "애매한 부분을 더 정확한 AI에게 한 번 더 물어봐도 될까요? 옷 사진 조각은 학습에 쓰일 수 있어요. "
+            + "\"좋아\" 또는 \"아니\"라고 말씀해 주세요.";
+
+    /** 입고 한 바퀴를 처음 다 봤을 때 묻는 말. 옷 실수 확인은 GPT 없이는 못 해서 애매한 얼룩이 없어도 한 번 묻습니다. */
+    static final String GPT_ASK_WORN = "옷을 뒤집어 입었는지, 단추가 어긋났는지도 더 정확한 AI에게 물어봐도 될까요? "
+            + "얼굴 쪽은 가리고 옷 부분만 보내요. 애매한 얼룩 조각은 학습에 쓰일 수 있어요. "
             + "\"좋아\" 또는 \"아니\"라고 말씀해 주세요.";
 
     /** 애매한 얼룩으로 보는 확신도 범위(옷 상태 서버가 GPT로 확인하는 범위와 같음). */
@@ -482,10 +515,16 @@ public class OutfitFlow {
      */
     private static boolean askGpt(AgentSession session, List<Garment> garments, boolean pendingHelper,
             String imageBase64) {
+        return askGpt(session, garments, pendingHelper, imageBase64, false);
+    }
+
+    /** wear=true(입고 한 바퀴)면 옷 실수 확인 때문에 애매한 부분이 없어도 묻습니다. */
+    private static boolean askGpt(AgentSession session, List<Garment> garments, boolean pendingHelper,
+            String imageBase64, boolean wear) {
         if (session.gptConsent != null || session.gptAsked) {
             return false;
         }
-        boolean unsure = pendingHelper
+        boolean unsure = wear || pendingHelper
                 || garments.stream().anyMatch(g -> g.pattern() == null && g.patternGuess() != null)
                 || garments.stream().flatMap(g -> g.defects().stream())
                         .anyMatch(d -> !d.byGpt() && d.confidence() >= GPT_MIN && d.confidence() < GPT_MAX);
@@ -524,6 +563,13 @@ public class OutfitFlow {
             sessions.save(session);
             return new TurnResponse(session.sessionId, "알겠어요. 애매한 부분은 따로 물어보지 않을게요. " + after,
                     camera, null, false);
+        }
+        if (image == null && worn) {
+            session.wornStep = null;
+            session.wornGarments = new ArrayList<>();
+            sessions.save(session);
+            return new TurnResponse(session.sessionId,
+                    "고마워요. 앞모습부터 한 번 더 서 주시면 옷 실수도 같이 볼게요. " + WORN_HINT, camera, null, true);
         }
         if (image == null) {
             sessions.save(session);
@@ -565,6 +611,7 @@ public class OutfitFlow {
         String view = session.wornStep == null ? "front" : session.wornStep;
         if ("front".equals(view)) {
             session.wornGarments = new ArrayList<>();
+            session.wornWearNotes = new ArrayList<>();
         }
         JsonNode inspect;
         try {
@@ -596,6 +643,7 @@ public class OutfitFlow {
         }
 
         mergeWorn(session.wornGarments, now);
+        addWearNotes(session.wornWearNotes, inspect, now, prefix, view);
         if ("front".equals(view)) {
             session.wornUnsure = false;
         }
@@ -612,8 +660,9 @@ public class OutfitFlow {
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
                         s.garment().colorName(), s.fit(), s.garment().label()))
                 .toList();
-        CheckJudgement j = judge.check(new CheckInput(session.weather, session.events, session.advice, outfit, before,
-                SpokenDate.label(targetDay(session), today())));
+        JsonNode color = colorCheck(session, outfit, inspect);
+        CheckJudgement j = withColors(session, outfit, judge.check(new CheckInput(session.weather, session.events,
+                session.advice, outfit, before, SpokenDate.label(targetDay(session), today()), session.wearer, color)));
         for (Garment g : outfit) {
             String fit = j.verdicts().stream().filter(v -> v.inputId().equals(g.id()))
                     .map(OutfitCheck.Verdict::fit).findFirst().orElse("ok");
@@ -627,13 +676,60 @@ public class OutfitFlow {
         var result = new OutfitCheck(outfit, j.verdicts(), j.comparison(), j.damage(), j.stillMissing(), null, source);
         boolean wornUnsure = session.wornUnsure;
         session.wornUnsure = false;
-        if (askGpt(session, outfit, wornUnsure, null)) {
+        String speech = j.speech() + wearSpeech(session.wornWearNotes);
+        session.wornWearNotes = new ArrayList<>();
+        if (askGpt(session, outfit, wornUnsure, null, true)) {
             sessions.save(session);
-            return new TurnResponse(session.sessionId, j.speech() + " " + GPT_ASK, Next.camera_worn,
+            return new TurnResponse(session.sessionId, speech + " " + GPT_ASK_WORN, Next.camera_worn,
                     new Result("outfit_check", null, result, WORN));
         }
-        return new TurnResponse(session.sessionId, j.speech() + WORN_AGAIN, Next.camera_worn,
+        sessions.save(session);
+        return new TurnResponse(session.sessionId, speech + WORN_AGAIN, Next.camera_worn,
                 new Result("outfit_check", null, result, WORN));
+    }
+
+    /**
+     * 옷 상태 서버의 wearIssues를 모읍니다. garmentId로 이번 사진 옷을 찾아 이름을 붙이고, 같은 옷 종류·같은 실수는
+     * 앞·뒤에서 두 번 나와도 한 번만 둡니다.
+     */
+    static void addWearNotes(List<AgentSession.WearNote> notes, JsonNode inspect, List<Garment> now, String prefix,
+            String view) {
+        for (JsonNode w : inspect.path("wearIssues")) {
+            String kind = w.path("kind").asString(null);
+            if (wearSentence(kind, "옷", view) == null) {
+                continue;
+            }
+            String id = prefix + w.path("garmentId").asString("");
+            Garment g = now.stream().filter(x -> id.equals(x.id())).findFirst().orElse(null);
+            String category = g != null ? g.category() : w.path("category").asString("other");
+            String label = g != null ? g.label() : "옷";
+            if (notes.stream().noneMatch(n -> n.kind().equals(kind) && java.util.Objects.equals(n.category(), category))) {
+                notes.add(new AgentSession.WearNote(kind, category, label, view));
+            }
+        }
+    }
+
+    /** 옷 실수 문장들(앞에 빈칸 하나). 없으면 "". 사진 한 장 판단이라 "~것 같아요"로 말하고 손으로 확인해 보라고 합니다. */
+    static String wearSpeech(List<AgentSession.WearNote> notes) {
+        if (notes == null || notes.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (AgentSession.WearNote n : notes.stream().limit(3).toList()) {
+            sb.append(' ').append(wearSentence(n.kind(), n.label(), n.view()));
+        }
+        return sb.toString();
+    }
+
+    static String wearSentence(String kind, String label, String view) {
+        String l = label == null || label.isBlank() ? "옷" : label;
+        return switch (kind == null ? "" : kind) {
+            case "inside_out" -> Korean.josa(l, "이", "가") + " 뒤집혀서 안쪽이 밖으로 나온 것 같아요. 솔기가 겉에 있는지 만져 보세요.";
+            case "backwards" -> Korean.josa(l, "을", "를") + " 앞뒤 바꿔 입은 것 같아요. 목 뒤 택이나 지퍼 위치를 만져 보세요.";
+            case "buttons_misaligned" -> l + " 단추가 한 칸씩 어긋나게 잠긴 것 같아요. 맨 아래 단추부터 짝이 맞는지 만져 보세요.";
+            case "tag_out" -> l + " 택이 " + ("back".equals(view) ? "뒤쪽 " : "") + "밖으로 나와 있는 것 같아요. 안으로 넣어 주세요.";
+            default -> null;
+        };
     }
 
     /** 앞모습 옷을 기준으로 두고, 뒤에서 본 같은 종류 옷의 얼룩을 더합니다. 처음 보는 종류면 더합니다. */
@@ -709,20 +805,111 @@ public class OutfitFlow {
         };
     }
 
+    /**
+     * "다 보여 줬어": 고를 옷을 말하고 "이걸로 할까요?"라고 묻습니다. 처음 추천으로 돌아가지 않습니다.
+     * 2026-11-13 박창근 님: "이걸로 할까요?"라고 묻고, 아니면 추천해 주기.
+     */
+    public TurnResponse shown(AgentSession session) {
+        List<Garment> picks = picks(session);
+        if (picks.isEmpty()) {
+            return new TurnResponse(session.sessionId, "아직 옷을 못 봤어요. 옷을 카메라에 비춰 주실래요?",
+                    cameraFor(session.outfitMode), null);
+        }
+        session.pickAsked = true;
+        sessions.save(session);
+        String names = String.join(", ", picks.stream().map(Garment::label).toList());
+        return new TurnResponse(session.sessionId, Korean.josa(names, "으로", "로") + " 할까요? 네 또는 아니요로 말씀해 주세요.",
+                Next.listen, Result.of("outfit_pick_offer"));
+    }
+
+    /** "~로 할까요?"에 대한 답. 네면 기록, 아니요면 추천하고 다른 옷을 기다립니다. 알아듣지 못하면 null(원래 대화로). */
+    public TurnResponse answerPick(AgentSession session, String utterance) {
+        session.pickAsked = false;
+        String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        if (otherFeature(utterance)) {
+            sessions.save(session);
+            return null;
+        }
+        if (NO.stream().anyMatch(s::contains) || s.contains("다른")) {
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, recommendOther(session), cameraFor(session.outfitMode),
+                    Result.of("outfit_recommend"));
+        }
+        if (YES.stream().anyMatch(s::startsWith) || s.contains("이걸로") || s.contains("할게")) {
+            return finish(session);
+        }
+        sessions.save(session);
+        return null;
+    }
+
+    /** 아니요라고 했을 때: 처음 추천(옷 종류)과 본 옷 중 잘 맞는 옷을 짧게 말하고 다른 옷을 비춰 달라고 합니다. */
+    static String recommendOther(AgentSession session) {
+        List<String> parts = new ArrayList<>();
+        if (session.advice != null) {
+            for (String cat : List.of("top", "bottom", "dress")) {
+                session.advice.suggestions().stream().filter(x -> cat.equals(x.category()) && x.text() != null
+                        && !x.text().isBlank()).findFirst().ifPresent(x -> parts.add(x.text().strip()));
+            }
+        }
+        List<String> good = session.seen.stream().filter(x -> "good".equals(x.fit()))
+                .map(x -> x.garment().label()).distinct().toList();
+        StringBuilder out = new StringBuilder("그럼 ");
+        if (!parts.isEmpty()) {
+            out.append(Korean.josa(String.join(", ", parts), "을", "를")).append(" 추천드려요. ");
+        } else {
+            out.append("다른 옷도 한번 봐요. ");
+        }
+        if (session.advice != null && session.advice.suggestions().stream().anyMatch(x -> "outer".equals(x.category()))) {
+            out.append("겉옷도 챙기세요. ");
+        }
+        if (!good.isEmpty()) {
+            out.append("방금 본 옷 중에는 ").append(Korean.josa(String.join(", ", good), "이", "가")).append(" 잘 맞았어요. ");
+        }
+        return out.append("다른 옷을 비춰 주시면 다시 봐 드릴게요.").toString();
+    }
+
+    /** "이걸로 할게"가 기록할 옷: 마지막 바퀴(입고 볼 때) 중 잘 맞는 옷, 없으면 본 옷, 이름 모르는 옷은 다른 옷이 있으면 뺌. */
+    private static List<Garment> picks(AgentSession session) {
+        return withoutUnknown(pick(finishPool(session)).garments());
+    }
+
+    /** 고른 옷과, 날씨에 안 맞는다고 했던 옷을 사용자가 그대로 고른 것인지. */
+    record Pick(List<Garment> garments, boolean overruled) {
+    }
+
+    /**
+     * 종류마다 가장 잘 맞는 옷. 안 맞는다고 한 옷만 본 종류도 사용자가 보여 준 옷이니 넣습니다
+     * (2026-11-13 실서버 시뮬: 티셔츠와 바지를 보여 주고 "이걸로 할게"라고 했더니 날씨에 얇은 티셔츠를 빼고 바지만 기록함).
+     * 원피스와 상의·하의는 함께 넣지 않습니다.
+     */
+    static Pick pick(List<AgentSession.Seen> pool) {
+        List<Garment> chosen = new ArrayList<>(chosen(pool));
+        boolean overruled = false;
+        java.util.Set<String> cats = new java.util.HashSet<>();
+        chosen.forEach(g -> cats.add(g.category()));
+        for (Garment g : anyChosen(pool)) {
+            String c = g.category();
+            boolean clash = "dress".equals(c) ? cats.contains("top") || cats.contains("bottom")
+                    : ("top".equals(c) || "bottom".equals(c)) && cats.contains("dress");
+            if (!cats.contains(c) && !clash) {
+                chosen.add(g);
+                cats.add(c);
+                overruled = true;
+            }
+        }
+        return new Pick(chosen, overruled);
+    }
+
     // ── "이걸로 할게" ─────────────────────────────────────────────────
 
     public TurnResponse finish(AgentSession session) {
         // 입고 한 바퀴는 지금 입은 옷이 답입니다. 갈아입기 전 바퀴의 옷을 섞지 않습니다
         // (2026-11-12 시뮬: 두 바퀴 뒤 "이걸로 할게"에 첫 바퀴 자켓과 둘째 바퀴 옷을 함께 기록함).
-        List<AgentSession.Seen> pool = finishPool(session);
-        List<Garment> chosen = chosen(pool);
         // 아쉽다고 말한 옷만 봤어도 사용자가 "이걸로 할게"라고 하면 그 옷으로 합니다(2026-11-12 시뮬: 입은 모습이
         // 날씨에 가볍다고 했더니 기록을 거절하고 다시 보여 달라고만 했음).
-        boolean overruled = chosen.isEmpty() && !pool.isEmpty();
-        if (overruled) {
-            chosen = anyChosen(pool);
-        }
-        chosen = withoutUnknown(chosen);
+        Pick pick = pick(finishPool(session));
+        boolean overruled = pick.overruled();
+        List<Garment> chosen = withoutUnknown(pick.garments());
         if (chosen.isEmpty()) {
             return new TurnResponse(session.sessionId, "아직 잘 맞는 옷을 못 봤어요. 옷을 카메라에 한번 보여 주실래요?",
                     cameraFor(session.outfitMode), null);
@@ -750,7 +937,7 @@ public class OutfitFlow {
 
     private static boolean otherFeature(String utterance) {
         return switch (Intent.of(utterance, false)) {
-            case WEATHER, SCHEDULE, FACE, HELP, OUTFIT -> true;
+            case WEATHER, SCHEDULE, FACE, HELP, OUTFIT, COLOR -> true;
             default -> false;
         };
     }
@@ -983,6 +1170,57 @@ public class OutfitFlow {
     }
 
     /** 도구 하나가 실패해도 나머지로 계속합니다 (판단 쪽이 null을 "모름"으로 다룸). */
+    /**
+     * 같이 입을 옷의 색 조합과 어울림 점수(0~100)를 옷 상태 서버 규칙(outfit_color_check, 색상환 이론)으로 계산합니다.
+     * GPT는 이 점수를 근거로 "어울림 92점이에요. 기본색에 포인트 색 하나라 깔끔해요"처럼 말합니다. 실패하면 null(점수 없이 판단).
+     */
+    private JsonNode colorCheck(AgentSession session, List<Garment> wearing, JsonNode inspect) {
+        if (wearing.size() < 2) {
+            return null;
+        }
+        // MCP는 입력을 스키마로 검사해서, 색 판단에 쓰는 필드만 보냅니다.
+        List<Map<String, Object>> garments = wearing.stream().map(g -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", g.id());
+            m.put("category", g.category() == null ? "other" : g.category());
+            m.put("colorFamily", g.colorFamily() == null ? "unknown" : g.colorFamily());
+            putIfPresent(m, "name", g.name());
+            putIfPresent(m, "colorName", g.colorName());
+            putIfPresent(m, "tone", g.tone());
+            putIfPresent(m, "pattern", g.patterned() ? g.pattern() : null);
+            return m;
+        }).limit(10).toList();
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("garments", garments);
+        args.put("occasion", Occasion.strictest(session.events).name());
+        args.put("lighting", inspect.path("lighting").asString("ok"));
+        return safe(ToolNames.OUTFIT_COLOR_CHECK, () -> tools.call(ToolNames.OUTFIT_COLOR_CHECK, args));
+    }
+
+    private static void putIfPresent(Map<String, Object> m, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            m.put(key, value);
+        }
+    }
+
+    /**
+     * 지금 사진의 옷 + 앞서 보여 준 옷 중 지금 사진에 없는 종류(입기로 한 옷). 같은 종류는 가장 최근에 본, 어울린다고 한 옷 하나.
+     * 예: 바지를 먼저 보여 주고 셔츠 두 벌을 비교하면 셔츠 두 벌 + 바지.
+     */
+    static List<Garment> wearing(List<Garment> now, List<AgentSession.Seen> seen) {
+        List<Garment> out = new ArrayList<>(now);
+        java.util.Set<String> have = new java.util.HashSet<>();
+        now.forEach(g -> have.add(g.category()));
+        for (int i = seen.size() - 1; i >= 0; i--) {
+            AgentSession.Seen s = seen.get(i);
+            String category = s.garment().category();
+            if (!"bad".equals(s.fit()) && category != null && !"other".equals(category) && have.add(category)) {
+                out.add(s.garment());
+            }
+        }
+        return out;
+    }
+
     private static JsonNode safe(String what, Supplier<JsonNode> call) {
         try {
             return call.get();

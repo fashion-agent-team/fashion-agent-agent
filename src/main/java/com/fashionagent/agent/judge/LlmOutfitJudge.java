@@ -11,6 +11,7 @@ import com.fashionagent.agent.model.AdviceJudgement;
 import com.fashionagent.agent.model.CheckJudgement;
 import com.fashionagent.agent.model.Garment;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -38,6 +39,7 @@ public class LlmOutfitJudge implements OutfitJudge {
         input.put("events", in.events());
         input.put("closetCandidates", in.closetCandidates());
         input.put("styleNotes", in.styleNotes());
+        putWearer(input, in.wearer());
         AdviceJudgement out = chat.prompt()
                 .user(Prompts.ADVICE.formatted(json.writeValueAsString(input)))
                 .call()
@@ -49,7 +51,7 @@ public class LlmOutfitJudge implements OutfitJudge {
                 : in.closetCandidates().valueStream().map(c -> c.path("garmentId").asString("")).collect(Collectors.toSet());
         // 옷장에 없는 옷을 지어내면 뺍니다.
         return new AdviceJudgement(out.suggestions(),
-                out.closetPicks().stream().filter(p -> allowed.contains(p.garmentId())).toList(), out.speech());
+                out.closetPicks().stream().filter(p -> allowed.contains(p.garmentId())).toList(), Korean.spoken(out.speech()));
     }
 
     @Override
@@ -62,6 +64,8 @@ public class LlmOutfitJudge implements OutfitJudge {
         boolean many = in.now().size() >= 2;
         input.put("now", in.now().stream().map(g -> forPrompt(g, many)).toList());
         input.put("seenBefore", in.seenBefore());
+        putWearer(input, in.wearer());
+        input.put("colorHarmony", colorForPrompt(in.colorHarmony()));
         CheckJudgement out = chat.prompt()
                 .user(Prompts.CHECK.formatted(json.writeValueAsString(input)))
                 .call()
@@ -72,18 +76,52 @@ public class LlmOutfitJudge implements OutfitJudge {
         Set<String> ids = in.now().stream().map(Garment::id).collect(Collectors.toSet());
         var comparison = in.now().size() >= 2 && out.comparison() != null
                 && ids.contains(out.comparison().betterInputId()) ? out.comparison() : null;
+        var verdicts = out.verdicts().stream().filter(v -> ids.contains(v.inputId())).toList();
         return new CheckJudgement(
-                out.verdicts().stream().filter(v -> ids.contains(v.inputId())).toList(),
+                verdicts,
                 comparison,
                 out.damage().stream().filter(d -> ids.contains(d.inputId())).toList(),
                 out.stillMissing(),
-                out.speech());
+                // 안 맞는 옷에 "잘 고르셨어요"로 시작하면 뺍니다.
+                Korean.spoken(PraiseGuard.strip(out.speech(), verdicts)));
+    }
+
+    /**
+     * 색 조합 결과 중 GPT가 말할 때 쓸 값만. 점수 계산 내역(parts)은 발표·로그용이라 빼고, 조합마다 점수·까닭만 넣습니다.
+     * 점수가 없으면(옷이 한 벌뿐 등) null.
+     */
+    static Map<String, Object> colorForPrompt(JsonNode c) {
+        if (c == null || c.isNull() || !c.path("score").isNumber()) {
+            return null;
+        }
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("score", c.path("score").asInt());
+        m.put("scheme", c.path("scheme").asString(null));
+        m.put("reason", c.path("scoreReason").asString(null));
+        m.put("verdict", c.path("verdict").asString(null));
+        m.put("issues", c.path("issues").valueStream()
+                .filter(i -> !"info".equals(i.path("level").asString("")))
+                .map(i -> i.path("say").asString("")).filter(s -> !s.isBlank()).toList());
+        if (c.path("outfits").size() >= 2) {
+            m.put("outfits", c.path("outfits").valueStream().map(o -> Map.of(
+                    "garmentIds", o.path("garmentIds").valueStream().map(id -> id.asString("")).toList(),
+                    "score", o.path("score").asInt(),
+                    "scheme", o.path("schemeName").asString(""))).toList());
+        }
+        return m;
     }
 
     /**
      * GPT에는 판단에 필요한 값만 (box 좌표 등은 뺌). label은 읽어 줄 이름(색·무늬·종류)이라 GPT가 그대로 쓰게 합니다.
      * 옷이 한 벌이면 position을 넣지 않습니다. 2026-11-12: 한 벌인데 "중앙 검정 셔츠"라고 읽음.
      */
+    /** 내 정보가 있을 때만 넣습니다(건너뛴 칸은 게이트웨이가 이미 뺌). 이름·생년월일은 오지 않습니다. */
+    static void putWearer(Map<String, Object> input, JsonNode wearer) {
+        if (wearer != null && wearer.isObject() && !wearer.isEmpty()) {
+            input.put("wearer", wearer);
+        }
+    }
+
     static Map<String, Object> forPrompt(Garment g, boolean withPosition) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", g.id());

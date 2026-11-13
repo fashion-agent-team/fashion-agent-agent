@@ -212,8 +212,10 @@ public class FaceFlow {
         if (found.isBoolean()) {
             return "이에 낀 건 없어 보여요. 깔끔해요.";
         }
+        // 애매해도 낀 걸 놓치지 않는 쪽으로: 혀로 먼저 확인하게 하고, 다시 찍는 방법도 알려 줍니다(2026-11-12, 고춧가루를 놓침).
         String note = teeth.path("note").asString("");
-        return (note.isBlank() ? "잘 보이지 않아서 확실하지 않아요." : note) + " " + RETRY_TEETH;
+        return (note.isBlank() ? "뭔가 낀 것 같기도 한데, 잘 보이지 않아서 확실하지 않아요." : note)
+                + " 혀로 한 번 확인해 보세요. " + RETRY_TEETH;
     }
 
     private static String compact(String utterance) {

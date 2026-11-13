@@ -25,6 +25,7 @@ import tools.jackson.databind.JsonNode;
 public class TurnService {
 
     private final OutfitFlow outfit;
+    private final ColorFlow color;
     private final FaceFlow face;
     private final ReminderFlow reminder;
     private final ClosetFlow closetFlow;
@@ -33,10 +34,11 @@ public class TurnService {
     private final SessionStore sessions;
     private final java.time.Clock clock;
 
-    public TurnService(OutfitFlow outfit, FaceFlow face, ReminderFlow reminder, ClosetFlow closetFlow,
+    public TurnService(OutfitFlow outfit, ColorFlow color, FaceFlow face, ReminderFlow reminder, ClosetFlow closetFlow,
             Assistant assistant, AgentTools tools, SessionStore sessions, java.time.Clock clock) {
         this.closetFlow = closetFlow;
         this.outfit = outfit;
+        this.color = color;
         this.face = face;
         this.reminder = reminder;
         this.assistant = assistant;
@@ -46,15 +48,38 @@ public class TurnService {
     }
 
     public TurnResponse handle(String userId, TurnRequest req) {
-        AgentSession session = req.sessionId() == null ? null
+        return handle(userId, req, null);
+    }
+
+    /** @param wearer 게이트웨이가 붙인 내 정보(X-User-Profile 풀어 둔 것). 없으면 null이고 그대로 둡니다. */
+    public TurnResponse handle(String userId, TurnRequest req, JsonNode wearer) {
+        AgentSession found = req.sessionId() == null ? null
                 : sessions.find(userId, req.sessionId()).orElse(null);
-        boolean inOutfit = session != null && (session.advice != null || !session.seen.isEmpty());
-        if (session == null) {
-            session = new AgentSession("s_" + UUID.randomUUID(), userId);
+        boolean inOutfit = found != null && (found.advice != null || !found.seen.isEmpty());
+        AgentSession session = found != null ? found : new AgentSession("s_" + UUID.randomUUID(), userId);
+        // 회원정보를 바꾸면 다음 말부터 바로 쓰이게 매번 새 값으로 바꿉니다.
+        session.wearer = wearer;
+        TurnResponse res = turn(session, req, inOutfit);
+        // 다음 턴에 카메라를 보던 중인지 알 수 있게 이번 next를 기억합니다.
+        if (res.next() != session.lastNext) {
+            session.lastNext = res.next();
+            sessions.save(session);
         }
+        return res;
+    }
+
+    /** 지난 턴에 카메라(옷)를 켜 둔 상태였으면 그 카메라, 아니면 null. */
+    static Next outfitCamera(AgentSession session) {
+        return session.lastNext == Next.camera_outfit || session.lastNext == Next.camera_worn ? session.lastNext : null;
+    }
+
+    private TurnResponse turn(AgentSession session, TurnRequest req, boolean inOutfit) {
         // 이번 대화에서 이미 답했으면 그 답을 쓰고, 아니면 앱이 기억한 답(없으면 null = 아직 안 물음).
         if (req.allowGpt() != null || !session.gptDecided) {
             session.gptConsent = req.allowGpt();
+        }
+        if (req.colorDetail() != null) {
+            session.colorDetail = req.colorDetail();
         }
 
         if (req.hasImage()) {
@@ -65,11 +90,34 @@ public class TurnService {
             if ("teeth".equals(req.imageKind())) {
                 return face.checkTeeth(session, req.image(), req.mouthBox());
             }
+            // "이거 무슨 색이야?"로 켠 카메라: 색만 읽어 줍니다.
+            if (session.colorCheck && !"worn".equals(req.imageKind())) {
+                return color.check(session, req.image());
+            }
             if ("worn".equals(req.imageKind())) {
                 session.outfitMode = OutfitFlow.WORN;
                 return outfit.checkWorn(session, req.image());
             }
             return outfit.check(session, req.image());
+        }
+
+        // "색 설명 짧게 해 줘", "색 설명 자세히 해 줘" (2026-11-13)
+        Boolean detail = com.fashionagent.agent.judge.ColorFeel.detailCommand(req.utterance());
+        if (detail != null) {
+            session.colorDetail = detail;
+            sessions.save(session);
+            return new TurnResponse(session.sessionId,
+                    detail ? com.fashionagent.agent.judge.ColorFeel.SAY_DETAILED
+                            : com.fashionagent.agent.judge.ColorFeel.SAY_SHORT,
+                    Next.listen, Result.of("color_detail"), null, detail);
+        }
+
+        // 색 확인 중 "됐어"면 끝내고, 다른 말이면 색 확인을 접고 원래대로 고릅니다.
+        if (session.colorCheck) {
+            TurnResponse answered = color.answer(session, req.utterance());
+            if (answered != null) {
+                return answered;
+            }
         }
 
         // 일정을 넣은 뒤 "일정 전에 알림을 드릴까요?", "며칠 전에 미리 알려 드릴까요?"에 대한 답
@@ -113,6 +161,14 @@ public class TurnService {
             }
         }
 
+        // "다 보여 줬어" 뒤 "~로 할까요?"에 대한 답
+        if (session.pickAsked) {
+            TurnResponse answered = outfit.answerPick(session, req.utterance());
+            if (answered != null) {
+                return answered;
+            }
+        }
+
         // "입은 모습도 확인해 보실래요?"에 대한 답
         if (session.wornOfferAsked) {
             TurnResponse answered = outfit.answerWornOffer(session, req.utterance());
@@ -132,8 +188,10 @@ public class TurnService {
         return switch (Intent.of(req.utterance(), inOutfit)) {
             case OUTFIT -> outfit.start(session, req.location(), req.utterance());
             case CHECK -> outfit.startCheck(session, req.location(), req.utterance());
+            case COLOR -> color.start(session);
             case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
             case FINISH -> outfit.finish(session);
+            case SHOWN -> outfit.shown(session);
             case WHERE -> outfit.where(session);
             case CLOSET -> closetFlow.list(session, req.utterance());
             case CLOSET_HISTORY -> closetFlow.history(session, req.utterance());
@@ -145,7 +203,9 @@ public class TurnService {
             case HELP -> say(session, SmallTalk.CAPABILITIES, Next.listen);
             // 그 밖(일정 등록·삭제, 다른 날 일정 등)은 GPT가 도구를 고릅니다(약속 5-2절).
             case OTHER -> {
-                Assistant.Reply r = assistant.reply(session, req.utterance(), req.location(), inOutfit);
+                // 카메라를 켜 둔 채 일정을 넣었을 때만 카메라를 이어 갑니다. 추천만 듣고 카메라를 안 켰으면 켜지 않습니다.
+                Next camera = outfitCamera(session);
+                Assistant.Reply r = assistant.reply(session, req.utterance(), req.location(), camera != null);
                 // GPT가 말뜻을 보고 우리 기능을 고른 경우(키워드에 안 걸린 말). 그 흐름을 그대로 시작합니다.
                 if (r.feature() != null) {
                     yield switch (r.feature()) {
@@ -160,7 +220,7 @@ public class TurnService {
                 if (ReminderFlow.PENDING.equals(session.reminderStep)) {
                     yield say(session, reminder.askIfAdded(session, r.speech()), Next.listen);
                 }
-                yield say(session, r.speech(), r.next());
+                yield say(session, r.speech(), r.next() == Next.camera_outfit && camera != null ? camera : r.next());
             }
         };
     }

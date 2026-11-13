@@ -13,8 +13,21 @@ class IntentTest {
     }
 
     @Test
+    void 무슨_색이냐는_색_확인() {
+        assertThat(Intent.of("이거 무슨 색이야?", false)).isEqualTo(Intent.COLOR);
+        assertThat(Intent.of("이 옷 색깔 뭐야", false)).isEqualTo(Intent.COLOR);
+        assertThat(Intent.of("어떤 색이야?", true)).isEqualTo(Intent.COLOR);
+        // 무엇을 입을지는 추천, 옷장 이야기는 옷장
+        assertThat(Intent.of("내일 무슨 색 입을까?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("옷장에 무슨 색 옷 있어?", false)).isEqualTo(Intent.CLOSET);
+    }
+
+    @Test
     void 마무리와_어디야는_옷_추천_중일_때만() {
         assertThat(Intent.of("이걸로 할게", true)).isEqualTo(Intent.FINISH);
+        assertThat(Intent.of("다 보여 줬어", true)).isEqualTo(Intent.SHOWN);
+        assertThat(Intent.of("이게 다야", true)).isEqualTo(Intent.SHOWN);
+        assertThat(Intent.of("다 보여 줬어", false)).isNotEqualTo(Intent.SHOWN);
         assertThat(Intent.of("이걸로 할게", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("얼룩 어디야?", true)).isEqualTo(Intent.WHERE);
         assertThat(Intent.of("입고 볼게", true)).isEqualTo(Intent.MODE);
@@ -26,6 +39,9 @@ class IntentTest {
     @Test
     void 옷_검사는_바로_확인으로_간다_리허설() {
         assertThat(Intent.of("옷 검사해 줘", false)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("이 옷 어때", false)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("이 옷 어때?", true)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("얼굴 어때", false)).isNotEqualTo(Intent.CHECK);
         assertThat(Intent.of("옷검사 해 줘", false)).isEqualTo(Intent.CHECK);
         assertThat(Intent.of("내가 입은 옷 확인해 줘", false)).isEqualTo(Intent.CHECK);
         assertThat(Intent.of("얼굴 검사해 줘", false)).isEqualTo(Intent.FACE);
@@ -96,5 +112,9 @@ class IntentTest {
         assertThat(Intent.of("토요일 두 시에 결혼식 넣어 줘", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("이번 주 일정 뭐야", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("면접 일정 지워 줘", false)).isEqualTo(Intent.OTHER);
+        // 2026-11-12 진행 님 폰: "없애"는 일정 지우기인데 오늘 일정 읽기로 갔습니다.
+        assertThat(Intent.of("일정 없애 줘", true)).isEqualTo(Intent.OTHER);
+        assertThat(Intent.of("내일 일정 없애줘", false)).isEqualTo(Intent.OTHER);
+        assertThat(Intent.of("일정 지우고 싶어", false)).isEqualTo(Intent.OTHER);
     }
 }

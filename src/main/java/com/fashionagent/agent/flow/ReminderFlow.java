@@ -202,7 +202,7 @@ public class ReminderFlow {
 
     private static boolean otherFeature(String utterance) {
         return switch (Intent.of(utterance, false)) {
-            case WEATHER, SCHEDULE, FACE, HELP, OUTFIT, CHECK -> true;
+            case WEATHER, SCHEDULE, FACE, HELP, OUTFIT, CHECK, COLOR -> true;
             default -> false;
         };
     }

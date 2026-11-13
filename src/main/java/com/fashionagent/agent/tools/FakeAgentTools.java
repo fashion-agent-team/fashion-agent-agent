@@ -31,8 +31,12 @@ public class FakeAgentTools implements AgentTools {
             case ToolNames.WEATHER_FORECAST -> forecast(String.valueOf(args.get("date")));
             case ToolNames.SCHEDULE_LIST -> schedule(String.valueOf(args.get("date")));
             case ToolNames.CLOTHES_INSPECT -> "worn".equals(args.get("mode"))
-                    ? inspectWorn(String.valueOf(args.get("imageBase64")), String.valueOf(args.get("view")))
+                    ? inspectWorn(String.valueOf(args.get("imageBase64")), String.valueOf(args.get("view")),
+                            Boolean.TRUE.equals(args.get("allowGpt")))
                     : inspect(String.valueOf(args.get("imageBase64")), Boolean.TRUE.equals(args.get("allowGpt")));
+            case ToolNames.OUTFIT_COLOR_CHECK -> Map.of("verdict", "good", "issues", List.of(),
+                    "speech", "색 조합이 잘 어울려요.", "score", 90, "scheme", "기본색 조합",
+                    "scoreReason", "기본색끼리라 어디에나 무난하게 어울려요.", "outfits", List.of());
             case ToolNames.CLOSET_SEARCH -> Map.of("candidates", List.of(), "styleNotes", List.of(), "empty", true);
             case ToolNames.CLOSET_SAVE -> closetSave(args);
             case ToolNames.CLOSET_WEAR -> Map.of("recorded", ((List<?>) args.get("garmentIds")).size());
@@ -115,7 +119,7 @@ public class FakeAgentTools implements AgentTools {
     }
 
     /** 입은 사람 한 명. 앞에서는 셔츠와 슬랙스, 뒤에서는 셔츠 등에 얼룩. where는 입은 사람 몸 기준입니다. */
-    private static Map<String, Object> inspectWorn(String image, String view) {
+    private static Map<String, Object> inspectWorn(String image, String view, boolean allowGpt) {
         if (image.startsWith("FAR")) {
             return Map.of("garments", List.of(), "framing", "발이 안 보여요. 한 걸음 더 물러나 주세요.",
                     "lighting", "ok", "source", "model", "modelVersion", "fake");
@@ -135,6 +139,15 @@ public class FakeAgentTools implements AgentTools {
             // 앞모습에서만 애매한 얼룩 후보. 뒤까지 다 본 뒤에 GPT 확인을 묻는지 봅니다.
             out.put("pendingHelper", map("garmentId", "g2", "candidates",
                     List.of(Map.of("kind", "stain", "where", "무릎", "confidence", 0.4)), "note", "확실하지 않아요"));
+        }
+        if (allowGpt) {
+            // 실제 서버처럼 동의했을 때만 옷 실수를 봄. WEAR 사진이면 셔츠 택이 앞·뒤 모두에서 보이고 앞에서는 단추도 어긋남.
+            out.put("wearIssues", !image.startsWith("WEAR") ? List.of() : "front".equals(view)
+                    ? List.of(Map.of("kind", "buttons_misaligned", "garmentId", "g1", "category", "top", "confidence", 0.85,
+                            "checkedBy", "gpt"), Map.of("kind", "tag_out", "garmentId", "g1", "category", "top",
+                                    "confidence", 0.8, "checkedBy", "gpt"))
+                    : List.of(Map.of("kind", "tag_out", "garmentId", "g1", "category", "top", "confidence", 0.9,
+                            "checkedBy", "gpt")));
         }
         return out;
     }
@@ -201,7 +214,7 @@ public class FakeAgentTools implements AgentTools {
         }
         if (image.startsWith("UNSURE")) {
             return map("framing", null, "lighting", "ok",
-                    "teeth", map("foreignObject", null, "confidence", 0.5, "note", "잘 보이지 않아서 확실하지 않아요."));
+                    "teeth", map("foreignObject", null, "confidence", 0.5, "note", "뭔가 낀 것 같기도 한데, 잘 보이지 않아서 확실하지 않아요."));
         }
         return map("framing", null, "lighting", "ok",
                 "teeth", map("foreignObject", true, "confidence", 0.82, "note", "앞니 사이에 뭔가 낀 것 같아요."));

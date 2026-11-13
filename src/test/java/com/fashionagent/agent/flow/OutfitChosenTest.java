@@ -63,4 +63,28 @@ class OutfitChosenTest {
         assertThat(names(OutfitFlow.withoutUnknown(List.of(unknown, dress)))).containsExactly("원피스");
         assertThat(names(OutfitFlow.withoutUnknown(List.of(unknown)))).containsExactly("옷");
     }
+
+    @Test
+    void 날씨에_안_맞는_티셔츠도_보여_준_옷이면_함께_고른다() {
+        // 2026-11-13 실서버 시뮬: 티셔츠(얇음)와 바지를 보여 주고 "이걸로 할게" → 바지만 기록됐음
+        var seen = List.of(seen("p1_g1", "top", "티셔츠", "bad"), seen("p2_g1", "bottom", "바지", "good"));
+        var pick = OutfitFlow.pick(seen);
+        assertThat(names(pick.garments())).containsExactly("바지", "티셔츠");
+        assertThat(pick.overruled()).isTrue();
+    }
+
+    @Test
+    void 모두_잘_맞으면_그대로() {
+        var seen = List.of(seen("p1_g1", "top", "니트", "good"), seen("p2_g1", "bottom", "바지", "ok"));
+        var pick = OutfitFlow.pick(seen);
+        assertThat(names(pick.garments())).containsExactly("니트", "바지");
+        assertThat(pick.overruled()).isFalse();
+    }
+
+    @Test
+    void 안_맞는_원피스는_상의_하의와_함께_넣지_않는다() {
+        var seen = List.of(seen("p1_g1", "dress", "원피스", "bad"), seen("p2_g1", "top", "니트", "good"),
+                seen("p3_g1", "bottom", "바지", "good"));
+        assertThat(names(OutfitFlow.pick(seen).garments())).containsExactly("니트", "바지");
+    }
 }
