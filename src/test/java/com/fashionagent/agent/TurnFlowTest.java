@@ -317,7 +317,7 @@ class TurnFlowTest {
         // 모델이 애매하면(foreignObject: null) 단정하지 않고 다시 찍어 보라고 권함
         JsonNode unsure = turn("u6t", """
                 {"sessionId": "%s", "image": "UNSURE...", "imageKind": "teeth"}""".formatted(sid));
-        assertThat(unsure.path("speech").asString()).contains("확실하지 않아요", "다시 찍으면")
+        assertThat(unsure.path("speech").asString()).contains("확실하지 않아요", "혀로 한 번 확인", "다시 찍으면")
                 .doesNotContain("없어 보여요");
         assertThat(unsure.path("next").asString()).isEqualTo("listen");
     }

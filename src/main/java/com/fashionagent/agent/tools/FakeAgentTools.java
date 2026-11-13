@@ -201,7 +201,7 @@ public class FakeAgentTools implements AgentTools {
         }
         if (image.startsWith("UNSURE")) {
             return map("framing", null, "lighting", "ok",
-                    "teeth", map("foreignObject", null, "confidence", 0.5, "note", "잘 보이지 않아서 확실하지 않아요."));
+                    "teeth", map("foreignObject", null, "confidence", 0.5, "note", "뭔가 낀 것 같기도 한데, 잘 보이지 않아서 확실하지 않아요."));
         }
         return map("framing", null, "lighting", "ok",
                 "teeth", map("foreignObject", true, "confidence", 0.82, "note", "앞니 사이에 뭔가 낀 것 같아요."));
