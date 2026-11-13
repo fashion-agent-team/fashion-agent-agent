@@ -11,6 +11,7 @@ import com.fashionagent.agent.model.AdviceJudgement;
 import com.fashionagent.agent.model.CheckJudgement;
 import com.fashionagent.agent.model.Garment;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -62,6 +63,7 @@ public class LlmOutfitJudge implements OutfitJudge {
         boolean many = in.now().size() >= 2;
         input.put("now", in.now().stream().map(g -> forPrompt(g, many)).toList());
         input.put("seenBefore", in.seenBefore());
+        input.put("colorHarmony", colorForPrompt(in.colorHarmony()));
         CheckJudgement out = chat.prompt()
                 .user(Prompts.CHECK.formatted(json.writeValueAsString(input)))
                 .call()
@@ -78,6 +80,31 @@ public class LlmOutfitJudge implements OutfitJudge {
                 out.damage().stream().filter(d -> ids.contains(d.inputId())).toList(),
                 out.stillMissing(),
                 out.speech());
+    }
+
+    /**
+     * 색 조합 결과 중 GPT가 말할 때 쓸 값만. 점수 계산 내역(parts)은 발표·로그용이라 빼고, 조합마다 점수·까닭만 넣습니다.
+     * 점수가 없으면(옷이 한 벌뿐 등) null.
+     */
+    static Map<String, Object> colorForPrompt(JsonNode c) {
+        if (c == null || c.isNull() || !c.path("score").isNumber()) {
+            return null;
+        }
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("score", c.path("score").asInt());
+        m.put("scheme", c.path("scheme").asString(null));
+        m.put("reason", c.path("scoreReason").asString(null));
+        m.put("verdict", c.path("verdict").asString(null));
+        m.put("issues", c.path("issues").valueStream()
+                .filter(i -> !"info".equals(i.path("level").asString("")))
+                .map(i -> i.path("say").asString("")).filter(s -> !s.isBlank()).toList());
+        if (c.path("outfits").size() >= 2) {
+            m.put("outfits", c.path("outfits").valueStream().map(o -> Map.of(
+                    "garmentIds", o.path("garmentIds").valueStream().map(id -> id.asString("")).toList(),
+                    "score", o.path("score").asInt(),
+                    "scheme", o.path("schemeName").asString(""))).toList());
+        }
+        return m;
     }
 
     /**

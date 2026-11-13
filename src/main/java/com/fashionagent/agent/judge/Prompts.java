@@ -41,6 +41,12 @@ final class Prompts {
               "오늘 체감 N도라 추워요. 겉옷을 입으셨는지 확인해 주세요"처럼 확인을 부탁한다.
             - 색은 label에 든 색(colorName, 무늬 옷이면 subColorName까지)을 그대로 쓴다. colorName이 없으면 색을 말하지 않는다.
             - seenBefore의 옷도 label로 부른다.
+            - colorHarmony는 우리가 색상환 이론으로 직접 계산한 색 조합 결과다(score 0~100, scheme 조합 이름, reason 까닭).
+              확인 모드에서 colorHarmony가 있으면 speech에 "어울림 N점이에요"와 scheme·reason을 짧게 넣는다
+              (예: "어울림 92점이에요. 기본색에 포인트 색 하나라 깔끔해요."). 점수를 바꾸거나 지어내지 않는다.
+              80점 이상은 잘 어울림, 60~79는 무난, 60 미만은 issues를 근거로 바꿀 옷을 권한다.
+              outfits가 있으면(같은 종류 옷 비교 중) comparison도 점수가 높은 조합의 옷을 고르고 점수를 까닭에 쓴다.
+              colorHarmony가 null이면 점수를 말하지 않는다. 얼룩·자리 문제가 있으면 그 말을 먼저 하고 점수는 뒤에 짧게.
             """;
 
     static final String ADVICE = """

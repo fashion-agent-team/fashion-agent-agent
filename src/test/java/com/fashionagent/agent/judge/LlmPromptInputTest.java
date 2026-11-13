@@ -38,4 +38,23 @@ class LlmPromptInputTest {
         assertThat(m.get("label")).isEqualTo("검정·회색 셔츠");
         assertThat(m.get("patternGuess")).isEqualTo("호피 무늬");
     }
+
+    @Test
+    @DisplayName("색 어울림 점수는 점수·조합·까닭·말할 문제만 GPT에 (계산 내역 parts는 뺌)")
+    void color() {
+        var json = tools.jackson.databind.json.JsonMapper.builder().build();
+        var c = json.readTree("""
+                {"verdict":"bad","speech":"…","score":57,"scheme":"기본색에 포인트 색 하나",
+                 "scoreReason":"기본색에 강한 색 하나라 깔끔하면서 포인트가 있어요.",
+                 "issues":[{"rule":"occasion_formal","level":"bad","say":"빨강 니트는 격식 있는 자리에 튀어요."}],
+                 "outfits":[{"garmentIds":["g1","g2"],"score":57,"schemeName":"기본색에 포인트 색 하나","parts":[]}]}
+                """);
+        var m = LlmOutfitJudge.colorForPrompt(c);
+        assertThat(m.get("score")).isEqualTo(57);
+        assertThat(m.get("reason")).isEqualTo("기본색에 강한 색 하나라 깔끔하면서 포인트가 있어요.");
+        assertThat(m.get("issues")).isEqualTo(List.of("빨강 니트는 격식 있는 자리에 튀어요."));
+        assertThat(m).doesNotContainKey("outfits"); // 조합이 하나면 맨 위 점수로 충분
+        assertThat(LlmOutfitJudge.colorForPrompt(json.readTree("{\"verdict\":\"good\",\"score\":null}"))).isNull();
+        assertThat(LlmOutfitJudge.colorForPrompt(null)).isNull();
+    }
 }

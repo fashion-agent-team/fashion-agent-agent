@@ -13,6 +13,8 @@ public final class ToolNames {
     public static final String SCHEDULE_DELETE = "schedule_delete";
     public static final String SCHEDULE_SET_REMINDER = "schedule_set_reminder";
     public static final String CLOTHES_INSPECT = "clothes_inspect";
+    /** 같이 입을 옷의 색 조합 판단과 어울림 점수(0~100, 색상환 규칙). 옷 상태 서버에 있습니다. */
+    public static final String OUTFIT_COLOR_CHECK = "outfit_color_check";
     public static final String FACE_MAKEUP_CHECK = "face_makeup_check";
     public static final String TEETH_CHECK = "teeth_check";
     public static final String CLOSET_SEARCH = "closet_search";
@@ -26,6 +28,7 @@ public final class ToolNames {
     /** 도구 이름의 앞부분이 서버 이름입니다. clothes_inspect → clothes-state 처럼 다른 것만 적습니다. */
     private static final Map<String, String> SERVER_OF_PREFIX = Map.of(
             "clothes", "clothes-state",
+            "outfit", "clothes-state",
             "face", "face-check",
             "teeth", "face-check");
 
