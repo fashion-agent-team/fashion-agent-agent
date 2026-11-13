@@ -137,7 +137,7 @@ class TurnFlowTest {
     }
 
     @Test
-    void 다_보여_줬어는_본_옷을_말하고_처음_추천으로_돌아가지_않는다() throws Exception {
+    void 다_보여_줬어면_이걸로_할까요_묻고_네면_기록한다() throws Exception {
         // 2026-11-13 실서버 시뮬: "다 보여 줬어"가 GPT로 가서 처음 추천을 다시 하고 본 옷을 잊었음
         String sid = turn("u31", """
                 {"utterance": "옷 내려놓고 볼게 뭐 입지"}""").path("sessionId").asString();
@@ -146,10 +146,26 @@ class TurnFlowTest {
         JsonNode shown = turn("u31", """
                 {"sessionId": "%s", "utterance": "다 보여 줬어"}""".formatted(sid));
         assertThat(shown.path("next").asString()).isEqualTo("listen");
-        assertThat(shown.path("speech").asString()).contains("셔츠").contains("이걸로 할게").doesNotContain("추천해 드릴게요");
-        JsonNode picked = turn("u31", """
-                {"sessionId": "%s", "utterance": "이걸로 할게"}""".formatted(sid));
-        assertThat(picked.path("speech").asString()).doesNotContain("못 봤어요");
+        assertThat(shown.path("speech").asString()).contains("셔츠").contains("할까요").doesNotContain("추천해 드릴게요");
+        JsonNode yes = turn("u31", """
+                {"sessionId": "%s", "utterance": "네"}""".formatted(sid));
+        assertThat(yes.path("speech").asString()).contains("셔츠").doesNotContain("못 봤어요");
+        assertThat(yes.path("result").path("type").asString()).isEqualTo("outfit_worn_offer");
+    }
+
+    @Test
+    void 이걸로_할까요에_아니요면_추천하고_다른_옷을_기다린다() throws Exception {
+        String sid = turn("u32", """
+                {"utterance": "옷 내려놓고 볼게 뭐 입지"}""").path("sessionId").asString();
+        turn("u32", """
+                {"sessionId": "%s", "image": "AAAA", "imageKind": "outfit"}""".formatted(sid));
+        turn("u32", """
+                {"sessionId": "%s", "utterance": "이게 다야"}""".formatted(sid));
+        JsonNode no = turn("u32", """
+                {"sessionId": "%s", "utterance": "아니요"}""".formatted(sid));
+        assertThat(no.path("next").asString()).isEqualTo("camera_outfit");
+        assertThat(no.path("speech").asString()).startsWith("그럼 ").contains("다시 봐 드릴게요");
+        assertThat(no.path("result").path("type").asString()).isEqualTo("outfit_recommend");
     }
 
     @Test

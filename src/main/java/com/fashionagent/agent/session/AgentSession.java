@@ -53,6 +53,8 @@ public class AgentSession {
     public boolean checkOffered;
     /** 내려놓고 고른 뒤 "입은 모습도 확인해 보실래요?"를 물었는지. */
     public boolean wornOfferAsked;
+    /** "다 보여 줬어" 뒤 "~로 할까요?"를 물었는지. 답을 기다리는 동안 true. */
+    public boolean pickAsked;
     /** 이번 대화에서 고른 옷을 옷장에 기록했는지. 입은 모습까지 본 뒤 또 기록하지 않게. */
     public boolean recorded;
     /** 입고 한 바퀴에서 다음에 볼 방향: front | back. null이면 front. */

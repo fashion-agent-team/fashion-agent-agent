@@ -709,15 +709,77 @@ public class OutfitFlow {
         };
     }
 
-    /** "다 보여 줬어": 본 옷을 짧게 말하고 "이걸로 할게"를 기다립니다. 처음 추천으로 돌아가지 않습니다. */
+    /**
+     * "다 보여 줬어": 고를 옷을 말하고 "이걸로 할까요?"라고 묻습니다. 처음 추천으로 돌아가지 않습니다.
+     * 2026-11-13 박창근 님: "이걸로 할까요?"라고 묻고, 아니면 추천해 주기.
+     */
     public TurnResponse shown(AgentSession session) {
-        List<String> names = session.seen.stream().map(s -> s.garment().label()).distinct().toList();
-        if (names.isEmpty()) {
+        List<Garment> picks = picks(session);
+        if (picks.isEmpty()) {
             return new TurnResponse(session.sessionId, "아직 옷을 못 봤어요. 옷을 카메라에 비춰 주실래요?",
                     cameraFor(session.outfitMode), null);
         }
+        session.pickAsked = true;
         sessions.save(session);
-        return new TurnResponse(session.sessionId, "좋아요. " + Korean.josa(String.join(", ", names), "을", "를") + " 봤어요. 마음에 들면 \"이걸로 할게\"라고 말해 주세요.", Next.listen, null);
+        String names = String.join(", ", picks.stream().map(Garment::label).toList());
+        return new TurnResponse(session.sessionId, Korean.josa(names, "으로", "로") + " 할까요? 네 또는 아니요로 말씀해 주세요.",
+                Next.listen, Result.of("outfit_pick_offer"));
+    }
+
+    /** "~로 할까요?"에 대한 답. 네면 기록, 아니요면 추천하고 다른 옷을 기다립니다. 알아듣지 못하면 null(원래 대화로). */
+    public TurnResponse answerPick(AgentSession session, String utterance) {
+        session.pickAsked = false;
+        String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        if (otherFeature(utterance)) {
+            sessions.save(session);
+            return null;
+        }
+        if (NO.stream().anyMatch(s::contains) || s.contains("다른")) {
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, recommendOther(session), cameraFor(session.outfitMode),
+                    Result.of("outfit_recommend"));
+        }
+        if (YES.stream().anyMatch(s::startsWith) || s.contains("이걸로") || s.contains("할게")) {
+            return finish(session);
+        }
+        sessions.save(session);
+        return null;
+    }
+
+    /** 아니요라고 했을 때: 처음 추천(옷 종류)과 본 옷 중 잘 맞는 옷을 짧게 말하고 다른 옷을 비춰 달라고 합니다. */
+    static String recommendOther(AgentSession session) {
+        List<String> parts = new ArrayList<>();
+        if (session.advice != null) {
+            for (String cat : List.of("top", "bottom", "dress")) {
+                session.advice.suggestions().stream().filter(x -> cat.equals(x.category()) && x.text() != null
+                        && !x.text().isBlank()).findFirst().ifPresent(x -> parts.add(x.text().strip()));
+            }
+        }
+        List<String> good = session.seen.stream().filter(x -> "good".equals(x.fit()))
+                .map(x -> x.garment().label()).distinct().toList();
+        StringBuilder out = new StringBuilder("그럼 ");
+        if (!parts.isEmpty()) {
+            out.append(Korean.josa(String.join(", ", parts), "을", "를")).append(" 추천드려요. ");
+        } else {
+            out.append("다른 옷도 한번 봐요. ");
+        }
+        if (session.advice != null && session.advice.suggestions().stream().anyMatch(x -> "outer".equals(x.category()))) {
+            out.append("겉옷도 챙기세요. ");
+        }
+        if (!good.isEmpty()) {
+            out.append("방금 본 옷 중에는 ").append(Korean.josa(String.join(", ", good), "이", "가")).append(" 잘 맞았어요. ");
+        }
+        return out.append("다른 옷을 비춰 주시면 다시 봐 드릴게요.").toString();
+    }
+
+    /** "이걸로 할게"가 기록할 옷: 마지막 바퀴(입고 볼 때) 중 잘 맞는 옷, 없으면 본 옷, 이름 모르는 옷은 다른 옷이 있으면 뺌. */
+    private static List<Garment> picks(AgentSession session) {
+        List<AgentSession.Seen> pool = finishPool(session);
+        List<Garment> chosen = chosen(pool);
+        if (chosen.isEmpty() && !pool.isEmpty()) {
+            chosen = anyChosen(pool);
+        }
+        return withoutUnknown(chosen);
     }
 
     // ── "이걸로 할게" ─────────────────────────────────────────────────
