@@ -67,6 +67,9 @@ final class Prompts {
             비가 오면(precipitationProbability 50 이상) 끝에 "우산도 챙기세요."를 붙인다. 카메라 안내나 질문은 넣지 않는다.
             suggestions에는 top·bottom을 넣고, 겉옷이 필요하면 outer도 넣는다. category는 top|bottom|outer|dress|shoes|other.
 
+            답을 짧게(소리 내 읽는 건 speech뿐이라, 다른 칸이 길면 기다리는 시간만 늘어난다):
+            reason·say는 15자 안팎 한 구절로 쓴다. 빈 값은 빈 배열이나 null로 둔다.
+
             입력:
             %s
             """;
@@ -84,9 +87,15 @@ final class Prompts {
             stillMissing이 비었으면 speech 끝에 정확히 이 문장을 넣는다: 마음에 들면 "이걸로 할게"라고 말해 주세요.
             사용자 대신 "이걸로 할게요"라고 말하지 않는다. 다른 옷을 더 비춰 달라는 말은 앱이 붙이므로 넣지 않는다.
 
+            답을 짧게(소리 내 읽는 건 speech뿐이라, 다른 칸이 길면 기다리는 시간만 늘어난다):
+            reason·say는 15자 안팎 한 구절로 쓴다. 빈 값은 빈 배열이나 null로 둔다.
+
             입력:
             %s
             """;
+
+    /** 연결 데우기(LlmOutfitJudge.startWarming). 판단이 아니라서 아주 짧게 답하게 합니다. */
+    static final String WARM = "연결 확인이다. ok 한 단어만 답한다.";
 
     private Prompts() {
     }

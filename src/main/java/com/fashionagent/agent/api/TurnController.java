@@ -49,7 +49,13 @@ public class TurnController {
         if (request.hasImage() && request.image().length() > MAX_IMAGE_CHARS) {
             throw new ApiException(HttpStatus.CONTENT_TOO_LARGE, "image_too_large", "사진이 6MB를 넘어요.");
         }
-        return turns.handle(userId, request, wearer(profile));
+        long started = System.nanoTime();
+        TurnResponse response = turns.handle(userId, request, wearer(profile));
+        // 응답 시간 확인용(2026-11-13). 말·사진 내용은 남기지 않고 길이와 다음 동작만.
+        log.info("[시간] 차례 {}ms ({}, next={})", (System.nanoTime() - started) / 1_000_000,
+                request.hasImage() ? "사진 " + request.image().length() * 3 / 4 / 1024 + "KB" : "말",
+                response == null ? null : response.next());
+        return response;
     }
 
     private static final Logger log = LoggerFactory.getLogger(TurnController.class);

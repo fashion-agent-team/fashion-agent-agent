@@ -16,6 +16,10 @@ spring:
           # 바꾸려면 AGENT_OPENAI_MODEL, AGENT_OPENAI_REASONING. gpt-5.4-mini는 도구를 쓸 때 none만 받습니다(low면 400).
           model: ${AGENT_OPENAI_MODEL:gpt-5.4-mini}
           reasoning-effort: ${AGENT_OPENAI_REASONING:none}
+          # 2026-11-13 응답 시간 줄이기: OpenAI 빠른 처리(priority)는 같은 모델·같은 답인데 줄을 앞에 섭니다. 토큰값은 더 비쌉니다.
+          #   실제 키로 잰 판단 시간(중앙값, 6번씩): 추천 1.33초 → 1.11초, 옷 확인 1.58초 → 1.11초(답 짧게 고친 뒤 기준).
+          #   보통 처리로 돌리려면 AGENT_OPENAI_SERVICE_TIER=default.
+          service-tier: ${AGENT_OPENAI_SERVICE_TIER:priority}
 
 agent:
   judge: openai

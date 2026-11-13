@@ -32,7 +32,11 @@ public class JudgeConfig {
             return rules;
         }
         log.info("판단: GPT (실패하면 규칙)");
-        return new FallbackOutfitJudge(new LlmOutfitJudge(builder, json), rules, agentExecutor,
+        LlmOutfitJudge llm = new LlmOutfitJudge(builder, json);
+        if (props.gptWarm()) {
+            llm.startWarming();
+        }
+        return new FallbackOutfitJudge(llm, rules, agentExecutor,
                 props.judgeTimeout());
     }
 
