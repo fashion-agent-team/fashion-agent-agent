@@ -8,7 +8,7 @@ import java.util.List;
  * 나머지({@link #OTHER}: 일정 등록·삭제, 다른 날 일정 등)는 GPT가 도구를 고릅니다.
  */
 public enum Intent {
-    OUTFIT, CHECK, CLOSET, CLOSET_HISTORY, CLOSET_REMOVE, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
+    OUTFIT, CHECK, COLOR, CLOSET, CLOSET_HISTORY, CLOSET_REMOVE, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
 
     private static final List<String> FINISH_WORDS = List.of("이걸로", "이거로", "이걸입", "이거입", "됐어", "다됐", "그만",
             "끝낼", "마칠");
@@ -67,6 +67,10 @@ public enum Intent {
         }
         if (s.contains("옷장") && !containsAny(s, OUTFIT_WORDS) && !containsAny(s, SCHEDULE_CHANGE_WORDS)) {
             return CLOSET;
+        }
+        // "이거 무슨 색이야?": 색만 바로 읽어 줌(2026-11-13). "내일 무슨 색 입을까?"는 추천으로.
+        if (ColorFlow.isColorQuestion(s) && !containsAny(s, OUTFIT_WORDS)) {
+            return COLOR;
         }
         if (containsAny(s, CHECK_WORDS) && !s.contains("얼굴") && !FaceFlow.isTeeth(s)) {
             return CHECK;

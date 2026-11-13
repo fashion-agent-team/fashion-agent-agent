@@ -25,6 +25,7 @@ import tools.jackson.databind.JsonNode;
 public class TurnService {
 
     private final OutfitFlow outfit;
+    private final ColorFlow color;
     private final FaceFlow face;
     private final ReminderFlow reminder;
     private final ClosetFlow closetFlow;
@@ -33,10 +34,11 @@ public class TurnService {
     private final SessionStore sessions;
     private final java.time.Clock clock;
 
-    public TurnService(OutfitFlow outfit, FaceFlow face, ReminderFlow reminder, ClosetFlow closetFlow,
+    public TurnService(OutfitFlow outfit, ColorFlow color, FaceFlow face, ReminderFlow reminder, ClosetFlow closetFlow,
             Assistant assistant, AgentTools tools, SessionStore sessions, java.time.Clock clock) {
         this.closetFlow = closetFlow;
         this.outfit = outfit;
+        this.color = color;
         this.face = face;
         this.reminder = reminder;
         this.assistant = assistant;
@@ -65,11 +67,23 @@ public class TurnService {
             if ("teeth".equals(req.imageKind())) {
                 return face.checkTeeth(session, req.image(), req.mouthBox());
             }
+            // "이거 무슨 색이야?"로 켠 카메라: 색만 읽어 줍니다.
+            if (session.colorCheck && !"worn".equals(req.imageKind())) {
+                return color.check(session, req.image());
+            }
             if ("worn".equals(req.imageKind())) {
                 session.outfitMode = OutfitFlow.WORN;
                 return outfit.checkWorn(session, req.image());
             }
             return outfit.check(session, req.image());
+        }
+
+        // 색 확인 중 "됐어"면 끝내고, 다른 말이면 색 확인을 접고 원래대로 고릅니다.
+        if (session.colorCheck) {
+            TurnResponse answered = color.answer(session, req.utterance());
+            if (answered != null) {
+                return answered;
+            }
         }
 
         // 일정을 넣은 뒤 "일정 전에 알림을 드릴까요?", "며칠 전에 미리 알려 드릴까요?"에 대한 답
@@ -132,6 +146,7 @@ public class TurnService {
         return switch (Intent.of(req.utterance(), inOutfit)) {
             case OUTFIT -> outfit.start(session, req.location(), req.utterance());
             case CHECK -> outfit.startCheck(session, req.location(), req.utterance());
+            case COLOR -> color.start(session);
             case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
             case FINISH -> outfit.finish(session);
             case WHERE -> outfit.where(session);

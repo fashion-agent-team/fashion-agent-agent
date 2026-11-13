@@ -90,6 +90,8 @@ public class AgentSession {
     public List<String> closetRemoveNames;
     /** true면 한 벌을 골라 "지울까요?"를 물은 상태. false면 "몇째 옷을 지울까요?"를 물은 상태. */
     public boolean closetRemoveConfirm;
+    /** "이거 무슨 색이야?"로 카메라를 켠 중. 이때 온 옷 사진은 색·무늬만 읽어 줍니다(2026-11-13). */
+    public boolean colorCheck;
 
     public AgentSession() {
     }
