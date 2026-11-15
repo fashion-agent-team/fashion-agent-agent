@@ -14,12 +14,21 @@ import com.fashionagent.agent.judge.Occasion;
 class ClosetCallsTest {
 
     @Test
-    @DisplayName("imageQuery: 자리와 체감 온도로 짧은 영어 문장")
+    @DisplayName("imageQuery: 자리와 체감 온도로 옷 이름 목록(옷장 서버가 쉼표로 나눠 하나씩 견줌)")
     void imageQuery() {
         assertThat(ClosetQuery.english(Occasion.business, 2.0))
-                .isEqualTo("neat office attire, dress shirt and slacks, warm winter clothes, coat and knit sweater");
-        assertThat(ClosetQuery.english(Occasion.active, 28.0)).isEqualTo("workout sportswear, light summer clothes, short sleeves");
-        assertThat(ClosetQuery.english(null, null)).isEqualTo("casual everyday clothes");
+                .isEqualTo("blazer, dress shirt, blouse, slacks, suit jacket, coat, padded jacket, knit sweater, cardigan, hoodie");
+        assertThat(ClosetQuery.english(Occasion.business, 15.0)).isEqualTo("blazer, dress shirt, blouse, slacks, suit jacket");
+        assertThat(ClosetQuery.english(Occasion.active, 28.0))
+                .startsWith("leggings, athletic shorts").endsWith("sleeveless top, short sleeve shirt");
+        assertThat(ClosetQuery.english(Occasion.mourning, 0.0)).isEqualTo("black suit, black dress, black blouse, black slacks");
+        assertThat(ClosetQuery.english(null, 3.0)).isEqualTo("coat, padded jacket, knit sweater, cardigan, hoodie");
+        assertThat(ClosetQuery.english(null, null)).isEqualTo("t-shirt, jeans, hoodie, casual pants, sneakers");
+        for (Occasion o : Occasion.values()) {
+            for (Double t : new Double[] {null, 0.0, 10.0, 18.0, 22.0, 30.0}) {
+                assertThat(ClosetQuery.english(o, t).length()).isLessThanOrEqualTo(200);
+            }
+        }
     }
 
     @Test

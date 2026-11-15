@@ -12,23 +12,31 @@ final class ClosetQuery {
     }
 
     static String english(Occasion occasion, Double apparentTemperature) {
-        String look = switch (occasion == null ? Occasion.casual : occasion) {
-            case mourning -> "black formal mourning attire";
-            case wedding -> "elegant wedding guest outfit";
-            case formal -> "formal suit or dress";
-            case business -> "neat office attire, dress shirt and slacks";
-            case active -> "workout sportswear";
-            case casual -> "casual everyday clothes";
+        // 옷장 서버가 쉼표로 나눠 옷 이름마다 사진과 견줍니다. 막연한 문장("workout sportswear")보다 옷 이름 목록이 잘 찾습니다
+        // (2026-11-15 측정: 상황 질문 위 5개 정답 55% → 63%).
+        Occasion o = occasion == null ? Occasion.casual : occasion;
+        String look = switch (o) {
+            case mourning -> "black suit, black dress, black blouse, black slacks";
+            case wedding -> "elegant dress, blazer, dress shirt, blouse, slacks";
+            case formal -> "suit jacket, blazer, dress shirt, dress, slacks";
+            case business -> "blazer, dress shirt, blouse, slacks, suit jacket";
+            case active -> "leggings, athletic shorts, hoodie, sweatshirt, track pants, sports t-shirt";
+            case casual -> null;
         };
-        if (apparentTemperature == null) {
-            return look;
+        String weather = apparentTemperature == null ? null : weather(apparentTemperature);
+        if (look == null) {
+            return weather != null ? weather : "t-shirt, jeans, hoodie, casual pants, sneakers";
         }
-        double t = apparentTemperature;
-        String weather = t < 5 ? "warm winter clothes, coat and knit sweater"
-                : t < 12 ? "clothes for cool weather, jacket and long sleeves"
-                : t < 20 ? "light layers for mild weather"
-                : t < 25 ? "light clothes for warm weather"
-                : "light summer clothes, short sleeves";
-        return look + ", " + weather;
+        // 자리가 정해지면 자리 옷이 먼저고, 아주 춥거나 더울 때만 날씨 옷을 덧붙입니다.
+        boolean extreme = apparentTemperature != null && (apparentTemperature < 5 || apparentTemperature >= 25);
+        return extreme && o != Occasion.mourning ? look + ", " + weather : look;
+    }
+
+    static String weather(double t) {
+        return t < 5 ? "coat, padded jacket, knit sweater, cardigan, hoodie"
+                : t < 12 ? "jacket, sweater, cardigan, long sleeve shirt, hoodie"
+                : t < 20 ? "light jacket, cardigan, long sleeve top, shirt"
+                : t < 25 ? "t-shirt, shirt, blouse, light pants"
+                : "t-shirt, tank top, shorts, sleeveless top, short sleeve shirt";
     }
 }
