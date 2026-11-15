@@ -36,6 +36,7 @@ public class LlmOutfitJudge implements OutfitJudge {
     private final ChatClient chat;
     private final JsonMapper json;
     private volatile long lastUsedNanos = System.nanoTime();
+    private volatile long lastWarmNanos = System.nanoTime() - WARM_EVERY.toNanos();
 
     public LlmOutfitJudge(ChatClient.Builder builder, JsonMapper json) {
         this.chat = builder.defaultSystem(Prompts.SYSTEM).build();
@@ -61,8 +62,21 @@ public class LlmOutfitJudge implements OutfitJudge {
         }, WARM_EVERY.toSeconds(), WARM_EVERY.toSeconds(), TimeUnit.SECONDS);
     }
 
+    /**
+     * 앱이 켜졌을 때(POST /api/v1/agent/warm). 이제부터 {@link #KEEP_WARM_FOR} 동안 데워 두고,
+     * 마지막으로 데운 지 {@link #WARM_EVERY}가 지났으면 지금 한 번 데웁니다(자주 열어도 GPT를 매번 부르지 않음).
+     */
+    @Override
+    public void warmUp() {
+        lastUsedNanos = System.nanoTime();
+        if (System.nanoTime() - lastWarmNanos >= WARM_EVERY.toNanos()) {
+            warm();
+        }
+    }
+
     void warm() {
         long started = System.nanoTime();
+        lastWarmNanos = started;
         try {
             chat.prompt().user(Prompts.WARM).call().content();
             log.info("[시간] GPT 데우기 {}ms", (System.nanoTime() - started) / 1_000_000);

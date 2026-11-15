@@ -20,6 +20,10 @@ public interface OutfitJudge {
     /** 2단계 확인 모드. now는 지금 사진의 옷, seenBefore는 앞서 본 옷. */
     CheckJudgement check(CheckInput input);
 
+    /** 곧 판단할 것 같을 때(앱이 켜짐, POST /api/v1/agent/warm) 연결을 미리 데웁니다. 규칙 판단은 할 일이 없습니다. */
+    default void warmUp() {
+    }
+
     /**
      * day: 옷을 입을 날을 말로 읽은 것("오늘", "내일", "11월 20일 금요일").
      * weatherNote: weather가 null인 까닭을 사용자에게 말할 문장(예보가 아직 없는 날 등). 없으면 null.

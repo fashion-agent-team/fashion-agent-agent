@@ -7,12 +7,14 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fashionagent.agent.flow.Prefetch;
 import com.fashionagent.agent.flow.TurnService;
 
 import tools.jackson.databind.JsonNode;
@@ -31,9 +33,25 @@ public class TurnController {
     static final int MAX_IMAGE_CHARS = 8_200_000;
 
     private final TurnService turns;
+    private final Prefetch prefetch;
 
-    public TurnController(TurnService turns) {
+    public TurnController(TurnService turns, Prefetch prefetch) {
         this.turns = turns;
+        this.prefetch = prefetch;
+    }
+
+    /**
+     * 앱이 켜지거나 다시 앞으로 올 때 보냅니다. 첫 "오늘 뭐 입지?"에 쓸 날씨·오늘 일정을 미리 불러 두고 바로 202.
+     * 본문은 없어도 됩니다({"location": {...}} 선택). 불러오기 결과는 돌려주지 않습니다.
+     */
+    @PostMapping("/warm")
+    public ResponseEntity<Void> warm(@RequestHeader("X-User-Id") String userId,
+            @RequestBody(required = false) WarmRequest request) {
+        if (userId.isBlank()) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized", "X-User-Id가 비었어요.");
+        }
+        prefetch.start(userId, request == null ? null : request.location());
+        return ResponseEntity.accepted().build();
     }
 
     @PostMapping("/turn")

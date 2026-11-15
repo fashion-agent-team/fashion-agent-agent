@@ -15,6 +15,7 @@
 | 경로 | 하는 일 |
 | --- | --- |
 | `POST /api/v1/agent/turn` | 대화 한 번. 말 또는 앱이 자동 전송한 사진 한 장을 받아 `speech`, `next`, `result`를 돌려줌 |
+| `POST /api/v1/agent/warm` | 앱이 켜지거나 다시 앞으로 올 때. 첫 추천에 쓸 `weather_today`·`schedule_list`(오늘)를 미리 불러 두고 GPT 연결을 데움. 본문 `{"location": {...}}` 선택, 바로 202 |
 
 입출력 JSON은 [OpenAPI](https://github.com/fashion-agent-team/fashion-agent/blob/develop/docs/contracts/openapi.yaml)를 그대로 따릅니다.
 

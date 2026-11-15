@@ -35,6 +35,11 @@ public class FallbackOutfitJudge implements OutfitJudge {
     }
 
     @Override
+    public void warmUp() {
+        primary.warmUp();
+    }
+
+    @Override
     public CheckJudgement check(CheckInput input) {
         return withFallback("확인", () -> primary.check(input), () -> fallback.check(input));
     }
