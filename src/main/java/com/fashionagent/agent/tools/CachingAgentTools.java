@@ -18,7 +18,7 @@ import tools.jackson.databind.JsonNode;
  * <ul>
  * <li>weather_today: 같은 동네(위도·경도 소수 둘째 자리, 약 1km)면 10분</li>
  * <li>weather_forecast: 같은 동네·날짜면 30분</li>
- * <li>schedule_list: 같은 사용자·날짜면 2분. 그 사용자가 일정을 넣거나 지우면 바로 비웁니다.</li>
+ * <li>schedule_list: 같은 사용자·날짜면 10분(앱이 켜질 때 미리 불러 둔 값을 첫 추천까지 쓰려고, 2026-11-15 2분에서 늘림). 그 사용자가 일정을 넣거나 지우거나 알림을 정하면 바로 비웁니다. 앱은 일정을 agent로만 바꿉니다(/api/v1/schedules는 읽기만).</li>
  * </ul>
  * 사진 검사·옷장은 기억하지 않습니다.
  */
@@ -29,7 +29,7 @@ public class CachingAgentTools implements AgentTools, AutoCloseable {
     static final Map<String, Duration> TTL = Map.of(
             ToolNames.WEATHER_TODAY, Duration.ofMinutes(10),
             ToolNames.WEATHER_FORECAST, Duration.ofMinutes(30),
-            ToolNames.SCHEDULE_LIST, Duration.ofMinutes(2));
+            ToolNames.SCHEDULE_LIST, Duration.ofMinutes(10));
     static final int MAX_ENTRIES = 2_000;
 
     private record Entry(JsonNode value, long expiresAt) {

@@ -270,10 +270,9 @@ public class OutfitFlow {
         boolean isToday = day.equals(today());
         String[] weatherNote = {null};
         var weather = isToday
-                ? async(() -> tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", at.lat(), "lon", at.lon())))
+                ? async(() -> tools.call(ToolNames.WEATHER_TODAY, weatherArgs(at)))
                 : CompletableFuture.supplyAsync(() -> forecast(at, day, weatherNote), executor);
-        var schedule = async(() -> tools.callForUser(ToolNames.SCHEDULE_LIST, session.userId,
-                Map.of("date", day.toString())));
+        var schedule = async(() -> tools.callForUser(ToolNames.SCHEDULE_LIST, session.userId, scheduleArgs(day)));
         session.weather = weather.join();
         JsonNode scheduleResult = schedule.join();
         session.events = scheduleResult == null ? null : scheduleResult.path("events");
@@ -390,6 +389,16 @@ public class OutfitFlow {
             }
         }
         return today();
+    }
+
+    /** weather_today 인자. {@link Prefetch}가 같은 값으로 미리 불러 두므로 둘이 꼭 이 메서드를 같이 씁니다(캐시 키가 같아야 함). */
+    static Map<String, Object> weatherArgs(Location at) {
+        return Map.of("lat", at.lat(), "lon", at.lon());
+    }
+
+    /** schedule_list 인자(userId는 callForUser가 붙임). {@link Prefetch}와 같이 씁니다. */
+    static Map<String, Object> scheduleArgs(LocalDate day) {
+        return Map.of("date", day.toString());
     }
 
     private JsonNode closetSearch(AgentSession session) {

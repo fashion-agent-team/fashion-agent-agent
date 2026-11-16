@@ -44,6 +44,18 @@ class CachingAgentToolsTest {
     }
 
     @Test
+    void 일정은_10분_동안_기억한다_앱이_켜질_때_불러_둔_값을_첫_추천에_쓰려고() {
+        tools.callForUser(ToolNames.SCHEDULE_LIST, "u1", Map.of("date", "2026-11-10"));
+        now.set(now.get().plusSeconds(9 * 60));
+        tools.callForUser(ToolNames.SCHEDULE_LIST, "u1", Map.of("date", "2026-11-10"));
+        assertThat(calls).hasSize(1);
+
+        now.set(now.get().plusSeconds(2 * 60));
+        tools.callForUser(ToolNames.SCHEDULE_LIST, "u1", Map.of("date", "2026-11-10"));
+        assertThat(calls).hasSize(2);
+    }
+
+    @Test
     void 일정은_사용자별로_기억하고_넣거나_지우면_다시_부른다() {
         tools.callForUser(ToolNames.SCHEDULE_LIST, "u1", Map.of("date", "2026-11-10"));
         tools.callForUser(ToolNames.SCHEDULE_LIST, "u1", Map.of("date", "2026-11-10"));

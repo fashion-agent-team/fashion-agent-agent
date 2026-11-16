@@ -36,6 +36,18 @@ class TurnFlowTest {
     }
 
     @Test
+    void 미리_준비는_바로_202_본문은_없어도_된다() throws Exception {
+        mvc.perform(post("/api/v1/agent/warm").header("X-User-Id", "u-warm")
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                        {"location": {"lat": 37.5, "lon": 127.0}}"""))
+                .andExpect(status().isAccepted());
+        mvc.perform(post("/api/v1/agent/warm").header("X-User-Id", "u-warm"))
+                .andExpect(status().isAccepted());
+        mvc.perform(post("/api/v1/agent/warm").header("X-User-Id", " "))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void 말로_추천_카메라_확인_어디야_이걸로할게() throws Exception {
         // 1단계: 말로 추천
         JsonNode advice = turn("u1", """
