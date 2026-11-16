@@ -329,18 +329,25 @@ public class RuleOutfitJudge implements OutfitJudge {
     }
 
     /** weather_today 결과에서 판단에 쓰는 값만. */
-    record Weather(boolean known, double apparent, double range, int rain) {
+    record Weather(boolean known, double apparent, double range, int rain, double min) {
 
         static Weather of(JsonNode node) {
             if (node == null || node.isMissingNode() || node.isNull()) {
-                return new Weather(false, 20, 0, 0);
+                return new Weather(false, 20, 0, 0, 20);
             }
-            return new Weather(true, node.path("apparentTemperature").asDouble(20),
-                    node.path("dailyRange").asDouble(0), node.path("precipitationProbability").asInt(0));
+            double apparent = node.path("apparentTemperature").asDouble(20);
+            // 최저 기온이 없으면 체감 온도로 대신한다(옛 응답 호환).
+            return new Weather(true, apparent, node.path("dailyRange").asDouble(0),
+                    node.path("precipitationProbability").asInt(0), node.path("minTemperature").asDouble(apparent));
+        }
+
+        /** 일교차 규칙은 최저 기온이 20도 아래일 때만(2026-11-16: 28~39도 여름날에 겉옷을 권하던 문제). */
+        boolean bigRangeMatters() {
+            return range >= 10 && min < 20;
         }
 
         boolean needsOuter() {
-            return known && (apparent < 20 || range >= 10);
+            return known && (apparent < 20 || bigRangeMatters());
         }
 
         boolean needsUmbrella() {
@@ -348,7 +355,7 @@ public class RuleOutfitJudge implements OutfitJudge {
         }
 
         String outerReason() {
-            return range >= 10 ? "일교차가 " + Math.round(range) + "도라 겉옷이 필요해요."
+            return bigRangeMatters() ? "일교차가 " + Math.round(range) + "도라 겉옷이 필요해요."
                     : "체감 " + Math.round(apparent) + "도라 쌀쌀해요.";
         }
     }

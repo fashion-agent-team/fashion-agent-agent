@@ -116,6 +116,22 @@ class RuleOutfitJudgeTest {
     }
 
     @Test
+    void 더운_날은_일교차가_커도_겉옷을_추천하지_않는다_2026_11_16() {
+        JsonNode hot = json.readTree("{\"apparentTemperature\": 33, \"minTemperature\": 28, \"dailyRange\": 11}");
+        var out = judge.advise(new OutfitJudge.AdviceInput(hot, json.readTree("[]"), null, null));
+        assertThat(out.suggestions()).extracting(s -> s.category()).doesNotContain("outer");
+        assertThat(out.speech()).doesNotContain("겉옷").doesNotContain("일교차");
+    }
+
+    @Test
+    void 아침이_쌀쌀하고_일교차가_크면_일교차로_겉옷을_권한다_2026_11_16() {
+        JsonNode cool = json.readTree("{\"apparentTemperature\": 22, \"minTemperature\": 12, \"dailyRange\": 12}");
+        var out = judge.advise(new OutfitJudge.AdviceInput(cool, json.readTree("[]"), null, null));
+        assertThat(out.suggestions()).extracting(s -> s.category()).contains("outer");
+        assertThat(out.speech()).contains("일교차가 12도라 겉옷이 필요해요");
+    }
+
+    @Test
     void 날씨를_못_불러와도_추천은_한다() {
         var out = judge.advise(new OutfitJudge.AdviceInput(null, null, null, null));
         assertThat(out.speech()).contains("추천드려요").contains("겉옷도 챙겨");
