@@ -135,6 +135,7 @@ public class OutfitFlow {
     public TurnResponse start(AgentSession session, Location location, String utterance) {
         LocalDate day = SpokenDate.from(utterance, today());
         session.targetDate = day == null || day.equals(today()) ? null : day.toString();
+        rememberSpoken(session, utterance);
         session.outfitMode = modeFrom(utterance);
         session.modeAsked = 0;
         TurnResponse advice = advise(session, location);
@@ -150,6 +151,7 @@ public class OutfitFlow {
      * 날씨·일정은 옷 판단에 필요해서 불러 두기만 합니다.
      */
     public TurnResponse startCheck(AgentSession session, Location location, String utterance) {
+        rememberSpoken(session, utterance);
         session.outfitMode = modeFrom(utterance);
         session.modeAsked = 0;
         session.checkOffered = false;
@@ -198,6 +200,13 @@ public class OutfitFlow {
         sessions.save(session);
         return new TurnResponse(session.sessionId, prefix + (WORN.equals(mode) ? WORN_HINT : LAID_HINT),
                 cameraFor(mode), new Result("outfit_mode", null, null, mode));
+    }
+
+    /** 말한 자리를 세션에 남깁니다. 새 추천을 시작할 때마다 다시 정합니다. */
+    private static void rememberSpoken(AgentSession session, String utterance) {
+        SpokenOccasion.Spoken spoken = SpokenOccasion.from(utterance);
+        session.spokenOccasion = spoken == null ? null : spoken.occasion().name();
+        session.spokenTitle = spoken == null ? null : spoken.title();
     }
 
     /** "어떻게 보여 주실래요?"에 대한 답. 알아들으면 추천으로, 아니면 한 번 더 묻거나 null(원래 대화로). */
@@ -275,7 +284,8 @@ public class OutfitFlow {
         var schedule = async(() -> tools.callForUser(ToolNames.SCHEDULE_LIST, session.userId, scheduleArgs(day)));
         session.weather = weather.join();
         JsonNode scheduleResult = schedule.join();
-        session.events = scheduleResult == null ? null : scheduleResult.path("events");
+        session.events = SpokenOccasion.merge(scheduleResult == null ? null : scheduleResult.path("events"),
+                session.spokenOccasion, session.spokenTitle);
         session.closet = props.closetSearch() ? closetSearch(session) : null;
 
         String label = SpokenDate.label(day, today());
@@ -350,9 +360,29 @@ public class OutfitFlow {
 
     /** "일정은 오후 2시 친구 결혼식이 있어요." / "일정은 없어요." */
     static String scheduleSentence(JsonNode events) {
+        String spoken = null;
+        List<JsonNode> real = new ArrayList<>();
+        if (events != null && events.isArray()) {
+            for (JsonNode e : events) {
+                if (e.path("spoken").asBoolean(false)) {
+                    spoken = e.path("title").asString("").trim();
+                } else {
+                    real.add(e);
+                }
+            }
+        }
+        if (spoken != null && !spoken.isEmpty()) {
+            // 말한 자리("결혼식")에 맞춘다고 먼저 말합니다. 일정이 따로 있으면 이어서 읽습니다.
+            String said = "말씀하신 " + spoken + "에 맞춰 볼게요.";
+            return real.isEmpty() ? said : said + " " + realSchedule(real);
+        }
         if (events == null || events.isMissingNode() || events.isNull()) {
             return "일정은 불러오지 못했어요.";
         }
+        return realSchedule(real);
+    }
+
+    private static String realSchedule(List<JsonNode> events) {
         if (events.isEmpty()) {
             return "일정은 없어요.";
         }
