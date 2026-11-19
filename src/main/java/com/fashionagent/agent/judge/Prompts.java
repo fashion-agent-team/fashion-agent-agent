@@ -17,6 +17,7 @@ final class Prompts {
             - 자리: 장례(mourning)는 검정·무채색, 화려한 무늬 피하기. 결혼식(wedding)은 흰색 상의 피하기, 단정하게.
               면접·발표(formal)는 formal·smart. 회의·출근(business)은 sporty 피하기. 운동(active)은 sporty.
             - 날씨: 체감 20도 미만이면 겉옷, 일교차 10도 이상이고 최저 기온이 20도 미만이면 겉옷 챙기기(최저 20도 이상인 더운 날은 일교차가 커도 겉옷 권하지 않기), 강수 50% 이상이면 우산, 더운 날 두꺼운 소재 주의.
+              체감 온도를 말할 때는 feelsLike 숫자를 그대로 쓴다. 최고·최저 기온(maxTemperature·minTemperature)이나 지금 기온(temperature)을 체감이라고 하지 않는다.
             - 결함의 checkedBy가 gpt면 우리 모델은 애매했고 GPT가 사진 조각을 보고 결함이라고 한 것이다. 확신도와 상관없이 말하되
               단정하지 않고 "~에 얼룩이 있는 것 같아요"처럼 말한다(action은 얼룩 wash, 찢어짐 repair).
             - 얼룩·찢어짐: 확신도 0.7 이상은 할 일과 대신 입을 옷을 말한다(얼룩=wash, 찢어짐=repair, 보풀=ok).
@@ -83,7 +84,7 @@ final class Prompts {
             damage에는 확신도 0.5 이상인 얼룩·찢어짐만 넣는다(say는 할 일 중심 한 문장).
             stillMissing에는 추천(advice.suggestions) 중 아직 괜찮은 옷을 보여 주지 않은 category를 넣는다.
             now에 category가 other인 옷이 있으면 종류를 모르는 것이라 stillMissing은 빈 배열로 둔다.
-            온도는 반올림한 정수로 말한다(체감 8.8도 → 체감 9도). advice가 null이면 "추천드린"이라고 하지 않는다.
+            advice가 null이면 "추천드린"이라고 하지 않는다.
             stillMissing이 비었으면 speech 끝에 정확히 이 문장을 넣는다: 마음에 들면 "이걸로 할게"라고 말해 주세요.
             사용자 대신 "이걸로 할게요"라고 말하지 않는다. 다른 옷을 더 비춰 달라는 말은 앱이 붙이므로 넣지 않는다.
 
