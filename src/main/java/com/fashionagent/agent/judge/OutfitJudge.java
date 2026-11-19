@@ -1,0 +1,77 @@
+package com.fashionagent.agent.judge;
+
+import java.util.List;
+
+import com.fashionagent.agent.model.AdviceJudgement;
+import com.fashionagent.agent.model.CheckJudgement;
+import com.fashionagent.agent.model.Garment;
+
+import tools.jackson.databind.JsonNode;
+
+/**
+ * 옷 추천 판단. MCP 서버가 준 데이터를 받아 판단·추천합니다(약속 5-1절).
+ * 구현은 GPT({@link LlmOutfitJudge})와 규칙({@link RuleOutfitJudge}) 두 가지이고 출력 모양이 같습니다.
+ */
+public interface OutfitJudge {
+
+    /** 1단계 추천 모드 (사진 없음). */
+    AdviceJudgement advise(AdviceInput input);
+
+    /** 2단계 확인 모드. now는 지금 사진의 옷, seenBefore는 앞서 본 옷. */
+    CheckJudgement check(CheckInput input);
+
+    /** 곧 판단할 것 같을 때(앱이 켜짐, POST /api/v1/agent/warm) 연결을 미리 데웁니다. 규칙 판단은 할 일이 없습니다. */
+    default void warmUp() {
+    }
+
+    /**
+     * day: 옷을 입을 날을 말로 읽은 것("오늘", "내일", "11월 20일 금요일").
+     * weatherNote: weather가 null인 까닭을 사용자에게 말할 문장(예보가 아직 없는 날 등). 없으면 null.
+     */
+    /** @param wearer 옷 판단에 쓰는 내 정보(성별·나이대·키·몸무게·직업, 게이트웨이 X-User-Profile). 없으면 null. */
+    record AdviceInput(JsonNode weather, JsonNode events, JsonNode closetCandidates, JsonNode styleNotes,
+            String day, String weatherNote, JsonNode wearer) {
+
+        public AdviceInput(JsonNode weather, JsonNode events, JsonNode closetCandidates, JsonNode styleNotes,
+                String day, String weatherNote) {
+            this(weather, events, closetCandidates, styleNotes, day, weatherNote, null);
+        }
+
+        public AdviceInput(JsonNode weather, JsonNode events, JsonNode closetCandidates, JsonNode styleNotes) {
+            this(weather, events, closetCandidates, styleNotes, "오늘", null);
+        }
+
+        public boolean today() {
+            return day == null || "오늘".equals(day);
+        }
+    }
+
+    /**
+     * @param day 이 옷을 입을 날(오늘·내일·11월 20일 금요일). 내일 일정인데 "오늘"이라고 하지 않게(2026-11-12 시뮬).
+     * @param colorHarmony outfit_color_check 결과(색 조합 판단·어울림 점수 0~100·까닭). 부르지 못했으면 null.
+     */
+    record CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,
+            List<SeenBrief> seenBefore, String day, JsonNode wearer, JsonNode colorHarmony) {
+
+        public CheckInput {
+            day = day == null || day.isBlank() ? "오늘" : day;
+        }
+
+        public CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,
+                List<SeenBrief> seenBefore, String day) {
+            this(weather, events, advice, now, seenBefore, day, null, null);
+        }
+
+        public CheckInput(JsonNode weather, JsonNode events, AdviceJudgement advice, List<Garment> now,
+                List<SeenBrief> seenBefore) {
+            this(weather, events, advice, now, seenBefore, "오늘");
+        }
+    }
+
+    /** label: 읽어 줄 이름(색·무늬·종류, Garment.label). */
+    record SeenBrief(String garmentId, String category, String name, String colorName, String verdict, String label) {
+        SeenBrief(String garmentId, String category, String name, String colorName, String verdict) {
+            this(garmentId, category, name, colorName, verdict, null);
+        }
+    }
+}
