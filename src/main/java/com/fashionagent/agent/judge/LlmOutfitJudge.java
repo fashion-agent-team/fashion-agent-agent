@@ -90,6 +90,7 @@ public class LlmOutfitJudge implements OutfitJudge {
         Map<String, Object> input = new LinkedHashMap<>();
         input.put("day", in.day() == null ? "오늘" : in.day());
         input.put("weather", in.weather());
+        putFeelsLike(input, in.weather());
         if (in.weatherNote() != null) {
             input.put("weatherNote", in.weatherNote());
         }
@@ -111,7 +112,8 @@ public class LlmOutfitJudge implements OutfitJudge {
                 : in.closetCandidates().valueStream().map(c -> c.path("garmentId").asString("")).collect(Collectors.toSet());
         // 옷장에 없는 옷을 지어내면 뺍니다.
         return new AdviceJudgement(out.suggestions(),
-                out.closetPicks().stream().filter(p -> allowed.contains(p.garmentId())).toList(), Korean.spoken(out.speech()));
+                out.closetPicks().stream().filter(p -> allowed.contains(p.garmentId())).toList(),
+                Korean.spoken(FeelsLikeGuard.fix(out.speech(), in.weather())));
     }
 
     @Override
@@ -119,6 +121,7 @@ public class LlmOutfitJudge implements OutfitJudge {
         Map<String, Object> input = new LinkedHashMap<>();
         input.put("day", in.day());
         input.put("weather", in.weather());
+        putFeelsLike(input, in.weather());
         input.put("events", in.events());
         input.put("advice", in.advice() == null ? null : in.advice().suggestions());
         boolean many = in.now().size() >= 2;
@@ -146,7 +149,8 @@ public class LlmOutfitJudge implements OutfitJudge {
                 out.damage().stream().filter(d -> ids.contains(d.inputId())).toList(),
                 out.stillMissing(),
                 // 안 맞는 옷에 "잘 고르셨어요"로 시작하면 뺍니다.
-                Korean.spoken(PraiseGuard.strip(out.speech(), verdicts)));
+                // "체감 N도"는 날씨 결과 값으로 맞춥니다(2026-11-19: 체감 -2도인데 "체감 9도").
+                Korean.spoken(FeelsLikeGuard.fix(PraiseGuard.strip(out.speech(), verdicts), in.weather())));
     }
 
     /**
@@ -178,6 +182,14 @@ public class LlmOutfitJudge implements OutfitJudge {
      * GPT에는 판단에 필요한 값만 (box 좌표 등은 뺌). label은 읽어 줄 이름(색·무늬·종류)이라 GPT가 그대로 쓰게 합니다.
      * 옷이 한 벌이면 position을 넣지 않습니다. 2026-11-12: 한 벌인데 "중앙 검정 셔츠"라고 읽음.
      */
+    /** 말할 체감 온도(반올림한 정수). GPT가 최고·최저 기온을 체감으로 말하지 않게 따로 줍니다. */
+    static void putFeelsLike(Map<String, Object> input, JsonNode weather) {
+        Integer t = FeelsLikeGuard.feelsLike(weather);
+        if (t != null) {
+            input.put("feelsLike", t);
+        }
+    }
+
     /** 내 정보가 있을 때만 넣습니다(건너뛴 칸은 게이트웨이가 이미 뺌). 이름·생년월일은 오지 않습니다. */
     static void putWearer(Map<String, Object> input, JsonNode wearer) {
         if (wearer != null && wearer.isObject() && !wearer.isEmpty()) {
