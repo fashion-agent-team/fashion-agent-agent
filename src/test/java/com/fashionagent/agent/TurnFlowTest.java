@@ -257,10 +257,9 @@ class TurnFlowTest {
 
     @Test
     void 게이트웨이가_붙인_내_정보는_세션에_두고_다음_말에서_바뀌면_바꾼다() throws Exception {
-        String first = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(
-                "{\"gender\":\"남자\",\"heightCm\":180,\"name\":\"진행\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        String out = mvc.perform(post("/api/v1/agent/turn").header("X-User-Id", "u-wearer").header("X-User-Profile", first)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"utterance\": \"오늘 뭐 입지?\"}"))
+        String out = mvc.perform(post("/api/v1/agent/turn").header("X-User-Id", "u-wearer")
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                        {"utterance": "오늘 뭐 입지?", "wearer": {"gender": "남자", "heightCm": 180, "name": "진행"}}"""))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         String sid = json.readTree(out).path("sessionId").asString();
         var session = sessions.find("u-wearer", sid).orElseThrow();

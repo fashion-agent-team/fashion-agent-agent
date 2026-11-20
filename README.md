@@ -44,7 +44,7 @@ Java 21만 있으면 됩니다. 기본 설정은 **서버 없이 혼자 실행**
 
 | 종류 | 파일 | 하는 일 |
 | --- | --- | --- |
-| 컨트롤러 슬라이스 테스트 | `api/TurnControllerTest` | `@WebMvcTest`로 컨트롤러만 띄우고 `TurnService`·`Prefetch`는 `@MockitoBean`. X-User-Id, 입력 확인(말·사진 없음 400, 큰 사진 413), 응답·오류 모양, X-User-Profile 풀기 |
+| 컨트롤러 슬라이스 테스트 | `api/TurnControllerTest` | `@WebMvcTest`로 컨트롤러만 띄우고 `TurnService`·`Prefetch`는 `@MockitoBean`. X-User-Id, 입력 확인(말·사진 없음 400, 큰 사진 413), 응답·오류 모양, 바디의 wearer(내 정보) 받기 |
 | 통합 테스트 | `tools/McpAgentToolsIntegrationTest` | 테스트 안에 진짜 Spring AI MCP 서버(Streamable HTTP)를 띄우고 HTTP로 붙어 도구를 부름 |
 | 흐름 테스트 | `TurnFlowTest` | 앱 전체(`@SpringBootTest` + MockMvc)를 가짜 도구(`agent.tools: fake`)로 띄워 추천 → 카메라 → 비교 대화 흐름 확인 |
 | 단위 테스트 | 나머지 | 스프링 없이 클래스 하나씩. `session/InMemorySessionStoreTest`는 앱 레포 `specs/005-database/spec.md` US3(대화 상태 30분) 시나리오 |

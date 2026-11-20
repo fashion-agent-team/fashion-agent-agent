@@ -1,9 +1,5 @@
 package com.fashionagent.agent.api;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.Set;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -56,7 +52,6 @@ public class TurnController {
 
     @PostMapping("/turn")
     public TurnResponse turn(@RequestHeader("X-User-Id") String userId,
-            @RequestHeader(value = "X-User-Profile", required = false) String profile,
             @RequestBody TurnRequest request) {
         if (userId.isBlank()) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized", "X-User-Id가 비었어요.");
@@ -68,7 +63,7 @@ public class TurnController {
             throw new ApiException(HttpStatus.CONTENT_TOO_LARGE, "image_too_large", "사진이 6MB를 넘어요.");
         }
         long started = System.nanoTime();
-        TurnResponse response = turns.handle(userId, request, wearer(profile));
+        TurnResponse response = turns.handle(userId, request, wearer(request.wearer()));
         // 응답 시간 확인용(2026-11-13). 말·사진 내용은 남기지 않고 길이와 다음 동작만.
         log.info("[시간] 차례 {}ms ({}, next={})", (System.nanoTime() - started) / 1_000_000,
                 request.hasImage() ? "사진 " + request.image().length() * 3 / 4 / 1024 + "KB" : "말",
@@ -78,30 +73,28 @@ public class TurnController {
 
     private static final Logger log = LoggerFactory.getLogger(TurnController.class);
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    /** 게이트웨이가 넣는 칸(옷 판단에 쓰는 내 정보만). 다른 칸이 와도 GPT에 넘기지 않습니다. */
-    static final Set<String> WEARER_FIELDS = Set.of("gender", "ageGroup", "heightCm", "weightKg", "job");
 
-    /** X-User-Profile(base64url JSON) → 정해진 칸만 남긴 JSON. 없거나 깨졌으면 null(정보 없이 대화). */
-    static JsonNode wearer(String header) {
-        if (header == null || header.isBlank() || header.length() > 2048) {
+    /** 바디의 wearer → 있는 칸만 남긴 JSON(GPT에 넘김). 비었으면 null(정보 없이 대화). */
+    static JsonNode wearer(WearerProfile w) {
+        if (w == null) {
             return null;
         }
-        try {
-            JsonNode raw = JSON.readTree(new String(Base64.getUrlDecoder().decode(header.strip()), StandardCharsets.UTF_8));
-            if (raw == null || !raw.isObject()) {
-                return null;
-            }
-            ObjectNode out = JSON.createObjectNode();
-            for (String f : WEARER_FIELDS) {
-                JsonNode v = raw.get(f);
-                if (v != null && (v.isNumber() || (v.isString() && !v.asString().isBlank()))) {
-                    out.set(f, v);
-                }
-            }
-            return out.isEmpty() ? null : out;
-        } catch (RuntimeException e) {
-            log.warn("X-User-Profile을 읽지 못했어요: {}", e.toString());
-            return null;
+        ObjectNode out = JSON.createObjectNode();
+        putText(out, "gender", w.gender());
+        putText(out, "ageGroup", w.ageGroup());
+        if (w.heightCm() != null) {
+            out.put("heightCm", w.heightCm());
+        }
+        if (w.weightKg() != null) {
+            out.put("weightKg", w.weightKg());
+        }
+        putText(out, "job", w.job());
+        return out.isEmpty() ? null : out;
+    }
+
+    private static void putText(ObjectNode out, String key, String v) {
+        if (v != null && !v.isBlank()) {
+            out.put(key, v.strip());
         }
     }
 }

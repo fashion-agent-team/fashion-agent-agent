@@ -12,8 +12,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -52,11 +50,11 @@ class TurnControllerTest {
     final JsonMapper json = JsonMapper.builder().build();
 
     static TurnRequest utterance(String text) {
-        return new TurnRequest(null, text, null, null, null, null, null, null, null, null, null, null);
+        return new TurnRequest(null, text, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     static TurnRequest image(String base64) {
-        return new TurnRequest("s-1", null, base64, "outfit", null, null, null, null, null, null, null, null);
+        return new TurnRequest("s-1", null, base64, "outfit", null, null, null, null, null, null, null, null, null);
     }
 
     ResultActions turn(String userId, TurnRequest body, String... headers) throws Exception {
@@ -153,21 +151,58 @@ class TurnControllerTest {
     }
 
     @Test
-    @DisplayName("Given 게이트웨이가 붙인 X-User-Profile When 말을 보내면 Then 정해진 칸만 풀어서 대화 처리에 넘긴다")
-    void 내_정보_헤더를_풀어서_넘긴다() throws Exception {
+    @DisplayName("Given 게이트웨이가 바디에 넣은 wearer When 말을 보내면 Then 있는 칸만 대화 처리에 넘기고 모르는 칸은 버린다")
+    void 바디의_내_정보를_넘긴다() throws Exception {
         // given
-        String profile = Base64.getUrlEncoder().withoutPadding().encodeToString(
-                "{\"gender\":\"여자\",\"job\":\"회사원\",\"name\":\"지원\"}".getBytes(StandardCharsets.UTF_8));
         given(turns.handle(any(), any(), any())).willReturn(
                 new TurnResponse("s-1", "네", TurnResponse.Next.listen, null));
+        String body = """
+                {"utterance":"오늘 뭐 입지","wearer":{"gender":"여자","job":"회사원","ageGroup":" ","name":"지원"}}""";
 
         // when
-        turn("u-1", utterance("오늘 뭐 입지"), "X-User-Profile", profile);
+        mvc.perform(post("/api/v1/agent/turn").header("X-User-Id", "u-1")
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
 
         // then
         ArgumentCaptor<JsonNode> wearer = ArgumentCaptor.forClass(JsonNode.class);
         then(turns).should().handle(eq("u-1"), any(), wearer.capture());
         assertThat(wearer.getValue().propertyNames()).containsExactlyInAnyOrder("gender", "job");
+    }
+
+    @Test
+    @DisplayName("Given 앱이 넣은 wearer 뒤에 게이트웨이가 wearer를 덧붙임 When 말을 보내면 Then 뒤에 온 게이트웨이 값을 쓴다")
+    void 뒤에_붙은_내_정보가_이긴다() throws Exception {
+        // given: 게이트웨이는 바디 맨 끝에 wearer를 덧붙여서 앱 값을 덮어씁니다
+        given(turns.handle(any(), any(), any())).willReturn(
+                new TurnResponse("s-1", "네", TurnResponse.Next.listen, null));
+        String body = """
+                {"utterance":"x","wearer":{"job":"가짜"},"wearer":{"job":"대학생","heightCm":175.5}}""";
+
+        // when
+        mvc.perform(post("/api/v1/agent/turn").header("X-User-Id", "u-1")
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
+
+        // then
+        ArgumentCaptor<JsonNode> wearer = ArgumentCaptor.forClass(JsonNode.class);
+        then(turns).should().handle(eq("u-1"), any(), wearer.capture());
+        assertThat(wearer.getValue().path("job").asString()).isEqualTo("대학생");
+        assertThat(wearer.getValue().path("heightCm").asDouble()).isEqualTo(175.5);
+    }
+
+    @Test
+    @DisplayName("Given wearer가 null(저장된 정보 없음) When 말을 보내면 Then 정보 없이(null) 대화 처리에 넘긴다")
+    void 내_정보가_없으면_null() throws Exception {
+        // given
+        given(turns.handle(any(), any(), any())).willReturn(
+                new TurnResponse("s-1", "네", TurnResponse.Next.listen, null));
+
+        // when
+        mvc.perform(post("/api/v1/agent/turn").header("X-User-Id", "u-1")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"utterance\":\"x\",\"wearer\":null}"))
+                .andExpect(status().isOk());
+
+        // then
+        then(turns).should().handle(eq("u-1"), any(), org.mockito.ArgumentMatchers.isNull());
     }
 
     @Test
