@@ -34,6 +34,7 @@ class IntentTest {
         assertThat(Intent.of("내려놓고 보여줄게", true)).isEqualTo(Intent.MODE);
         assertThat(Intent.of("흰 셔츠 입고 갈게", true)).isNotEqualTo(Intent.MODE);
         assertThat(Intent.of("입고 볼게", false)).isNotEqualTo(Intent.MODE);
+        assertThat(Intent.of("내려놓고 볼게, 내일 뭐 입지?", true)).isEqualTo(Intent.OUTFIT);   // 2026-11-20: 새 추천
     }
 
     @Test
