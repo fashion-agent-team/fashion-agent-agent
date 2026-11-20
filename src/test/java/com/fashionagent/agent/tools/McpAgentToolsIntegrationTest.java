@@ -27,7 +27,7 @@ import tools.jackson.databind.json.JsonMapper;
         "spring.ai.mcp.server.protocol=STREAMABLE",
         "spring.ai.mcp.server.name=mcp-weather-test",
         "server.shutdown=immediate" })
-class McpAgentToolsTest {
+class McpAgentToolsIntegrationTest {
 
     @LocalServerPort
     int port;
