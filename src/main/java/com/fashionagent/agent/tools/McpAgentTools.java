@@ -3,6 +3,7 @@ package com.fashionagent.agent.tools;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -12,6 +13,8 @@ import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.modelcontextprotocol.spec.McpTransportSessionClosedException;
+import io.modelcontextprotocol.spec.McpTransportSessionNotFoundException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -26,11 +29,18 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
 
     private final Map<String, String> serverUrls;
     private final JsonMapper json;
+    private final Duration timeout;
     private final Map<String, McpSyncClient> clients = new ConcurrentHashMap<>();
 
     public McpAgentTools(Map<String, String> serverUrls, JsonMapper json) {
+        this(serverUrls, json, REQUEST_TIMEOUT);
+    }
+
+    /** 시험용: 기다리는 시간을 짧게. */
+    McpAgentTools(Map<String, String> serverUrls, JsonMapper json, Duration timeout) {
         this.serverUrls = serverUrls;
         this.json = json;
+        this.timeout = timeout;
     }
 
     @Override
@@ -44,7 +54,12 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
             throw e;
         } catch (RuntimeException e) {
             drop(server);
-            if (!cached) {
+            if (isTimeout(e)) {
+                // 서버가 이미 일을 하고 있을 수 있어서 다시 부르지 않는다(2026-11-20: 일정 등록이 두 번 들어갈 수 있었고,
+                // 사진 검사는 20초 + 20초로 게이트웨이 30초를 넘겼음).
+                throw new ToolException(tool, "upstream_timeout", "MCP 호출 시간 초과: " + e.getMessage(), e);
+            }
+            if (!cached || !retryable(tool, e)) {
                 throw new ToolException(tool, "upstream_failed", "MCP 호출 실패: " + e.getMessage(), e);
             }
             // MCP 서버가 다시 켜지면 예전 세션은 죽어 있다(2026-11-09: 서버를 다시 켠 뒤 첫 요청만 실패).
@@ -66,6 +81,39 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
                     error.path("message").asString(body.toString()));
         }
         return body;
+    }
+
+    /** 저장·삭제처럼 두 번 하면 결과가 달라지는 도구. 서버가 일을 안 한 게 확실할 때만 다시 부릅니다. */
+    static final Set<String> WRITES = Set.of(ToolNames.SCHEDULE_ADD, ToolNames.SCHEDULE_DELETE,
+            ToolNames.SCHEDULE_SET_REMINDER, ToolNames.CLOSET_SAVE, ToolNames.CLOSET_WEAR, ToolNames.CLOSET_MERGE,
+            ToolNames.CLOSET_REMOVE);
+
+    /** 원인 중에 시간 초과가 있으면 true. 그때는 서버가 아직 일을 하고 있을 수 있습니다. */
+    static boolean isTimeout(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof java.util.concurrent.TimeoutException || t instanceof java.net.http.HttpTimeoutException
+                    || t instanceof java.net.SocketTimeoutException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 끊긴 연결로 실패했을 때 다시 불러도 되는지. 읽기 도구는 늘 되고, 쓰기 도구는 서버가 요청을 받기 전에
+     * 끊긴 게 확실할 때만(세션 없음·닫힘·연결 거부) 됩니다.
+     */
+    static boolean retryable(String tool, Throwable e) {
+        if (!WRITES.contains(tool)) {
+            return true;
+        }
+        for (Throwable t = e; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof McpTransportSessionNotFoundException || t instanceof McpTransportSessionClosedException
+                    || t instanceof java.net.ConnectException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private McpSchema.CallToolResult callOnce(String tool, String server, Map<String, Object> args) {
@@ -106,7 +154,7 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
         var transport = HttpClientStreamableHttpTransport.builder(base).endpoint(endpoint).build();
         McpSyncClient client = McpClient.sync(transport)
                 .clientInfo(new McpSchema.Implementation("fashion-agent-agent", "패션 에이전트 agent", "0.0.1"))
-                .requestTimeout(REQUEST_TIMEOUT)
+                .requestTimeout(timeout)
                 .build();
         client.initialize();
         log.info("MCP 연결: {}", url);
