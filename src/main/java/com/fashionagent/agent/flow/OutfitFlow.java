@@ -722,10 +722,17 @@ public class OutfitFlow {
         }
 
         List<Garment> outfit = List.copyOf(session.wornGarments);
-        List<SeenBrief> before = session.seen.stream()
+        List<SeenBrief> before = new ArrayList<>(session.seen.stream()
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
                         s.garment().colorName(), s.fit(), s.garment().label()))
-                .toList();
+                .toList());
+        // 입은 모습에서 겉옷을 입었으면 안의 상의는 가려 안 보일 수 있습니다. 2026-11-23 시뮬: 자켓을 입고 돌았는데
+        // "상의도 보여 주세요"라고 했음. 상의는 본 것으로 두고 "상의도"를 묻지 않습니다.
+        boolean outer = outfit.stream().anyMatch(g -> "outer".equals(g.category()));
+        boolean top = outfit.stream().anyMatch(g -> "top".equals(g.category()) || "dress".equals(g.category()));
+        if (outer && !top) {
+            before.add(new SeenBrief("covered-top", "top", null, null, "ok", "겉옷 안에 입어 가려진 상의"));
+        }
         JsonNode color = colorCheck(session, outfit, inspect);
         CheckJudgement j = withColors(session, outfit, judge.check(new CheckInput(session.weather, session.events,
                 session.advice, outfit, before, SpokenDate.label(targetDay(session), today()), session.wearer, color)));
