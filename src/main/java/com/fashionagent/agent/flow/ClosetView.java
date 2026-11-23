@@ -34,8 +34,10 @@ final class ClosetView {
         CATEGORY_WORDS.put("outer", List.of("겉옷", "외투", "아우터", "자켓", "재킷", "코트", "패딩", "점퍼", "가디건", "블레이저", "야상", "정장", "바람막이"));
         CATEGORY_WORDS.put("dress", List.of("원피스"));
         CATEGORY_WORDS.put("bottom", List.of("바지", "하의", "치마", "스커트", "청바지", "슬랙스", "레깅스"));
-        CATEGORY_WORDS.put("shoes", List.of("신발", "운동화", "구두"));
-        CATEGORY_WORDS.put("top", List.of("상의", "윗옷", "셔츠", "티셔츠", "니트", "블라우스", "맨투맨"));
+        CATEGORY_WORDS.put("shoes", List.of("신발", "운동화", "구두", "샌들", "슬리퍼", "부츠", "로퍼", "스니커즈",
+                "플랫슈즈"));
+        CATEGORY_WORDS.put("top", List.of("상의", "윗옷", "셔츠", "티셔츠", "니트", "블라우스", "맨투맨", "후드티", "후드",
+                "긴팔", "터틀넥"));
     }
 
     private ClosetView() {
