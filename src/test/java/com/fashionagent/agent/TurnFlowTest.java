@@ -589,6 +589,13 @@ class TurnFlowTest {
     }
 
     @Test
+    void 지난_날씨는_알_수_없다고_한다() throws Exception {
+        JsonNode r = turn("u_past_weather", """
+                {"utterance": "어제 날씨 어땠어?"}""");
+        assertThat(r.path("speech").asString()).startsWith("지난 날씨는 알 수 없어요.");
+    }
+
+    @Test
     void 어제_일정을_물으면_어제_일정을_읽는다() throws Exception {
         JsonNode r = turn("u_past_sched", """
                 {"utterance": "어제 일정 뭐였지?"}""");

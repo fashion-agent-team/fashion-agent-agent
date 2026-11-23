@@ -156,6 +156,10 @@ public enum Intent {
             if (containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일")) {
                 return OTHER;
             }
+            // "오늘이랑 내일 날씨 비교해 줘": 두 날을 같이 물으면 GPT가 하나씩 봅니다(2026-11-23 시뮬: 내일만 답했음).
+            if (s.matches(".*(오늘|내일|모레)(이랑|하고|과|와|랑).*(오늘|내일|모레|글피).*")) {
+                return OTHER;
+            }
             return WEATHER;
         }
         // "오늘 약속 있어?" 2026-11-23 시뮬

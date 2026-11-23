@@ -160,6 +160,7 @@ class IntentTest {
         assertThat(Intent.of("오늘 겉옷 필요 없지?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("반팔 입을까?", true)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("토요일 비", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("오늘이랑 내일 날씨 비교해줘", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("청바지에 니트 어때?", true)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("내일 눈?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("눈", false)).isNotEqualTo(Intent.WEATHER);

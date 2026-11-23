@@ -174,7 +174,8 @@ public class TurnService {
         } else if (intent != Intent.OTHER && intent != Intent.WEATHER) {
             session.statedPlan = null;
         }
-        if (session.lastTopic == null) {
+        // "어제 날씨 어땠어?"처럼 지난 날을 말했으면 이어 묻기가 아닙니다.
+        if (session.lastTopic == null || pastLabel(utterance) != null) {
             return null;
         }
         // 날짜 말과 "은/는/요" 말고 다른 말이 있으면("내일 3시 치과") 이어 묻기가 아닙니다(GPT가 일정 등록 등으로 봄).
@@ -444,6 +445,10 @@ public class TurnService {
         var today = java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("Asia/Seoul")));
         if (SpokenDate.impossible(utterance, today)) {
             return say(session, SpokenDate.SAY_IMPOSSIBLE, Next.listen);
+        }
+        // "어제 날씨 어땠어?": 오늘 날씨로 답했음(2026-11-23 시뮬). 지난 날씨는 받을 수 없다고 말합니다.
+        if (pastLabel(utterance) != null && SpokenDate.from(utterance, today) == null) {
+            return say(session, "지난 날씨는 알 수 없어요. 오늘부터 16일 안쪽 날씨만 알려 드릴 수 있어요.", Next.listen);
         }
         var asked = SpokenDate.from(utterance, today);
         boolean otherDay = asked != null && !asked.equals(today);
