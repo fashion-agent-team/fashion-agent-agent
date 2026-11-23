@@ -178,4 +178,14 @@ class RuleOutfitJudgeTest {
                 .isEqualTo("갈색 자켓은 내일 쌀쌀한데 겉옷까지 잘 챙기셨어요. 내일은 다른 옷으로 바꾸고");
         org.assertj.core.api.Assertions.assertThat(RuleOutfitJudge.onDay("오늘 입기 좋아요.", "오늘")).isEqualTo("오늘 입기 좋아요.");
     }
+
+    @Test
+    void 데이트는_평소보다_깔끔하게_추천한다_2026_11_23() throws Exception {
+        var w = json.readTree("{\"temperature\":20,\"apparentTemperature\":20,\"minTemperature\":15,\"maxTemperature\":22}");
+        var date = judge.advise(new OutfitJudge.AdviceInput(w,
+                json.readTree("[{\"title\":\"데이트\",\"occasion\":\"casual\",\"spoken\":true}]"), null, null));
+        assertThat(date.speech()).startsWith("평소보다 조금 깔끔하게 입으면 좋아요. 깔끔한 셔츠나 니트에");
+        var plain = judge.advise(new OutfitJudge.AdviceInput(w, json.readTree("[]"), null, null));
+        assertThat(plain.speech()).startsWith("편한 상의에");
+    }
 }
