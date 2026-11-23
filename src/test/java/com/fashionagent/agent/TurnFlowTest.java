@@ -727,7 +727,7 @@ class TurnFlowTest {
             assertThat(q.path("speech").asString()).contains("비춰");
         }
         JsonNode end = turn("u_face_ok", """
-                {"sessionId": "%s", "utterance": "됐어"}""".formatted(sid));
+                {"sessionId": "%s", "utterance": "알겠어 고마워"}""".formatted(sid));
         assertThat(end.path("next").asString()).isNotEqualTo("camera_face");
     }
 
