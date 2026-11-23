@@ -122,6 +122,11 @@ public enum Intent {
         if (s.contains("옷장") && !containsAny(s, OUTFIT_WORDS) && !containsAny(s, SCHEDULE_CHANGE_WORDS)) {
             return CLOSET;
         }
+        // "패딩만 보여줘", "셔츠 목록 알려줘": 옷장에서 그 종류만(2026-11-23 시뮬에서 GPT로 갔음).
+        if (!inOutfitSession && ClosetView.category(s) != null
+                && s.matches(".*(만|들|목록|전부|다)(보여줘|알려줘|말해줘|읽어줘)[?？!.~]*")) {
+            return CLOSET;
+        }
         if (!inOutfitSession && ClosetView.category(s) != null && OWN_ASK.matcher(s).find()
                 && !s.contains("있어야") && !containsAny(s, STAIN_WORDS) && !containsAny(s, OUTFIT_WORDS)) {
             return CLOSET;

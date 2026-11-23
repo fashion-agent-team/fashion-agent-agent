@@ -670,6 +670,16 @@ class TurnFlowTest {
     }
 
     @Test
+    void 내일_나간다고_한_뒤_그때_추워는_내일_날씨로_답한다() throws Exception {
+        JsonNode first = turn("u_then_cold", """
+                {"utterance": "내일 아침 7시에 나가"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_then_cold", """
+                {"sessionId": "%s", "utterance": "그때 추워?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).contains("내일").doesNotContain("지금");
+    }
+
+    @Test
     void 결혼식_원피스_뒤_흰_원피스는_피하라고_한다() throws Exception {
         JsonNode first = turn("u_dress", """
                 {"utterance": "모레 결혼식 가는데 원피스 입어도 돼?"}""");
