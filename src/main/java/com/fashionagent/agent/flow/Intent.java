@@ -50,6 +50,13 @@ public enum Intent {
     /** "오늘 반팔 입어도 돼?": 2026-11-23 시뮬에서 GPT로 갔음. 날씨로 네/아니요를 바로 답합니다. */
     static final List<String> LIGHT_WORDS = List.of("반팔", "반바지", "민소매", "나시", "얇게", "얇은옷");
     static final List<String> MAY_WORDS = List.of("입어도", "입고가도", "입고나가도", "괜찮", "될까", "되나");
+    /** "목도리 해야 돼?", "장갑 챙길까?": 2026-11-23 시뮬에서 GPT로 갔음. 체감 온도로 네/아니요를 바로 답합니다. */
+    static final List<String> WARM_ITEMS = List.of("목도리", "머플러", "장갑", "털모자", "귀마개", "핫팩", "내복", "히트텍");
+    static final List<String> NEED_WORDS = List.of("해야", "챙길", "챙겨", "필요", "할까", "낄까", "껴야", "쓸까", "써야",
+            "입을까", "입어야", "가져갈", "가져가");
+    /** "바지 몇 벌 있어?", "자켓 있어?": 2026-11-23 시뮬에서 GPT로 갔음. 옷장의 그 종류 목록을 읽어 줍니다. */
+    private static final java.util.regex.Pattern OWN_ASK = java.util.regex.Pattern.compile(
+            "(몇벌|몇개|있어|있나|있니|있는지|있을까|가지고있|갖고있)[?？!.~]*$");
 
     /** "할 줄 아는 거 말해 봐", "기능 설명해 줘" 같은 말. 2026-11-06 진행 님 폰 확인에서 못 알아들었던 말. */
     private static final List<String> HELP_WORDS = List.of("기능", "할줄", "할수있", "뭐해줄", "뭘해줄", "뭐도와", "뭘도와",
@@ -90,6 +97,10 @@ public enum Intent {
         if (s.contains("옷장") && !containsAny(s, OUTFIT_WORDS) && !containsAny(s, SCHEDULE_CHANGE_WORDS)) {
             return CLOSET;
         }
+        if (!inOutfitSession && ClosetView.category(s) != null && OWN_ASK.matcher(s).find()
+                && !s.contains("있어야") && !containsAny(s, STAIN_WORDS) && !containsAny(s, OUTFIT_WORDS)) {
+            return CLOSET;
+        }
         // "이거 무슨 색이야?": 색만 바로 읽어 줌(2026-11-13). "내일 무슨 색 입을까?"는 추천으로.
         if (ColorFlow.isColorQuestion(s) && !containsAny(s, OUTFIT_WORDS)) {
             return COLOR;
@@ -114,7 +125,8 @@ public enum Intent {
             return FACE;
         }
         if (s.contains("날씨") || containsAny(s.replace("준비", ""), WEATHER_WORDS)
-                || (containsAny(s, LIGHT_WORDS) && containsAny(s, MAY_WORDS))) {
+                || (containsAny(s, LIGHT_WORDS) && containsAny(s, MAY_WORDS))
+                || (containsAny(s, WARM_ITEMS) && containsAny(s, NEED_WORDS))) {
             // "이번 주 날씨"처럼 여러 날은 GPT가 날짜를 하나씩 봅니다. 하루("내일", "토요일")는 바로 답합니다.
             if (containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일")) {
                 return OTHER;
