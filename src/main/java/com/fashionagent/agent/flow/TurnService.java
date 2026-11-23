@@ -245,6 +245,18 @@ public class TurnService {
                 day = lastMonday.with(day.getDayOfWeek());
             }
         }
+        // "다음주 화요일 날씨" 뒤 "그럼 화요일 뭐 입지": 이번 주 화요일(내일)로 추천했음(2026-11-23 시뮬). 방금 말한 주의 그 요일로.
+        if ((intent == Intent.OUTFIT || intent == Intent.WEATHER || intent == Intent.SCHEDULE) && day != null
+                && session.lastTopicDate != null && s.matches(".*[월화수목금토일]요일.*")
+                && !s.matches(".*(이번주|다음주|담주|다다음주|지난주|저번주|이번|다음|지난).*")) {
+            var last = java.time.LocalDate.parse(session.lastTopicDate);
+            var lastMonday = last.with(java.time.DayOfWeek.MONDAY);
+            if (lastMonday.isAfter(today.with(java.time.DayOfWeek.MONDAY))) {
+                var d = lastMonday.with(day.getDayOfWeek());
+                String said = utterance.replaceFirst("[월화수목금토일]요일", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일");
+                return new String[] {intent == Intent.OUTFIT ? "outfit" : intent == Intent.WEATHER ? "weather" : "schedule", said};
+            }
+        }
         // "내일 일정 뭐 있어?" 뒤 "그 다음날은?": 방금 말한 날의 다음 날(2026-11-23 시뮬에서 GPT로 갔음).
         boolean nextDay = intent == Intent.OTHER && s.matches("(그럼|그러면)?(그)?다음날(은|는|요|은요|는요)?");
         if (nextDay) {
