@@ -326,6 +326,11 @@ public class TurnService {
                         || s.matches("(아니)?(그거|그건|그걸|이거|이건)말고(요|다른거|딴거)?(는|줘|없어|추천해줘)?"))) {
             return new String[] {"outfit", "다른 거 추천해 줘"};
         }
+        // 추천 뒤 "너무 꾸민 건 싫어": 같은 날·자리로 다시 추천(2026-11-23 시뮬: 봐 주기를 거절한 걸로 보고 끝냈음).
+        if ((intent == Intent.OTHER || intent == Intent.OUTFIT) && "outfit".equals(session.lastTopic)
+                && dislikesStyle(s) && s.length() <= 16) {
+            return new String[] {"outfit", "다른 거 추천해 줘"};
+        }
         // 추천 뒤 "좀 더 캐주얼하게", "더 단정하게": 같은 날·자리로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
         if ((intent == Intent.OTHER || intent == Intent.OUTFIT) && "outfit".equals(session.lastTopic)
                 && s.matches("(그럼|그러면)?(좀|조금)?(더)?(캐주얼|편하|편한|가볍|가벼운|따뜻|시원|두껍|두꺼운|단정|깔끔|포멀|격식|차려입|꾸며|꾸민|꾸미|힙하|귀엽|귀여운|세련)"
@@ -359,6 +364,12 @@ public class TurnService {
             return new String[] {"outfit", in + d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 뭐 입지"};
         }
         return null;
+    }
+
+    /** "너무 꾸민 건 싫어", "화려한 건 별로": 추천한 옷의 느낌이 싫다는 말이면 true. */
+    static boolean dislikesStyle(String compact) {
+        return compact.matches(".*(꾸민|꾸며|꾸미|화려|튀는|튀어|딱딱|불편|답답|두꺼|두껍|얇은|얇아|어두|칙칙|밝은|무난|평범|심심|정장|포멀|캐주얼)"
+                + "[가-힣]{0,4}(싫|별로|말고|안땡|안끌|부담).*");
     }
 
     /** 지난 턴에 카메라(옷)를 켜 둔 상태였으면 그 카메라, 아니면 null. */
