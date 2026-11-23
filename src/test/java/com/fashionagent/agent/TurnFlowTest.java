@@ -733,6 +733,17 @@ class TurnFlowTest {
     }
 
     @Test
+    void 추천_뒤_너무_꾸민_건_싫어는_다시_추천() throws Exception {
+        JsonNode first = turn("u_dislike", """
+                {"utterance": "모레 뭐 입지"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_dislike", """
+                {"sessionId": "%s", "utterance": "너무 꾸민 건 싫어"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레").doesNotContain("언제든 불러");
+        assertThat(r.path("next").asString()).isNotEqualTo("done");
+    }
+
+    @Test
     void 추천_뒤_그거_말고는_다시_추천() throws Exception {
         JsonNode first = turn("u_not_that", """
                 {"utterance": "모레 뭐 입지"}""");
