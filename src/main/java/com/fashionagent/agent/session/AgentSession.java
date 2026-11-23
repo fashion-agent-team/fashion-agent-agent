@@ -118,6 +118,8 @@ public class AgentSession {
 
     /** "이거 무슨 색이야?"로 카메라를 켠 중. 이때 온 옷 사진은 색·무늬만 읽어 줍니다(2026-11-13). */
     public boolean colorCheck;
+    /** 색 확인에서 본 옷(최근 4벌). "이 두 개 어울려?"에 쓰려고 둡니다. */
+    public List<com.fashionagent.agent.model.Garment> colorSeen = new ArrayList<>();
 
     public AgentSession() {
     }

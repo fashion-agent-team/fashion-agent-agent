@@ -59,6 +59,7 @@ public class ColorFlow {
 
     public TurnResponse start(AgentSession session) {
         session.colorCheck = true;
+        session.colorSeen = new ArrayList<>();
         return reply(session, START, Next.camera_outfit);
     }
 
@@ -67,6 +68,10 @@ public class ColorFlow {
         String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
         if (isColorQuestion(s)) {
             return reply(session, "네, 옷을 비춰 주시면 색을 알려 드릴게요.", Next.camera_outfit);
+        }
+        // "이 두 개 어울려?": 2026-11-23 시뮬에서 색 확인을 접고 "할 수 없는 일이에요"로 답했음.
+        if (s.contains("어울") && s.length() <= 15) {
+            return harmony(session);
         }
         session.colorCheck = false;
         if (FINISH.stream().anyMatch(s::contains)) {
@@ -96,7 +101,50 @@ public class ColorFlow {
         if (garments.isEmpty()) {
             return reply(session, "옷이 잘 안 보여요. 옷 위로 폰을 들어 주실래요?", Next.camera_outfit);
         }
+        for (Garment g : garments) {
+            session.colorSeen.add(g.withId("c" + (session.colorSeen.size() + 1) + "-" + g.id()));
+        }
+        while (session.colorSeen.size() > 4) {
+            session.colorSeen.remove(0);
+        }
         return reply(session, speech(garments) + " " + MORE, Next.camera_outfit);
+    }
+
+    /** 색 확인에서 마지막으로 본 두 벌의 색 어울림(옷 상태 서버의 색상환 계산). */
+    private TurnResponse harmony(AgentSession session) {
+        List<Garment> seen = session.colorSeen;
+        if (seen.size() < 2) {
+            return reply(session, "옷을 두 벌 이상 비춰 주시면 서로 어울리는지 알려 드릴게요.", Next.camera_outfit);
+        }
+        List<Garment> two = seen.subList(seen.size() - 2, seen.size());
+        List<Map<String, Object>> garments = new ArrayList<>();
+        for (Garment g : two) {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", g.id());
+            m.put("category", g.category() == null ? "other" : g.category());
+            m.put("colorFamily", g.colorFamily() == null ? "unknown" : g.colorFamily());
+            if (g.colorName() != null && !g.colorName().isBlank()) {
+                m.put("colorName", g.colorName());
+            }
+            if (g.tone() != null && !g.tone().isBlank()) {
+                m.put("tone", g.tone());
+            }
+            garments.add(m);
+        }
+        String names = Korean.josa(two.get(0).label(), "과", "와") + " " + two.get(1).label();
+        try {
+            JsonNode h = tools.call(ToolNames.OUTFIT_COLOR_CHECK, Map.of("garments", garments, "occasion", "casual",
+                    "lighting", "ok"));
+            if (!h.path("score").isNumber()) {
+                return reply(session, "미안해요, " + names + "의 어울림은 지금 잘 모르겠어요.", Next.camera_outfit);
+            }
+            String reason = h.path("scoreReason").asString("");
+            return reply(session, Korean.josa(names, "은", "는") + " 어울림 " + h.path("score").asInt() + "점이에요."
+                    + (reason.isBlank() ? "" : " " + reason), Next.camera_outfit);
+        } catch (ToolException e) {
+            log.warn("outfit_color_check(색 확인) 실패: {}", e.getMessage());
+            return reply(session, "미안해요, 지금은 어울림을 못 봤어요. 조금 있다가 다시 물어봐 주실래요?", Next.camera_outfit);
+        }
     }
 
     /** "흰색 셔츠예요." 여러 벌이면 "왼쪽은 흰색 셔츠, 오른쪽은 검정 바지예요." */
