@@ -23,6 +23,11 @@ final class Thumbnails {
 
     static final int LONG_SIDE = 256;
     static final int MAX_BYTES = 48 * 1024;
+    /**
+     * 사진을 풀 때 긴 변 기준. 이보다 2배 이상 큰 사진은 건너뛰며 읽습니다. 몇 KB짜리 PNG가 4만×4만 픽셀이면
+     * 그대로 풀 때 수 GB가 들어 agent(메모리 448MB)가 멈추는 것을 막습니다. 폰 사진(4032px까지)은 그대로 읽습니다.
+     */
+    static final int DECODE_MAX_SIDE = 2048;
 
     private Thumbnails() {
     }
@@ -38,7 +43,7 @@ final class Thumbnails {
             if (s.startsWith("data:") && comma > 0) {
                 s = s.substring(comma + 1);
             }
-            BufferedImage img = ImageIO.read(new ByteArrayInputStream(Base64.getMimeDecoder().decode(s)));
+            BufferedImage img = read(Base64.getMimeDecoder().decode(s), DECODE_MAX_SIDE);
             if (img == null) {
                 return null;
             }
@@ -66,6 +71,32 @@ final class Thumbnails {
             return null;
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /** 크기를 먼저 읽고, 긴 변이 maxSide의 2배 이상이면 건너뛰며(서브샘플링) 읽습니다. 못 읽으면 null. */
+    static BufferedImage read(byte[] bytes, int maxSide) throws java.io.IOException {
+        try (javax.imageio.stream.ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+            if (in == null) {
+                return null;
+            }
+            java.util.Iterator<javax.imageio.ImageReader> readers = ImageIO.getImageReaders(in);
+            if (!readers.hasNext()) {
+                return null;
+            }
+            javax.imageio.ImageReader reader = readers.next();
+            try {
+                reader.setInput(in, true, true);
+                int longSide = Math.max(reader.getWidth(0), reader.getHeight(0));
+                javax.imageio.ImageReadParam param = reader.getDefaultReadParam();
+                int step = Math.max(1, longSide / maxSide);
+                if (step > 1) {
+                    param.setSourceSubsampling(step, step, 0, 0);
+                }
+                return reader.read(0, param);
+            } finally {
+                reader.dispose();
+            }
         }
     }
 

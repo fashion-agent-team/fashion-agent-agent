@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -19,11 +18,6 @@ public class ApiErrorHandler {
     @ExceptionHandler(ApiException.class)
     ResponseEntity<Map<String, Object>> api(ApiException e) {
         return body(e.status(), e.code(), e.getMessage());
-    }
-
-    @ExceptionHandler(MissingRequestHeaderException.class)
-    ResponseEntity<Map<String, Object>> missingHeader(MissingRequestHeaderException e) {
-        return body(HttpStatus.UNAUTHORIZED, "unauthorized", "X-User-Id 헤더가 없어요.");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

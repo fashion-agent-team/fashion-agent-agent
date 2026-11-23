@@ -27,7 +27,7 @@
 - 옷 추천은 **정해진 순서(코드)로** 도구를 부릅니다. GPT가 도구를 고르는 건 개별 기능(날씨 묻기, 일정 등록, 얼굴 확인, 가족에게 묻기)뿐입니다.
 - MCP 서버는 데이터만 줍니다. 판단은 GPT에 판단 기준(약속 문서 5-1절)을 주고 구조화 출력으로 받습니다.
 - 사진 base64는 GPT 대화에 넣지 않고 도구에 직접 넘깁니다.
-- 도구의 `userId`는 GPT 값이 아니라 `X-User-Id`로 덮어씁니다.
+- 도구의 `userId`는 GPT 값이 아니라 게이트웨이가 넘긴 로그인 토큰(`Authorization: Bearer`)의 `sub`로 덮어씁니다. 토큰은 `JWT_SECRET`(게이트웨이와 같은 값)으로 직접 확인하고, 없거나 틀리면 401입니다.
 - 얼룩은 위치보다 할 일(빨기·수선·바꾸기)을 먼저 말하고, 위치는 사용자가 물을 때만.
 - 대화 상태(1단계 추천, 본 옷, 직전 사진 10분)는 Redis에 30분. DB는 쓰지 않습니다.
 
@@ -44,17 +44,17 @@ Java 21만 있으면 됩니다. 기본 설정은 **서버 없이 혼자 실행**
 
 | 종류 | 파일 | 하는 일 |
 | --- | --- | --- |
-| 컨트롤러 슬라이스 테스트 | `api/TurnControllerTest` | `@WebMvcTest`로 컨트롤러만 띄우고 `TurnService`·`Prefetch`는 `@MockitoBean`. X-User-Id, 입력 확인(말·사진 없음 400, 큰 사진 413), 응답·오류 모양, 바디의 wearer(내 정보) 받기 |
+| 컨트롤러 슬라이스 테스트 | `api/TurnControllerTest` | `@WebMvcTest`로 컨트롤러만 띄우고 `TurnService`·`Prefetch`는 `@MockitoBean`. 로그인 토큰(없으면 401), 입력 확인(말·사진 없음 400, 큰 사진 413), 응답·오류 모양, 바디의 wearer(내 정보) 받기 |
 | 통합 테스트 | `tools/McpAgentToolsIntegrationTest` | 테스트 안에 진짜 Spring AI MCP 서버(Streamable HTTP)를 띄우고 HTTP로 붙어 도구를 부름 |
 | 흐름 테스트 | `TurnFlowTest` | 앱 전체(`@SpringBootTest` + MockMvc)를 가짜 도구(`agent.tools: fake`)로 띄워 추천 → 카메라 → 비교 대화 흐름 확인 |
 | 단위 테스트 | 나머지 | 스프링 없이 클래스 하나씩. `session/InMemorySessionStoreTest`는 앱 레포 `specs/005-database/spec.md` US3(대화 상태 30분) 시나리오 |
 
 ```bash
 # 1단계: 말로 추천 → sessionId를 받아 둠
-curl -s localhost:8081/api/v1/agent/turn -H 'X-User-Id: u1' -H 'Content-Type: application/json' \
+curl -s localhost:8081/api/v1/agent/turn -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"utterance":"오늘 뭐 입지?"}'
 # 2단계: 앱이 자동 전송한 사진 한 장 (가짜 도구는 내용과 상관없이 "왼쪽 흰 셔츠(얼룩) + 오른쪽 체크 셔츠")
-curl -s localhost:8081/api/v1/agent/turn -H 'X-User-Id: u1' -H 'Content-Type: application/json' \
+curl -s localhost:8081/api/v1/agent/turn -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"sessionId":"<받은 값>","image":"AAAA","imageKind":"outfit"}'
 # "얼룩 어디야?" → 위치, "이걸로 할게" → 기록하고 next=done
 ```
@@ -84,7 +84,7 @@ session/   AgentSession, SessionStore: 메모리 / Redis (30분, 키에 userId �
 ## 할 일
 
 - [x] Spring Boot 뼈대 + `/actuator/health` + Dockerfile
-- [x] 개발 중엔 게이트웨이 없이 `X-User-Id` 헤더로 직접 호출
+- [x] 개발 중엔 게이트웨이 `/api/v1/auth/dev`로 받은 토큰을 `Authorization: Bearer`에 넣어 직접 호출
 - [x] LLM 연결 (Spring AI), 구조화 출력으로 추천·확인 모드 (2026-11-04 Gemini 실제 키로 확인 → GPT로 바꿈)
 - [x] MCP 클라이언트 (테스트 안에서 Spring AI MCP 서버에 붙여 확인), 가짜 도구로 1·2단계 완성
 - [x] mcp-weather, mcp-schedule 나오면 `mcp` 프로필로 붙여 보기 (2026-11-04 진짜 Open-Meteo로 1단계 추천 확인)
@@ -100,7 +100,7 @@ session/   AgentSession, SessionStore: 메모리 / Redis (30분, 키에 userId �
 
 모든 레포가 지키는 약속은 앱 레포에 있습니다. **코드보다 약속 문서를 먼저 고칩니다.**
 
-- [서비스 간 약속](https://github.com/fashion-agent-team/fashion-agent/blob/develop/docs/contracts/README.md): 공통 규칙, 포트, 인증(`X-User-Id`), 오류 모양, DB 스키마, 옷 추천 흐름
+- [서비스 간 약속](https://github.com/fashion-agent-team/fashion-agent/blob/develop/docs/contracts/README.md): 공통 규칙, 포트, 인증(로그인 토큰), 오류 모양, DB 스키마, 옷 추천 흐름
 - [MCP 도구 입출력](https://github.com/fashion-agent-team/fashion-agent/blob/develop/docs/contracts/mcp-tools.md)
 - [앱 ↔ 게이트웨이 API (OpenAPI)](https://github.com/fashion-agent-team/fashion-agent/blob/develop/docs/contracts/openapi.yaml)
 - [아키텍처와 기술 스택](https://github.com/fashion-agent-team/fashion-agent/blob/develop/docs/ARCHITECTURE.md)
