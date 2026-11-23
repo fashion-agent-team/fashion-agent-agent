@@ -95,4 +95,12 @@ class WeatherSpeechTest {
         assertThat(TurnService.weatherSpeech(w("맑음"), null, "바람막이 챙길까?")).doesNotContain("바람 세기");
         assertThat(TurnService.weatherSpeech(w("맑음"), null, "모자 써야 돼?")).startsWith("네, 챙기세요.");
     }
+
+    @Test
+    void 소개팅에_청바지_운동화는_깔끔하게_맞추라고_답한다() {
+        assertThat(TurnService.dressyFitAdvice("소개팅", "오늘 소개팅인데 청바지 괜찮아?")).startsWith("네, 소개팅에 깔끔한 청바지는");
+        assertThat(TurnService.dressyFitAdvice("데이트", "운동화는?")).startsWith("네, 깨끗한 운동화면");
+        assertThat(TurnService.dressyFitAdvice("산책", "운동화는?")).isNull();
+        assertThat(TurnService.dressyFitAdvice("데이트", "니트 괜찮아?")).isNull();
+    }
 }

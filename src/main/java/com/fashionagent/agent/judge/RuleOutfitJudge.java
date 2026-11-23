@@ -40,7 +40,7 @@ public class RuleOutfitJudge implements OutfitJudge {
             Occasion.casual, new Look("편한 상의", "편한 바지", "특별한 일정이 없어요."));
 
     /** 평상복 자리지만 꾸미는 자리(데이트·소개팅·파티): 2026-11-23 시뮬에서 "편한 상의"로 추천했음. */
-    static final java.util.regex.Pattern DRESSY = java.util.regex.Pattern.compile(".*(데이트|소개팅|기념일|파티|돌잔치).*");
+    public static final java.util.regex.Pattern DRESSY = java.util.regex.Pattern.compile(".*(데이트|소개팅|기념일|파티|돌잔치).*");
     private static final Look DRESSY_LOOK = new Look("깔끔한 셔츠나 니트", "슬랙스나 깔끔한 바지",
             "평소보다 조금 깔끔하게 입으면 좋아요.");
 

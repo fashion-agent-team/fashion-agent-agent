@@ -700,6 +700,9 @@ public class TurnService {
             if (manner == null) {
                 manner = occasionFitAdvice(session.spokenOccasion, utterance);
             }
+            if (manner == null && "casual".equals(session.spokenOccasion)) {
+                manner = dressyFitAdvice(session.spokenTitle, utterance);
+            }
             if (manner != null) {
                 speech = manner + " " + speech.replaceFirst("^네, ((입어|신어)도 돼요\\. (다만 )?)?", "");
             }
@@ -984,6 +987,27 @@ public class TurnService {
             String what = u.contains("넥타이") ? "넥타이를 매면 더 단정해 보여요."
                     : u.contains("구두") ? "구두가 단정해 보여서 좋아요." : "단정한 차림이라 잘 맞아요.";
             return "네, " + place + "에는 " + what;
+        }
+        return null;
+    }
+
+    /**
+     * 데이트·소개팅·파티에 "청바지 괜찮아?", "운동화는?": 2026-11-23 시뮬에서 날씨만 보고 "네, 입어도 돼요"라고 했음.
+     * 입어도 되지만 깔끔하게 맞추는 법을 덧붙입니다.
+     */
+    static String dressyFitAdvice(String title, String utterance) {
+        String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        if (title == null || !com.fashionagent.agent.judge.RuleOutfitJudge.DRESSY.matcher(title).matches()) {
+            return null;
+        }
+        if (u.matches(".*(청바지|데님).*")) {
+            return "네, " + title + "에 깔끔한 청바지는 괜찮아요. 셔츠나 니트와 맞추면 더 좋아요.";
+        }
+        if (u.matches(".*(운동화|스니커즈).*")) {
+            return "네, 깨끗한 운동화면 괜찮아요. 로퍼나 구두면 더 깔끔해 보여요.";
+        }
+        if (u.matches(".*(트레이닝|추리닝|운동복|슬리퍼|쪼리|후드|레깅스|크록스).*")) {
+            return title + "에는 너무 편한 옷보다 조금 깔끔한 옷이 좋아요.";
         }
         return null;
     }
