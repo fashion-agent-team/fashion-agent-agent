@@ -190,6 +190,10 @@ public class TurnService {
             String prefix = session.lastTopicDate == null ? "" : java.time.LocalDate.parse(session.lastTopicDate)
                     .getMonthValue() + "월 " + java.time.LocalDate.parse(session.lastTopicDate).getDayOfMonth() + "일 ";
             Cities.City named = Cities.in(utterance);
+            // "부산 날씨" 뒤 "여기는?": 내 위치로 같은 날 날씨.
+            if (intent == Intent.OTHER && session.lastCity != null && s.matches("(그럼|그러면)?(여기|이곳|우리동네|이동네)(는|은|요|는요|도)?")) {
+                return new String[] {"weather", prefix + "날씨"};
+            }
             if (intent == Intent.OTHER && named != null && day == null
                     && s.replaceAll("^(그럼|그러면)", "").length() <= named.name().length() + 3) {
                 return new String[] {"weather", named.name() + " " + prefix + "날씨"};
@@ -212,7 +216,10 @@ public class TurnService {
                 && s.matches("(그럼|그러면|아니)?(다른|딴)(거|걸|것|걸로|거로|옷|코디)(는|은|요|줘|없어|있어|보여줘|말해줘)*")) {
             return new String[] {"outfit", "다른 거 추천해 줘"};
         }
-        if (intent == Intent.OUTFIT && day == null && "weather".equals(session.lastTopic) && session.lastTopicDate != null
+        // 일정 뒤 "그날 뭐 입지?"도(2026-11-23 시뮬: "모레는 일정이 없어요" 뒤 오늘로 추천).
+        if (intent == Intent.OUTFIT && day == null
+                && ("weather".equals(session.lastTopic) || "schedule".equals(session.lastTopic))
+                && session.lastTopicDate != null
                 && (s.startsWith("그럼") || s.startsWith("그러면") || s.startsWith("그날"))) {
             var d = java.time.LocalDate.parse(session.lastTopicDate);
             return new String[] {"outfit", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 뭐 입지"};

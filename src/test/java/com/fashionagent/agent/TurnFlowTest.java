@@ -552,6 +552,19 @@ class TurnFlowTest {
         JsonNode seoul = turn("u_city", """
                 {"sessionId": "%s", "utterance": "서울은?"}""".formatted(sid));
         assertThat(seoul.path("speech").asString()).startsWith("서울 날씨예요.");
+        JsonNode here = turn("u_city", """
+                {"sessionId": "%s", "utterance": "여기는?"}""".formatted(sid));
+        assertThat(here.path("speech").asString()).doesNotContain("날씨예요.").doesNotContain("할 수 없는");
+    }
+
+    @Test
+    void 일정_뒤_그날_뭐_입지는_그날로() throws Exception {
+        JsonNode first = turn("u_sched_day", """
+                {"utterance": "모레 일정 있어?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_sched_day", """
+                {"sessionId": "%s", "utterance": "그날 뭐 입지?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레의 패션");
     }
 
     @Test
