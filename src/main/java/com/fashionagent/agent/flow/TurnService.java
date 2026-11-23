@@ -112,7 +112,7 @@ public class TurnService {
             return false;
         }
         String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
-        if (s.matches("(취소|취소해|취소할래|그만할래|안할래|나중에할래|나중에|카메라꺼|카메라꺼줘|꺼줘|끌래|안볼래|끝|끝이야|끝내자|끝낼게|종료)(줘|요)?")) {
+        if (s.matches("(취소|취소해|취소할래|그만할래|그만할게|그만볼게|안할게|안할래|나중에할래|나중에|카메라꺼|카메라꺼줘|꺼줘|끌래|안볼래|끝|끝이야|끝내자|끝낼게|종료)(줘|요)?")) {
             return true;
         }
         // 옷 카메라에서 아직 본 옷이 없는데 "그만"이면 끝냅니다(2026-11-23 시뮬: "옷을 보여 주실래요?"로 카메라가 계속 켜짐).
@@ -208,9 +208,20 @@ public class TurnService {
                 && s.matches("(그럼|그러면)?(어제|그제|그저께|오늘|지난주|저번주|지난[월화수목금토일]요일|[월화수목금토일]요일)(은|는|요|은요|는요)?")) {
             return new String[] {"history", s.replaceAll("^(그럼|그러면)", "").replaceAll("(은|는)?요?$", "") + " 뭐 입었어"};
         }
+        // 추천 뒤 "신발은?": 그날 날씨로 어떤 신발이 좋은지(2026-11-23 시뮬에서 GPT로 갔음).
+        if (intent == Intent.OTHER && day == null && "outfit".equals(session.lastTopic)
+                && s.matches("(그럼|그러면)?(신발|신발은|신발은요|신발도|신발은뭐신어|신발은어떡해)")) {
+            String date = session.lastTopicDate == null ? "오늘" : java.time.LocalDate.parse(session.lastTopicDate)
+                    .getMonthValue() + "월 " + java.time.LocalDate.parse(session.lastTopicDate).getDayOfMonth() + "일";
+            return new String[] {"weather", (session.outfitCity == null ? "" : session.outfitCity + " ") + date + " 뭐 신어?"};
+        }
         // 추천 뒤 "어제 입은 거 말고": 다시 추천(2026-11-23 시뮬: '입은'으로 입은 모습 카메라를 켰음).
         if ((intent == Intent.OTHER || intent == Intent.OUTFIT || intent == Intent.CLOSET_HISTORY)
-                && "outfit".equals(session.lastTopic) && s.matches(".*(거|걸|것|옷)말고(요|다른거|딴거)?(줘|추천해줘)?")
+                && "outfit".equals(session.lastTopic)
+                && (s.matches(".*(거|걸|것|옷)말고(요|다른거|딴거)?(줘|추천해줘)?")
+                        // "치마 말고 바지로"(2026-11-23 시뮬에서 GPT로 갔음).
+                        || (s.matches("(그럼|그러면)?[가-힣]{1,5}말고([가-힣]{1,5}(로|으로))?(요|줘|해줘|추천해줘)?")
+                                && ClosetView.category(s.substring(0, s.indexOf("말고"))) != null))
                 && s.length() <= 16 && (day == null || day.isBefore(today))) {
             return new String[] {"outfit", "다른 거 추천해 줘"};
         }
