@@ -44,6 +44,15 @@ class CachingAgentToolsTest {
     }
 
     @Test
+    void 오늘_날씨는_자정을_넘기면_다시_부른다() {
+        now.set(Instant.parse("2026-11-09T23:58:00Z"));
+        tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", 37.5, "lon", 127.0));
+        now.set(Instant.parse("2026-11-10T00:02:00Z"));
+        tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", 37.5, "lon", 127.0));
+        assertThat(calls).hasSize(2);
+    }
+
+    @Test
     void 일정은_10분_동안_기억한다_앱이_켜질_때_불러_둔_값을_첫_추천에_쓰려고() {
         tools.callForUser(ToolNames.SCHEDULE_LIST, "u1", Map.of("date", "2026-11-10"));
         now.set(now.get().plusSeconds(9 * 60));
