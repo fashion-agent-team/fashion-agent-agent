@@ -88,4 +88,11 @@ class WeatherSpeechTest {
         assertThat(TurnService.weatherSpeech(w("맑음"), null, "오늘 겉옷 필요 없지?")).startsWith("아니요, 겉옷을 챙기세요.");
         assertThat(TurnService.weatherSpeech(w("맑음"), null, "오늘 우산 안 챙겨도 되지?")).startsWith("아니요, 우산 챙기세요.");
     }
+
+    @Test
+    void 바람_물으면_세기는_없다고_말하고_모자는_추위로_답한다() {
+        assertThat(TurnService.weatherSpeech(w("비"), null, "바람 많이 불어?")).startsWith("바람 세기는 아직 못 알려 드려요.");
+        assertThat(TurnService.weatherSpeech(w("맑음"), null, "바람막이 챙길까?")).doesNotContain("바람 세기");
+        assertThat(TurnService.weatherSpeech(w("맑음"), null, "모자 써야 돼?")).startsWith("네, 챙기세요.");
+    }
 }
