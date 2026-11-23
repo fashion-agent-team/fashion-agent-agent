@@ -927,6 +927,10 @@ public class TurnService {
      */
     static String occasionFitAdvice(String occasion, String utterance) {
         String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        // "내일 회사 가는데" 뒤 "청바지 돼?"(2026-11-23 시뮬)
+        if ("business".equals(occasion) && u.matches(".*(청바지|데님).*")) {
+            return "네, 회사라면 청바지도 괜찮아요. 중요한 회의가 있으면 슬랙스가 더 단정해요.";
+        }
         if (occasion == null || !(occasion.equals("formal") || occasion.equals("wedding") || occasion.equals("mourning"))) {
             return null;
         }
@@ -954,6 +958,9 @@ public class TurnService {
     /** 격식 자리에서 넥타이·가방을 물으면 바로 답할 말, 아니면 null. */
     static String occasionAccessoryAdvice(String occasion, String utterance) {
         String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        if ("business".equals(occasion) && u.contains("넥타이") && u.matches(".*(해야|매야|할까|맬까|돼|되나|필요|는|은)[?？.!~]*.*")) {
+            return "회사라면 꼭 매지 않아도 돼요. 중요한 회의나 발표가 있으면 매면 단정해 보여요.";
+        }
         if (occasion == null || !(occasion.equals("formal") || occasion.equals("wedding") || occasion.equals("mourning"))
                 || !(u.matches(".*(해야|매야|메야|들어야|할까|맬까|멜까|괜찮|돼|되나|어때|필요|뭐|무슨|어떤|색).*")
                         || u.matches(".*(는|은|도)[?？.!~]*"))) {

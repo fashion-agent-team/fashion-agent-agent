@@ -94,7 +94,9 @@ public enum Intent {
         // "치마 입을까?"도(뭐/무슨이 없으면 고를 옷을 물은 게 아니라 그 옷을 입어도 되는지 물은 말).
         // "청바지에 니트 어때?"(2026-11-23 시뮬). "이 니트 어때?"는 비춘 옷을 묻는 말이라 뺍니다.
         boolean how = s.contains("어때") && !s.startsWith("이") && !s.startsWith("요");
-        return ClosetView.category(s) != null && (containsAny(s, MAY_WORDS) || shall(s) || how) && !containsAny(s, LIGHT_WORDS)
+        // "청바지 돼?"(2026-11-23 시뮬에서 GPT로 갔음)
+        boolean ok = s.matches(".*(돼|돼요|되지|되죠)[?？.!~]*") && !s.matches(".*(야|해야)(돼|돼요|되지|되죠)[?？.!~]*");
+        return ClosetView.category(s) != null && (containsAny(s, MAY_WORDS) || shall(s) || how || ok) && !containsAny(s, LIGHT_WORDS)
                 && !s.contains("어울") && !s.contains("옷장");
     }
 
