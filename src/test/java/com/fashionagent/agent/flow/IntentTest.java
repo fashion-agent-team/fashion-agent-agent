@@ -157,6 +157,7 @@ class IntentTest {
         assertThat(Intent.of("비니 써도 돼?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("스타킹 신어야 돼?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("모자 써야 돼?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("트레이닝복 괜찮아?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("바람 많이 불어?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("내일 바람 세?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("바람막이 있어?", false)).isNotEqualTo(Intent.WEATHER);
