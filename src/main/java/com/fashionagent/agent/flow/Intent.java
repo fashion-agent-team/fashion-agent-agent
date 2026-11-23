@@ -102,7 +102,9 @@ public enum Intent {
         boolean how = s.contains("어때") && !s.startsWith("이") && !s.startsWith("요");
         // "청바지 돼?"(2026-11-23 시뮬에서 GPT로 갔음)
         boolean ok = s.matches(".*(돼|돼요|되지|되죠)[?？.!~]*") && !s.matches(".*(야|해야)(돼|돼요|되지|되죠)[?？.!~]*");
-        return ClosetView.category(s) != null && (containsAny(s, MAY_WORDS) || shall(s) || how || ok) && !containsAny(s, LIGHT_WORDS)
+        // "트레이닝복 괜찮아?"(2026-11-23 시뮬에서 GPT로 갔음): 옷장 종류에 없는 운동복도 옷으로 봅니다.
+        boolean garment = ClosetView.category(s) != null || s.matches(".*(트레이닝복|추리닝|츄리닝|운동복|체육복).*");
+        return garment && (containsAny(s, MAY_WORDS) || shall(s) || how || ok) && !containsAny(s, LIGHT_WORDS)
                 && !s.contains("어울") && !s.contains("옷장");
     }
 

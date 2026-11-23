@@ -1496,4 +1496,17 @@ class TurnFlowTest {
         assertThat(back.path("speech").asString()).doesNotContain("같아요. 솔기").doesNotContain("택이")
                 .doesNotContain("단추가");
     }
+
+    @Test
+    void 이_옷_어때_뒤_괜찮아는_끝내지_않고_보는_법을_다시_묻는다() throws Exception {
+        // 2026-11-23 시뮬: "괜찮아?"를 거절로 보고 끝냈음
+        String sid = turn("u-ok1", """
+                {"utterance": "이 옷 어때"}""").path("sessionId").asString();
+        JsonNode ok = turn("u-ok1", """
+                {"sessionId": "%s", "utterance": "괜찮아?"}""".formatted(sid));
+        assertThat(ok.path("speech").asString()).contains("내려놓고 볼게");
+        JsonNode no = turn("u-ok1", """
+                {"sessionId": "%s", "utterance": "아니 괜찮아"}""".formatted(sid));
+        assertThat(no.path("speech").asString()).contains("언제든 불러");
+    }
 }

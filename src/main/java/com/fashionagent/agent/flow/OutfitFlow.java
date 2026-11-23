@@ -241,7 +241,9 @@ public class OutfitFlow {
         if (mode == null) {
             String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
             // "봐 줘" 뒤 "아니, 됐어": 2026-11-23 시뮬에서 "내려놓고 볼게 또는 입고 볼게"를 다시 물었음.
-            if (NO.stream().anyMatch(s::contains)) {
+            // "이 옷 어때" → "괜찮아?"는 거절이 아니라 봐 달라는 물음입니다(2026-11-23 시뮬: 끝냈음).
+            boolean asking = utterance != null && utterance.strip().matches(".*(괜찮아|괜찮나|괜찮을까|괜찮아요)[?？]$");
+            if (!asking && NO.stream().anyMatch(s::contains)) {
                 session.modeAsked = 0;
                 sessions.save(session);
                 return new TurnResponse(session.sessionId, "알겠어요. 옷을 봐 드릴 게 생기면 언제든 불러 주세요.",
