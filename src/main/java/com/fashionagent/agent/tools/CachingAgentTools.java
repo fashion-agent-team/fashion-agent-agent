@@ -55,6 +55,10 @@ public class CachingAgentTools implements AgentTools, AutoCloseable {
             return timed(tool, args, false);
         }
         String key = key(tool, args);
+        if (ToolNames.WEATHER_TODAY.equals(tool)) {
+            // 자정을 넘기면 "오늘"이 바뀌니 날짜도 키에 넣습니다(2026-11-23 점검: 밤 11시 55분 값을 0시 5분에 오늘 최저·최고로 읽을 수 있었음).
+            key += "|day=" + java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("Asia/Seoul")));
+        }
         long now = clock.millis();
         Entry hit = cache.get(key);
         if (hit != null && hit.expiresAt() > now) {
