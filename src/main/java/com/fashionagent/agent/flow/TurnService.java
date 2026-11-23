@@ -163,7 +163,7 @@ public class TurnService {
                 && said.matches(".*(우산|비와|비가|비올|비오|비온|비소식|장화|우비).*");
         // "내일 영하야?" 뒤 "모레는?"도 영하인지로(2026-11-23 시뮬: 날씨만 읽었음).
         session.lastWeatherFreeze = "weather".equals(topic) && said.contains("영하");
-        session.lastWearAsk = "weather".equals(topic) && Intent.wearMay(said) ? utterance : null;
+        session.lastWearAsk = "weather".equals(topic) && (Intent.wearMay(said) || Intent.lightMay(said)) ? utterance : null;
         var d = SpokenDate.from(utterance, today());
         session.lastTopicDate = d == null || d.equals(today()) ? null : d.toString();
         sessions.save(session);
@@ -251,7 +251,10 @@ public class TurnService {
         if (intent == Intent.OTHER && day != null && (rest.isEmpty() || nextDay)) {
             String date = day.getMonthValue() + "월 " + day.getDayOfMonth() + "일";
             return new String[] {"history".equals(session.lastTopic) ? "outfit" : session.lastTopic, switch (session.lastTopic) {
-                case "weather" -> date + (session.lastWeatherRain ? " 비 와?" : session.lastWeatherFreeze ? " 영하야?" : " 날씨");
+                // "반바지 입어도 돼?" 뒤 "내일은?": 그날도 그 옷을 입어도 되는지(2026-11-23 시뮬: 날씨만 읽었음).
+                case "weather" -> session.lastWearAsk != null
+                        ? date + " " + session.lastWearAsk.replaceAll("(오늘|내일|모레|글피|지금|\\d{1,2}월\\s*\\d{1,2}일|(이번주|다음주)?\\s*[월화수목금토일]요일)(은|는|에|엔)?\\s*", "").trim()
+                        : date + (session.lastWeatherRain ? " 비 와?" : session.lastWeatherFreeze ? " 영하야?" : " 날씨");
                 case "schedule" -> date + " 일정";
                 default -> date + " 뭐 입지";
             }};
@@ -353,7 +356,7 @@ public class TurnService {
         // 추천 뒤 "우산 챙겨?"로 날씨를 한 번 물은 다음 "다른 거"도 옷으로(2026-11-23 시뮬에서 GPT로 갔음).
         if (intent == Intent.OTHER && ("outfit".equals(session.lastTopic)
                         || ("weather".equals(session.lastTopic) && session.advice != null))
-                && (s.matches("(그럼|그러면|아니)?(다른|딴)(거|걸|것|걸로|거로|옷|코디)(는|은|요|줘|없어|있어|보여줘|말해줘)*")
+                && (s.matches("(그럼|그러면|아니)?(또|하나더)?(다른|딴)(거|걸|것|걸로|거로|옷|코디)(는|은|요|줘|없어|있어|보여줘|말해줘)*")
                         // "그거 말고": 2026-11-23 시뮬에서 GPT로 갔음
                         || s.matches("(아니)?(그거|그건|그걸|이거|이건)말고(요|다른거|딴거)?(는|줘|없어|추천해줘)?"))) {
             return new String[] {"outfit", "다른 거 추천해 줘"};
@@ -662,8 +665,11 @@ public class TurnService {
                 session.spokenTitle = said.title();
             }
             String manner = occasionColorAdvice(session.spokenOccasion, utterance);
+            if (manner == null) {
+                manner = occasionFitAdvice(session.spokenOccasion, utterance);
+            }
             if (manner != null) {
-                speech = manner + " " + speech.replaceFirst("^네, (입어|신어)도 돼요\\. (다만 )?", "");
+                speech = manner + " " + speech.replaceFirst("^네, ((입어|신어)도 돼요\\. (다만 )?)?", "");
             }
             if (city != null) {
                 speech = city.name() + " 날씨예요. " + speech;
@@ -900,6 +906,32 @@ public class TurnService {
         }
         if ("mourning".equals(occasion) && (bright || white)) {
             return "조문 자리에는 검정이나 어두운 색이 좋아요. 밝은 색은 피하세요.";
+        }
+        return null;
+    }
+
+    /**
+     * "내일 면접인데 정장 입어야 돼?": "네, 겉옷을 챙기세요"처럼 날씨만 답했음(2026-11-23 시뮬).
+     * 말한 자리(면접·결혼식·조문)에 그 옷이 맞는지를 먼저 말합니다.
+     */
+    static String occasionFitAdvice(String occasion, String utterance) {
+        String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        if (occasion == null || !(occasion.equals("formal") || occasion.equals("wedding") || occasion.equals("mourning"))) {
+            return null;
+        }
+        String place = switch (occasion) {
+            case "formal" -> "격식 있는 자리";
+            case "wedding" -> "결혼식";
+            default -> "조문 자리";
+        };
+        if (u.matches(".*(반바지|운동복|운동화|트레이닝|추리닝|슬리퍼|쪼리|샌들|후드|맨투맨|레깅스|크록스).*")) {
+            return place + "에는 너무 편한 옷보다 단정한 옷이 좋아요.";
+        }
+        if (u.matches(".*(정장|수트|슈트|셔츠|블라우스|슬랙스|구두|넥타이|자켓|재킷|블레이저).*")
+                && u.matches(".*(입어야|신어야|매야|해야|입을까|신을까|맬까|할까|괜찮|돼|되나|어때|필요).*")) {
+            String what = u.contains("넥타이") ? "넥타이를 매면 더 단정해 보여요."
+                    : u.contains("구두") ? "구두가 단정해 보여서 좋아요." : "단정한 차림이라 잘 맞아요.";
+            return "네, " + place + "에는 " + what;
         }
         return null;
     }
