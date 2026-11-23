@@ -303,6 +303,11 @@ public class TurnService {
      */
     private TurnResponse weather(AgentSession session, Location location, String utterance) {
         Location at = location == null ? Location.SEOUL : location;
+        // "부산 날씨 어때?": 말한 도시 날씨로 답하고, 어느 도시인지 먼저 말합니다.
+        Cities.City city = Cities.in(utterance);
+        if (city != null) {
+            at = city.at();
+        }
         var today = java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("Asia/Seoul")));
         if (SpokenDate.impossible(utterance, today)) {
             return say(session, SpokenDate.SAY_IMPOSSIBLE, Next.listen);
@@ -315,6 +320,9 @@ public class TurnService {
                     ? tools.call(ToolNames.WEATHER_FORECAST, Map.of("lat", at.lat(), "lon", at.lon(), "date", asked.toString()))
                     : tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", at.lat(), "lon", at.lon()));
             String speech = weatherSpeech(w, otherDay ? label : null, utterance);
+            if (city != null) {
+                speech = city.name() + " 날씨예요. " + speech;
+            }
             sessions.save(session);
             return new TurnResponse(session.sessionId, speech, Next.listen, Result.of("weather"));
         } catch (ToolException e) {
