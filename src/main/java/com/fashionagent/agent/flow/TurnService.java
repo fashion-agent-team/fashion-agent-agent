@@ -168,7 +168,8 @@ public class TurnService {
         if (intent == Intent.WEATHER && SpokenOccasion.from(utterance) != null) {
             session.statedPlan = utterance;
         } else if (intent == Intent.WEATHER && session.statedPlan != null && day == null
-                && (Intent.wearMay(s) || Intent.lightMay(s))) {
+                && !s.contains("지금") && Cities.in(utterance) == null) {
+            // "내일 아침 7시에 나가" → "그때 추워?"도 그날 날씨로(2026-11-23 시뮬: 오늘 날씨로 답함).
             // "토요일 결혼식이야" → "흰 블라우스 입어도 돼?": 그날 날씨와 자리로 답합니다(2026-11-23 시뮬: 오늘 날씨로 "네"라고 함).
             return new String[] {"weather", session.statedPlan + " " + utterance};
         } else if (intent == Intent.OTHER && !s.contains("일정") && (SpokenOccasion.from(utterance) != null
