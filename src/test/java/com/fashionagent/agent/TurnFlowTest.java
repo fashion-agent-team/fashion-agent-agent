@@ -605,6 +605,42 @@ class TurnFlowTest {
     }
 
     @Test
+    void 면접_추천_뒤_넥타이와_백팩을_바로_답한다() throws Exception {
+        JsonNode first = turn("u_tie", """
+                {"utterance": "면접 가는데 뭐 입어"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode tie = turn("u_tie", """
+                {"sessionId": "%s", "utterance": "넥타이 매야 돼?"}""".formatted(sid));
+        assertThat(tie.path("speech").asString()).startsWith("격식 있는 자리에는 넥타이를");
+        JsonNode bag = turn("u_tie", """
+                {"sessionId": "%s", "utterance": "백팩 메도 돼?"}""".formatted(sid));
+        assertThat(bag.path("speech").asString()).contains("백팩보다");
+    }
+
+    @Test
+    void 추천_뒤_음_별로야는_다시_추천한다() throws Exception {
+        JsonNode first = turn("u_meh", """
+                {"utterance": "오늘 뭐입지?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_meh", """
+                {"sessionId": "%s", "utterance": "음 별로야"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).doesNotContain("할 수 없는");
+        JsonNode r2 = turn("u_meh", """
+                {"sessionId": "%s", "utterance": "더 밝은 색으로"}""".formatted(sid));
+        assertThat(r2.path("speech").asString()).doesNotContain("할 수 없는");
+    }
+
+    @Test
+    void 치아_카메라_중_없어는_카메라를_유지한다() throws Exception {
+        JsonNode first = turn("u_none", """
+                {"utterance": "이 사이에 뭐 꼈어?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_none", """
+                {"sessionId": "%s", "utterance": "없어?"}""".formatted(sid));
+        assertThat(r.path("next").asString()).isEqualTo("camera_teeth");
+    }
+
+    @Test
     void 추천_뒤_또_다른_거도_다시_추천한다() throws Exception {
         JsonNode first = turn("u_again3", """
                 {"utterance": "추천해줘"}""");

@@ -102,7 +102,9 @@ public class TurnService {
     private static final java.util.List<String> FACE_ACK_PREFIX = java.util.List.of("너무", "진해", "진하", "연해", "연하",
             "티나", "티가", "자연스러", "어색", "과해", "과하", "번져", "지워졌", "뭉쳤", "떴어",
             // "앞니 봐줘", "오른쪽 눈 봐줘": 어디를 볼지 말한 것(2026-11-23 시뮬: 치아 카메라가 꺼짐)
-            "앞니", "윗니", "아랫니", "어금니", "이사이", "잇몸", "입술", "왼쪽", "오른쪽");
+            "앞니", "윗니", "아랫니", "어금니", "이사이", "잇몸", "입술", "왼쪽", "오른쪽",
+            // "없어?", "깨끗해?": 다 봤는지 묻는 말(2026-11-23 시뮬: 치아 카메라가 꺼짐)
+            "없어", "없지", "깨끗", "괜찮", "뭐꼈", "꼈어", "남았");
 
     /** 카메라를 켠 채 그만두자는 말이면 true. 옷 카메라의 "그만", "됐어"는 옷 마치기(FINISH)가 먼저 가져갑니다. */
     static boolean cameraCancel(AgentSession session, String utterance) {
@@ -363,7 +365,11 @@ public class TurnService {
         }
         // 추천 뒤 "너무 꾸민 건 싫어": 같은 날·자리로 다시 추천(2026-11-23 시뮬: 봐 주기를 거절한 걸로 보고 끝냈음).
         if ((intent == Intent.OTHER || intent == Intent.OUTFIT) && "outfit".equals(session.lastTopic)
-                && dislikesStyle(s) && s.length() <= 16) {
+                && (dislikesStyle(s)
+                        // "음 별로야", "더 밝은 색으로"(2026-11-23 시뮬에서 GPT로 갔음)
+                        || s.matches("(음|흠|아|으음|근데|그건)?(별로|별론데|별로야|별로다|별로네|맘에안들어|마음에안들어|안땡겨|싫어)(요)?")
+                        || s.matches("(좀)?(더)?(밝은|어두운|화사한|차분한|따뜻한|시원한|가벼운|편한|단정한)(색|색으로|색깔로|걸로|거로|옷으로)?(줘|해줘|추천해줘)?"))
+                && s.length() <= 16) {
             return new String[] {"outfit", "다른 거 추천해 줘"};
         }
         // 추천 뒤 "좀 더 캐주얼하게", "더 단정하게": 같은 날·자리로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
@@ -584,6 +590,11 @@ public class TurnService {
             case HELP -> say(session, SmallTalk.CAPABILITIES, Next.listen);
             // 그 밖(일정 등록·삭제, 다른 날 일정 등)은 GPT가 도구를 고릅니다(약속 5-2절).
             case OTHER -> {
+                // 면접 추천 뒤 "넥타이 매야 돼?", "백팩 메도 돼?": 2026-11-23 시뮬에서 GPT로 갔음. 자리에 맞춰 바로 답합니다.
+                String accessory = occasionAccessoryAdvice(session.spokenOccasion, req.utterance());
+                if (accessory != null) {
+                    yield say(session, accessory, Next.listen);
+                }
                 // 카메라를 켜 둔 채 일정을 넣었을 때만 카메라를 이어 갑니다. 추천만 듣고 카메라를 안 켰으면 켜지 않습니다.
                 Next camera = outfitCamera(session);
                 Assistant.Reply r = assistant.reply(session, req.utterance(), req.location(), camera != null);
@@ -933,6 +944,29 @@ public class TurnService {
             String what = u.contains("넥타이") ? "넥타이를 매면 더 단정해 보여요."
                     : u.contains("구두") ? "구두가 단정해 보여서 좋아요." : "단정한 차림이라 잘 맞아요.";
             return "네, " + place + "에는 " + what;
+        }
+        return null;
+    }
+
+    /** 격식 자리에서 넥타이·가방을 물으면 바로 답할 말, 아니면 null. */
+    static String occasionAccessoryAdvice(String occasion, String utterance) {
+        String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        if (occasion == null || !(occasion.equals("formal") || occasion.equals("wedding") || occasion.equals("mourning"))
+                || !u.matches(".*(해야|매야|메야|들어야|할까|맬까|멜까|괜찮|돼|되나|어때|필요|는|은|도)[?？.!~]*")) {
+            return null;
+        }
+        String place = switch (occasion) {
+            case "formal" -> "격식 있는 자리";
+            case "wedding" -> "결혼식";
+            default -> "조문 자리";
+        };
+        if (u.contains("넥타이")) {
+            return occasion.equals("mourning")
+                    ? "조문 자리라면 검은색이나 어두운 무늬 없는 넥타이가 좋아요."
+                    : place + "에는 넥타이를 매면 더 단정해 보여요. 꼭 매지 않아도 셔츠 단추를 잘 채우면 괜찮아요.";
+        }
+        if (u.matches(".*(백팩|배낭|에코백|크로스백).*")) {
+            return place + "에는 백팩보다 단정한 손가방이나 서류 가방이 좋아요.";
         }
         return null;
     }
