@@ -65,4 +65,10 @@ class WeatherSpeechTest {
     void 목도리도_짧게_물어도_답한다() {
         assertThat(TurnService.weatherSpeech(w("맑음"), "모레", "목도리도?")).startsWith("네, 챙기세요.");
     }
+
+    @Test
+    void 겉옷_우산을_거꾸로_물어도_네_아니요가_맞다() {
+        assertThat(TurnService.weatherSpeech(w("맑음"), null, "오늘 겉옷 필요 없지?")).startsWith("아니요, 겉옷을 챙기세요.");
+        assertThat(TurnService.weatherSpeech(w("맑음"), null, "오늘 우산 안 챙겨도 되지?")).startsWith("아니요, 우산 챙기세요.");
+    }
 }
