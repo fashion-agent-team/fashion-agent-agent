@@ -39,7 +39,9 @@ public class ColorFlow {
     private static final List<String> WORDS = List.of("무슨색", "뭔색", "어떤색", "무슨색깔", "색깔뭐", "색이뭐", "색뭐",
             "색알려", "색깔알려", "색확인", "색좀봐", "색봐", "무슨무늬", "어떤무늬",
             // 2026-11-23 시뮬: "파란색이야?"처럼 색을 확인하는 말
-            "색이야", "색맞아", "색깔이야", "색인가");
+            "색이야", "색맞아", "색깔이야", "색인가",
+            // 2026-11-23 시뮬: "옷 색깔 봐줘"가 GPT로 갔음
+            "색깔봐", "색깔좀봐", "색깔확인");
     private static final List<String> FINISH = List.of("됐어", "그만", "끝", "다봤", "고마워", "이제됐");
 
     private final AgentTools tools;

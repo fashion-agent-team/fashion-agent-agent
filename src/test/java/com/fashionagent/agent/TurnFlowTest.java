@@ -581,6 +581,26 @@ class TurnFlowTest {
     }
 
     @Test
+    void 날씨_뒤_저녁엔은_같은_날_예보로() throws Exception {
+        JsonNode first = turn("u_evening", """
+                {"utterance": "모레 아침 추워?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_evening", """
+                {"sessionId": "%s", "utterance": "저녁엔?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레").doesNotContain("할 수 없는");
+    }
+
+    @Test
+    void 추천_뒤_그날_일정은은_그날로() throws Exception {
+        JsonNode first = turn("u_xmas_sched", """
+                {"utterance": "모레 뭐 입지"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_xmas_sched", """
+                {"sessionId": "%s", "utterance": "그날 일정은?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레").doesNotContain("오늘");
+    }
+
+    @Test
     void 날씨_뒤_거기_뭐_입어는_그날로() throws Exception {
         JsonNode first = turn("u_there_day", """
                 {"utterance": "모레 날씨 어때"}""");

@@ -216,6 +216,19 @@ public class TurnService {
                 default -> date + " 뭐 입지";
             }};
         }
+        // "내일 아침 춥대?" 뒤 "점심엔?", "저녁엔?": 같은 날 하루 예보로(2026-11-23 시뮬에서 GPT로 갔음).
+        if (intent == Intent.OTHER && day == null && "weather".equals(session.lastTopic)
+                && s.matches("(그럼|그러면)?(아침|점심|낮|오전|오후|저녁|밤|새벽)(에는|엔|에|은|는|요|은요|는요)*")) {
+            String date = session.lastTopicDate == null ? "오늘" : java.time.LocalDate.parse(session.lastTopicDate)
+                    .getMonthValue() + "월 " + java.time.LocalDate.parse(session.lastTopicDate).getDayOfMonth() + "일";
+            return new String[] {"weather", (session.lastCity == null ? "" : session.lastCity + " ") + date
+                    + (session.lastWeatherRain ? " 비 와?" : " 날씨")};
+        }
+        // "크리스마스에 뭐 입지?" 뒤 "그날 일정은?": 방금 말한 날 일정(2026-11-23 시뮬: 오늘 일정으로 답함).
+        if (intent == Intent.SCHEDULE && day == null && s.contains("그날") && session.lastTopicDate != null) {
+            var d = java.time.LocalDate.parse(session.lastTopicDate);
+            return new String[] {"schedule", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 일정"};
+        }
         // "제주 내일 날씨" 뒤 "거기 우산 필요해?", "서울은?": 2026-11-23 시뮬에서 내 위치(서울) 날씨로 답하거나 GPT로 갔음.
         if ("weather".equals(session.lastTopic)) {
             String prefix = session.lastTopicDate == null ? "" : java.time.LocalDate.parse(session.lastTopicDate)
@@ -261,7 +274,7 @@ public class TurnService {
         }
         // 추천 뒤 "좀 더 캐주얼하게", "더 단정하게": 같은 날·자리로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
         if ((intent == Intent.OTHER || intent == Intent.OUTFIT) && "outfit".equals(session.lastTopic)
-                && s.matches("(그럼|그러면)?(좀|조금)?(더)?(캐주얼|편하|편한|가볍|가벼운|따뜻|시원|두껍|두꺼운|단정|깔끔|포멀|격식|차려입|꾸며|힙하|귀엽|귀여운|세련)"
+                && s.matches("(그럼|그러면)?(좀|조금)?(더)?(캐주얼|편하|편한|가볍|가벼운|따뜻|시원|두껍|두꺼운|단정|깔끔|포멀|격식|차려입|꾸며|꾸민|꾸미|힙하|귀엽|귀여운|세련)"
                         + "[가-힣]{0,8}[?？!.~]*")
                 && !s.contains("않") && !s.contains("같") && s.length() <= 16) {
             return new String[] {"outfit", "다른 거 추천해 줘"};
