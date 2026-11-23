@@ -675,7 +675,8 @@ public class TurnService {
         int rain = w.path("precipitationProbability").asInt(0);
         boolean umbrella = w.path("needsUmbrella").asBoolean(false);
         String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
-        boolean askedRain = u.contains("우산") || u.contains("비") || u.contains("장화") || u.contains("우비")
+        // "네이비 셔츠 입어도 돼?"의 '비'는 비가 아닙니다(2026-11-23 시뮬: 우산 답을 했음).
+        boolean askedRain = u.contains("우산") || u.replaceAll("네이비|비니|비즈|비키니|비싼|비슷", "").contains("비") || u.contains("장화") || u.contains("우비")
                 || u.replaceAll("[?？.!~]", "").endsWith("눈")
                 || u.contains("레인") || u.contains("눈와") || u.contains("눈올")
                 || u.contains("눈오") || u.contains("눈이") || u.contains("젖");
