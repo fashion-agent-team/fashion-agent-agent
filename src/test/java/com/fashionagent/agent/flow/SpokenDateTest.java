@@ -27,6 +27,13 @@ class SpokenDateTest {
     }
 
     @Test
+    void 며칠_뒤를_읽는다() {
+        assertThat(d("3일 뒤 날씨")).isEqualTo(TODAY.plusDays(3));
+        assertThat(d("100일 후 날씨")).isEqualTo(TODAY.plusDays(100));
+        assertThat(d("2주 뒤에 뭐 입지")).isEqualTo(TODAY.plusDays(14));
+    }
+
+    @Test
     void 주말은_이번_토요일() {
         LocalDate monday = LocalDate.of(2026, 11, 23);
         assertThat(SpokenDate.from("주말에 결혼식 가는데 뭐 입지?", monday)).isEqualTo(LocalDate.of(2026, 11, 28));

@@ -38,6 +38,12 @@ public final class SpokenDate {
         if (m.find()) {
             return monthDay(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), today);
         }
+        // "100일 뒤 날씨", "2주 후": 2026-11-23 시뮬에서 오늘 날씨로 답했음.
+        Matcher after = Pattern.compile("(\\d{1,3})(일|주)(뒤|후|있다가)").matcher(s);
+        if (after.find()) {
+            int n = Integer.parseInt(after.group(1));
+            return today.plusDays("주".equals(after.group(2)) ? 7L * n : n);
+        }
         if (s.contains("글피")) {
             return today.plusDays(3);
         }
