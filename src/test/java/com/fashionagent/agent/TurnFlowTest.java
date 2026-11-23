@@ -713,6 +713,26 @@ class TurnFlowTest {
     }
 
     @Test
+    void 다음주_월요일_뒤_화요일은은_다음주_화요일() throws Exception {
+        JsonNode first = turn("u_nextweek_day", """
+                {"utterance": "다음주 월요일 비 와?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_nextweek_day", """
+                {"sessionId": "%s", "utterance": "화요일은?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).contains("화요일").doesNotContain("내일").doesNotContain("모레");
+    }
+
+    @Test
+    void 추천_뒤_그거_말고는_다시_추천() throws Exception {
+        JsonNode first = turn("u_not_that", """
+                {"utterance": "모레 뭐 입지"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_not_that", """
+                {"sessionId": "%s", "utterance": "그거 말고"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레").doesNotContain("할 수 없는");
+    }
+
+    @Test
     void 우산_뒤_겉옷은은_챙기라고_답한다() throws Exception {
         JsonNode first = turn("u_outer_follow", """
                 {"utterance": "모레 우산 챙겨?"}""");
