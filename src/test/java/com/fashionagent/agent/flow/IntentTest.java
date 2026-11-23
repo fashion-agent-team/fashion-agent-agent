@@ -156,6 +156,11 @@ class IntentTest {
         assertThat(Intent.of("치마 입어도 돼?", true)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("장화 신어야 돼?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("목도리도?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("내일 비 온대?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("양말 무슨 색 신을까?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("신발은 뭐 신지?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("운동화 신을까?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("토요일에 눈 온다던데", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("운동화 신어도 돼?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("오늘 겉옷 필요 없지?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("반팔 입을까?", true)).isEqualTo(Intent.WEATHER);

@@ -227,6 +227,13 @@ public class TurnService {
                 && s.matches("(그럼|그러면|아니)?(다른|딴)(거|걸|것|걸로|거로|옷|코디)(는|은|요|줘|없어|있어|보여줘|말해줘)*")) {
             return new String[] {"outfit", "다른 거 추천해 줘"};
         }
+        // 추천 뒤 "좀 더 캐주얼하게", "더 단정하게": 같은 날·자리로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
+        if (intent == Intent.OTHER && "outfit".equals(session.lastTopic)
+                && s.matches("(그럼|그러면)?(좀|조금)?(더)?(캐주얼|편하|편한|가볍|가벼운|단정|깔끔|포멀|격식|차려입|꾸며|힙하|귀엽|귀여운|세련)"
+                        + "[가-힣]{0,8}[?？!.~]*")
+                && !s.contains("않") && !s.contains("같") && s.length() <= 16) {
+            return new String[] {"outfit", "다른 거 추천해 줘"};
+        }
         // 일정 뒤 "그날 뭐 입지?"도(2026-11-23 시뮬: "모레는 일정이 없어요" 뒤 오늘로 추천).
         if (intent == Intent.OUTFIT && day == null
                 && ("weather".equals(session.lastTopic) || "schedule".equals(session.lastTopic))
