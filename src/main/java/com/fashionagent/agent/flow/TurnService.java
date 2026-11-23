@@ -275,10 +275,12 @@ public class TurnService {
             return new String[] {"outfit", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 " + utterance};
         }
         // 일정 뒤 "그날 뭐 입지?"도(2026-11-23 시뮬: "모레는 일정이 없어요" 뒤 오늘로 추천).
+        // "내일 서울은?" 뒤 "거기 뭐 입어"도 그날로(2026-11-23 시뮬: 오늘로 추천).
         if (intent == Intent.OUTFIT && day == null
                 && ("weather".equals(session.lastTopic) || "schedule".equals(session.lastTopic))
                 && session.lastTopicDate != null
-                && (s.startsWith("그럼") || s.startsWith("그러면") || s.startsWith("그날"))) {
+                && (s.startsWith("그럼") || s.startsWith("그러면") || s.startsWith("그날") || s.startsWith("그때")
+                        || s.startsWith("거기"))) {
             var d = java.time.LocalDate.parse(session.lastTopicDate);
             return new String[] {"outfit", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 뭐 입지"};
         }
