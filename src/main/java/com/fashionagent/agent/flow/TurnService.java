@@ -97,7 +97,7 @@ public class TurnService {
             "오케이", "그래");
     private static final java.util.List<String> ACK_PREFIX = java.util.List.of("알겠", "알았", "잠깐", "잠시만", "기다려",
             "준비됐", "비출게", "비춰볼게", "보여줄게", "다입었", "입었어", "입었다", "다했어", "괜찮아", "괜찮지",
-            "어때", "이상해", "이상하지", "봐줘", "보여", "번졌", "묻었", "꼈어", "삐뚤", "짝짝", "다됐", "끝났");
+            "어때", "이상해", "이상하지", "봐줘", "보여", "번졌", "묻었", "꼈어", "삐뚤", "짝짝", "다됐", "끝났", "깨끗");
 
     /** 카메라를 켠 채 그만두자는 말이면 true. 옷 카메라의 "그만", "됐어"는 옷 마치기(FINISH)가 먼저 가져갑니다. */
     static boolean cameraCancel(AgentSession session, String utterance) {
