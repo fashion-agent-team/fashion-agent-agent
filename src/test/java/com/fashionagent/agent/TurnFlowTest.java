@@ -631,6 +631,12 @@ class TurnFlowTest {
         JsonNode r = turn("u_face_ok", """
                 {"sessionId": "%s", "utterance": "괜찮아?"}""".formatted(sid));
         assertThat(r.path("speech").asString()).contains("비춰").doesNotContain("할 수 없는");
+
+        for (String u : new String[] {"번졌어?", "다 됐어"}) {
+            JsonNode q = turn("u_face_ok", """
+                    {"sessionId": "%s", "utterance": "%s"}""".formatted(sid, u));
+            assertThat(q.path("speech").asString()).contains("비춰");
+        }
     }
 
     @Test
@@ -651,6 +657,16 @@ class TurnFlowTest {
         JsonNode r = turn("u_mode_escape", """
                 {"sessionId": "%s", "utterance": "옷장에 셔츠 있어?"}""".formatted(sid));
         assertThat(r.path("speech").asString()).contains("옷장").doesNotContain("내려놓고 볼게");
+    }
+
+    @Test
+    void 내일_추천_뒤_추천해준_거_말고는_내일로_다시_추천한다() throws Exception {
+        JsonNode first = turn("u_notthis", """
+                {"utterance": "내일 뭐 입어?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_notthis", """
+                {"sessionId": "%s", "utterance": "추천해준 거 말고"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("내일");
     }
 
     @Test
