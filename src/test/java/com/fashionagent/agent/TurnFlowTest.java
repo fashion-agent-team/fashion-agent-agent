@@ -789,6 +789,9 @@ class TurnFlowTest {
         JsonNode r = turn("u_outer_follow", """
                 {"sessionId": "%s", "utterance": "겉옷은?"}""".formatted(sid));
         assertThat(r.path("speech").asString()).doesNotContain("입어도 돼요").doesNotContain("할 수 없는");
+        JsonNode lt = turn("u_outer_follow", """
+                {"sessionId": "%s", "utterance": "그럼 반팔?"}""".formatted(sid));
+        assertThat(lt.path("speech").asString()).doesNotContain("할 수 없는");
         JsonNode sh = turn("u_outer_follow", """
                 {"sessionId": "%s", "utterance": "샌들은?"}""".formatted(sid));
         assertThat(sh.path("speech").asString()).doesNotContain("입어도").doesNotContain("할 수 없는");
