@@ -112,6 +112,18 @@ class ColorFlowTest {
     }
 
     @Test
+    @DisplayName("Given 색 확인 중 When \"이건?\"·\"짧게 말해줘\" Then 카메라를 켜 둔 채 답한다")
+    void shortFollowUps() {
+        flow.start(session);
+
+        assertThat(flow.answer(session, "이건?").next()).isEqualTo(Next.camera_outfit);
+        TurnResponse shorter = flow.answer(session, "짧게 말해줘");
+        assertThat(shorter.next()).isEqualTo(Next.camera_outfit);
+        assertThat(shorter.colorDetail()).isFalse();
+        assertThat(session.colorCheck).isTrue();
+    }
+
+    @Test
     @DisplayName("Given 색 확인 중 When 다른 말(\"내일 날씨 어때\") Then 색 확인을 접고 null(원래 대화로)")
     void otherTopic() {
         flow.start(session);

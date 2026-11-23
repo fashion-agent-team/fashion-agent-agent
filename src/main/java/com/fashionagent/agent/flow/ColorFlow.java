@@ -69,6 +69,20 @@ public class ColorFlow {
         if (isColorQuestion(s)) {
             return reply(session, "네, 옷을 비춰 주시면 색을 알려 드릴게요.", Next.camera_outfit);
         }
+        // 색을 보는 중 "이건?", "이것도": 다음 옷을 비추겠다는 말(2026-11-23 시뮬에서 색 확인을 접었음).
+        if (s.matches("(그럼|그러면)?(이건|이거는|이것도|이것은|이거도|이건요|저건|저거는)(뭐야|요|어때)?")) {
+            return reply(session, "네, 비춰 주시면 바로 알려 드릴게요.", Next.camera_outfit);
+        }
+        // 색을 보는 중 "짧게 말해 줘", "자세히 말해 줘": 색 설명 길이만 바꾸고 카메라는 켜 둡니다.
+        if (s.length() <= 12 && (s.contains("짧게") || s.contains("간단히") || s.contains("자세히"))) {
+            boolean detail = s.contains("자세히");
+            session.colorDetail = detail;
+            sessions.save(session);
+            return new TurnResponse(session.sessionId,
+                    detail ? com.fashionagent.agent.judge.ColorFeel.SAY_DETAILED
+                            : com.fashionagent.agent.judge.ColorFeel.SAY_SHORT,
+                    Next.camera_outfit, null, null, detail);
+        }
         // "이 두 개 어울려?": 2026-11-23 시뮬에서 색 확인을 접고 "할 수 없는 일이에요"로 답했음.
         if (s.contains("어울") && s.length() <= 15) {
             return harmony(session);
