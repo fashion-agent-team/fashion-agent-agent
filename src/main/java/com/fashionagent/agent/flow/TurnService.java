@@ -160,7 +160,10 @@ public class TurnService {
         var day = SpokenDate.from(s, today);
         // "나 오늘 면접이야" → "뭐 입고 가면 좋을까?": 자리·날을 이어 받아 추천(2026-11-23 시뮬: 면접을 잊고 편한 옷 추천).
         // "토요일에 데이트 있어"처럼 자리 말이 없어도 날과 계획만 말했으면 그 날을 이어 받습니다.
-        if (intent == Intent.OTHER && !s.contains("일정") && (SpokenOccasion.from(utterance) != null
+        // "내일 출근하는데 비 와?" → "그럼 뭐 입지?"도 출근에 맞춰(2026-11-23 시뮬).
+        if (intent == Intent.WEATHER && SpokenOccasion.from(utterance) != null) {
+            session.statedPlan = utterance;
+        } else if (intent == Intent.OTHER && !s.contains("일정") && (SpokenOccasion.from(utterance) != null
                 || (day != null && s.length() <= 15 && s.matches(".*(있어|있음|이야|예요|가|가요|가야돼|간다|가는데|해|해요)$")))) {
             session.statedPlan = utterance;
         } else if (intent == Intent.OUTFIT && session.statedPlan != null && day == null
@@ -168,7 +171,7 @@ public class TurnService {
             String plan = session.statedPlan;
             session.statedPlan = null;
             return new String[] {"outfit", plan + " " + utterance};
-        } else if (intent != Intent.OTHER) {
+        } else if (intent != Intent.OTHER && intent != Intent.WEATHER) {
             session.statedPlan = null;
         }
         if (session.lastTopic == null) {
