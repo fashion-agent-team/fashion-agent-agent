@@ -58,6 +58,23 @@ public final class SpokenDate {
         return null;
     }
 
+    /**
+     * "2월 30일", "13월 5일"처럼 날짜를 말했는데 없는 날이면 true. 2026-11-23 시뮬: 없는 날을 물으면 조용히 오늘로 답했음.
+     */
+    public static boolean impossible(String utterance, LocalDate today) {
+        String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        Matcher m = MONTH_DAY.matcher(s);
+        if (!m.find()) {
+            m = SLASH.matcher(s);
+            if (!m.find()) {
+                return false;
+            }
+        }
+        return monthDay(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), today) == null;
+    }
+
+    static final String SAY_IMPOSSIBLE = "그런 날짜는 없어요. 몇 월 며칠인지 다시 말씀해 주실래요?";
+
     /** 지난 날이면 내년. 없는 날(2월 30일 등)이면 null. */
     private static LocalDate monthDay(int month, int day, LocalDate today) {
         try {
