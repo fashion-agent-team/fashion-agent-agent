@@ -34,7 +34,7 @@ public final class SmallTalk {
     private static final List<String> HELLO = List.of("안녕", "반가", "하이", "좋은아침");
     private static final List<String> THANKS = List.of("고마", "감사", "땡큐", "고맙");
     private static final List<String> WHO = List.of("누구야", "누구세요", "누구니", "너는뭐", "넌뭐", "이름이뭐", "이름뭐");
-    private static final List<String> HOW_ARE_YOU = List.of("잘지냈", "기분어때", "뭐해", "심심");
+    private static final List<String> HOW_ARE_YOU = List.of("잘지냈", "기분어때", "뭐해");
     private static final List<String> TIME = List.of("몇시", "지금시간", "시간알려");
     private static final List<String> DATE = List.of("며칠", "몇일", "날짜", "무슨요일", "몇월");
     /** 2026-11-06 진행 님 예: 이름 부르고 "바보~"면 "바보 아닙니다" 느낌으로. */
@@ -78,6 +78,10 @@ public final class SmallTalk {
         }
         if (containsAny(s, WHO)) {
             return "저는 옷 입는 걸 곁에서 같이 챙겨 드리는 친구예요. 오늘 뭐 입을지 같이 골라 봐요.";
+        }
+        // "심심해": 2026-11-23 시뮬에서 "저는 잘 지내요"로 답했음.
+        if (s.contains("심심")) {
+            return "그럼 저랑 옷 골라 볼까요? \"내일 뭐 입지?\"라고 말해 보세요.";
         }
         if (containsAny(s, HOW_ARE_YOU)) {
             return "저는 잘 지내요, 물어봐 주셔서 고마워요. 오늘은 뭘 같이 해 볼까요?";
