@@ -989,7 +989,7 @@ public class OutfitFlow {
                     Result.of("outfit_worn_offer"));
         }
         sessions.save(session);
-        return new TurnResponse(session.sessionId, picked + " 오늘 멋지게 잘 다녀오세요.", Next.done, null);
+        return new TurnResponse(session.sessionId, picked + " " + goodDay(session), Next.done, null);
     }
 
     private static boolean otherFeature(String utterance) {
@@ -997,6 +997,13 @@ public class OutfitFlow {
             case WEATHER, SCHEDULE, FACE, HELP, OUTFIT, COLOR -> true;
             default -> false;
         };
+    }
+
+    /** "오늘 멋지게 잘 다녀오세요." 다른 날 옷이면 그날로(2026-11-23 시뮬: 내일 옷을 정했는데 "오늘 멋지게"). */
+    private String goodDay(AgentSession session) {
+        LocalDate day = targetDay(session);
+        String label = SpokenDate.label(day, today());
+        return day.equals(today()) ? "오늘 멋지게 잘 다녀오세요." : Korean.josa(label, "은", "는") + " 멋지게 잘 다녀오세요.";
     }
 
     static final String OFFER_WORN = "다 입으신 뒤에 입은 모습도 확인해 보실래요? 네 또는 아니요로 말씀해 주세요.";
@@ -1014,7 +1021,7 @@ public class OutfitFlow {
         }
         if (NO.stream().anyMatch(s::contains)) {
             sessions.save(session);
-            return new TurnResponse(session.sessionId, "그럼요. 오늘 멋지게 잘 다녀오세요.", Next.done, null);
+            return new TurnResponse(session.sessionId, "그럼요. " + goodDay(session), Next.done, null);
         }
         if (YES.stream().anyMatch(s::startsWith) || s.contains("입고") || s.contains("볼게")) {
             session.outfitMode = WORN;

@@ -186,7 +186,17 @@ public class RuleOutfitJudge implements OutfitJudge {
         } else {
             sentences.add("마음에 들면 \"이걸로 할게\"라고 말해 주세요.");
         }
-        return new CheckJudgement(verdicts, comparison, damage, missing, String.join(" ", sentences));
+        return new CheckJudgement(verdicts, comparison, damage, missing, onDay(String.join(" ", sentences), in.day()));
+    }
+
+    /**
+     * 다른 날 옷을 볼 때 "오늘"을 그날로 바꿉니다. 2026-11-23 시뮬: "내일 뭐 입지?" 뒤 옷을 보여 주니 "오늘 쌀쌀한데"라고 함.
+     */
+    static String onDay(String speech, String day) {
+        if (speech == null || day == null || "오늘".equals(day)) {
+            return speech;
+        }
+        return speech.replace("오늘은", Korean.josa(day, "은", "는")).replace("오늘 ", day + " ");
     }
 
     /** 두 벌 이상 있는 종류 중 처음 나온 종류의 옷들. 없으면 빈 목록. */
