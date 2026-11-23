@@ -143,5 +143,13 @@ class IntentTest {
         assertThat(Intent.of("지금 몇 도야?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("오늘 반팔 입어도 돼?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("반팔 뭐 입지?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("목도리 해야 돼?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("장갑 챙길까?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("바지 몇 벌 있어?", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("자켓 있어?", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("니트 몇 벌이야?", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("내일 몇 시에 나가야 돼?", false)).isEqualTo(Intent.SCHEDULE);
+        assertThat(Intent.of("내일 겉옷 있어야 돼?", false)).isNotEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("바지에 얼룩 있어?", false)).isEqualTo(Intent.CHECK);
     }
 }

@@ -421,6 +421,22 @@ public class TurnService {
                 sb.append("조금 쌀쌀할 수 있어요. 얇은 겉옷을 하나 챙기세요. ");
             }
         }
+        // "목도리 해야 돼?", "장갑 챙길까?": 지금은 체감, 다른 날은 최저 기온으로(2026-11-23 시뮬).
+        if (!askedRain && Intent.WARM_ITEMS.stream().anyMatch(u::contains)
+                && Intent.NEED_WORDS.stream().anyMatch(u::contains)) {
+            // 오늘은 지금 체감과 최저 중 더 추운 쪽(아래 옷차림 말 "목도리처럼 따뜻한 옷"이 최저 기준이라 맞춥니다).
+            long feels = Math.round(w.path("apparentTemperature").asDouble());
+            boolean byFeel = day == null && feels <= min;
+            long cold = byFeel ? feels : min;
+            String basis = (byFeel ? "체감 " : "최저 ") + cold + "도";
+            if (cold <= 3) {
+                sb.append("네, 챙기세요. ").append(basis).append("라 추워요. ");
+            } else if (cold <= 8) {
+                sb.append("있으면 좋아요. ").append(basis).append("라 조금 쌀쌀해요. ");
+            } else {
+                sb.append("아니요, 없어도 돼요. ").append(basis).append("예요. ");
+            }
+        }
         // 오늘 비 확률은 하루 중 가장 높은 값입니다. 지금 하늘이 맑으면 "맑음, 비 100%"가 헷갈려서(2026-11-23 젯슨 확인)
         // "지금은 안 오지만 오늘 중에"라고 말합니다.
         boolean laterToday = day == null && !(condition.contains("비") || condition.contains("눈")
