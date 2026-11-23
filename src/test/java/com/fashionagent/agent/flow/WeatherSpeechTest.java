@@ -43,6 +43,11 @@ class WeatherSpeechTest {
     }
 
     @Test
+    void 영하냐고_물으면_최저_기온으로_답한다() {
+        assertThat(TurnService.weatherSpeech(w("맑음"), null, "오늘 영하야?")).startsWith("아니요, 최저 1도라 영하는 아니에요.");
+    }
+
+    @Test
     void 목도리_장갑은_추위로_네_아니요를_먼저_말한다() {
         assertThat(TurnService.weatherSpeech(w("맑음"), null, "목도리 해야 돼?")).startsWith("네, 챙기세요. 최저 1도라 추워요.");
         assertThat(TurnService.weatherSpeech(w("맑음"), "내일", "내일 장갑 챙길까?")).startsWith("네, 챙기세요. 최저 1도라 추워요.");
