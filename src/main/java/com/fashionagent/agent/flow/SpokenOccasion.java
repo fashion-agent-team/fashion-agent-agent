@@ -39,7 +39,8 @@ public final class SpokenOccasion {
 
     /** 가장 엄격한 자리 하나. 없으면 null. */
     public static Spoken from(String utterance) {
-        String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        // "운동화 젖어?"의 '운동'은 자리가 아닙니다(2026-11-23 시뮬: 운동 자리로 추천했음).
+        String s = utterance == null ? "" : utterance.replaceAll("\\s+", "").replace("운동화", "").replace("운동복", "");
         for (Map.Entry<Occasion, List<String>> e : WORDS.entrySet()) {
             for (String w : e.getValue()) {
                 if (s.contains(w)) {
