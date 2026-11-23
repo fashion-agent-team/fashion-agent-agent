@@ -27,6 +27,14 @@ class SpokenDateTest {
     }
 
     @Test
+    void 주말은_이번_토요일() {
+        LocalDate monday = LocalDate.of(2026, 11, 23);
+        assertThat(SpokenDate.from("주말에 결혼식 가는데 뭐 입지?", monday)).isEqualTo(LocalDate.of(2026, 11, 28));
+        assertThat(SpokenDate.from("다음 주말에 뭐 입지?", monday)).isEqualTo(LocalDate.of(2026, 12, 5));
+        assertThat(SpokenDate.from("주말 뭐 입지", LocalDate.of(2026, 11, 29))).isEqualTo(LocalDate.of(2026, 11, 29));
+    }
+
+    @Test
     void 일만_말하면_이번_달_지났으면_다음_달() {
         assertThat(d("20일에 뭐 입지")).isEqualTo(LocalDate.of(2026, 11, 20));
         assertThat(d("5일 옷 추천해 줘")).isEqualTo(LocalDate.of(2026, 12, 5));
