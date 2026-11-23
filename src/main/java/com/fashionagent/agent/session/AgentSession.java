@@ -126,6 +126,8 @@ public class AgentSession {
     public String outfitCity;
     /** 마지막 날씨 질문이 비·우산을 물었는지. "오늘 비 와?" 뒤 "내일은?"에 그날 비 소식으로 답합니다. */
     public boolean lastWeatherRain;
+    /** 방금 날씨를 "영하야?"로 물었으면 true. "모레는?"도 영하인지로 답합니다. */
+    public boolean lastWeatherFreeze;
 
     /** "이거 무슨 색이야?"로 카메라를 켠 중. 이때 온 옷 사진은 색·무늬만 읽어 줍니다(2026-11-13). */
     public boolean colorCheck;

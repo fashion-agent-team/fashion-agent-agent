@@ -158,6 +158,8 @@ public class TurnService {
         String said = utterance == null ? "" : utterance.replaceAll("\\s+", "");
         session.lastWeatherRain = "weather".equals(topic)
                 && said.matches(".*(우산|비와|비가|비올|비오|비온|비소식|장화|우비).*");
+        // "내일 영하야?" 뒤 "모레는?"도 영하인지로(2026-11-23 시뮬: 날씨만 읽었음).
+        session.lastWeatherFreeze = "weather".equals(topic) && said.contains("영하");
         var d = SpokenDate.from(utterance, today());
         session.lastTopicDate = d == null || d.equals(today()) ? null : d.toString();
         sessions.save(session);
@@ -228,7 +230,7 @@ public class TurnService {
         if (intent == Intent.OTHER && day != null && (rest.isEmpty() || nextDay)) {
             String date = day.getMonthValue() + "월 " + day.getDayOfMonth() + "일";
             return new String[] {"history".equals(session.lastTopic) ? "outfit" : session.lastTopic, switch (session.lastTopic) {
-                case "weather" -> date + (session.lastWeatherRain ? " 비 와?" : " 날씨");
+                case "weather" -> date + (session.lastWeatherRain ? " 비 와?" : session.lastWeatherFreeze ? " 영하야?" : " 날씨");
                 case "schedule" -> date + " 일정";
                 default -> date + " 뭐 입지";
             }};
@@ -239,7 +241,7 @@ public class TurnService {
             String date = session.lastTopicDate == null ? "오늘" : java.time.LocalDate.parse(session.lastTopicDate)
                     .getMonthValue() + "월 " + java.time.LocalDate.parse(session.lastTopicDate).getDayOfMonth() + "일";
             return new String[] {"weather", (session.lastCity == null ? "" : session.lastCity + " ") + date
-                    + (session.lastWeatherRain ? " 비 와?" : " 날씨")};
+                    + (session.lastWeatherRain ? " 비 와?" : session.lastWeatherFreeze ? " 영하야?" : " 날씨")};
         }
         // "크리스마스에 뭐 입지?" 뒤 "그날 일정은?": 방금 말한 날 일정(2026-11-23 시뮬: 오늘 일정으로 답함).
         if (intent == Intent.SCHEDULE && day == null && s.contains("그날") && session.lastTopicDate != null) {
