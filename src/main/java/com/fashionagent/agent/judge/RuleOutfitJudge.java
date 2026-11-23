@@ -373,7 +373,7 @@ public class RuleOutfitJudge implements OutfitJudge {
 
         String outerReason() {
             return bigRangeMatters() ? "일교차가 " + Math.round(range) + "도라 겉옷이 필요해요."
-                    : "체감 " + Math.round(apparent) + "도라 쌀쌀해요.";
+                    : "체감 " + Math.round(apparent) + "도라 " + (apparent <= 5 ? "추워요." : "쌀쌀해요.");
         }
     }
 }

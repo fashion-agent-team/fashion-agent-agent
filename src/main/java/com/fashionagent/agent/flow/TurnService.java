@@ -155,6 +155,11 @@ public class TurnService {
                 default -> date + " 뭐 입지";
             }};
         }
+        // 추천 뒤 "다른 거", "딴 거": "다른 거 추천해 줘"처럼 앞서 말한 날·자리로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
+        if (intent == Intent.OTHER && "outfit".equals(session.lastTopic)
+                && s.matches("(그럼|그러면|아니)?(다른|딴)(거|걸|것|걸로|거로|옷|코디)(는|은|요|줘|없어|있어|보여줘|말해줘)*")) {
+            return new String[] {"outfit", "다른 거 추천해 줘"};
+        }
         if (intent == Intent.OUTFIT && day == null && "weather".equals(session.lastTopic) && session.lastTopicDate != null
                 && (s.startsWith("그럼") || s.startsWith("그러면") || s.startsWith("그날"))) {
             var d = java.time.LocalDate.parse(session.lastTopicDate);

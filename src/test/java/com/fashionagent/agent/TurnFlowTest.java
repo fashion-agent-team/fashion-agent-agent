@@ -475,6 +475,27 @@ class TurnFlowTest {
     }
 
     @Test
+    void 얼굴_고르기_중_그만할래면_멈춘다() throws Exception {
+        JsonNode ask = turn("u_face_stop", """
+                {"utterance": "얼굴 봐줘"}""");
+        String sid = ask.path("sessionId").asString();
+        JsonNode stop = turn("u_face_stop", """
+                {"sessionId": "%s", "utterance": "그만할래"}""".formatted(sid));
+        assertThat(stop.path("speech").asString()).startsWith("네, 알겠어요.");
+        assertThat(stop.path("next").asString()).isEqualTo("listen");
+    }
+
+    @Test
+    void 추천_뒤_다른_거면_같은_날로_다시_추천한다() throws Exception {
+        JsonNode first = turn("u_other", """
+                {"utterance": "내일 뭐 입지?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode again = turn("u_other", """
+                {"sessionId": "%s", "utterance": "다른 거"}""".formatted(sid));
+        assertThat(again.path("speech").asString()).startsWith("내일의 패션을 추천해 드릴게요.");
+    }
+
+    @Test
     void 얼굴_확인은_얼굴과_이_중_먼저_묻고_화장을_본다() throws Exception {
         JsonNode ask = turn("u6", """
                 {"utterance": "얼굴 확인해 줘"}""");
