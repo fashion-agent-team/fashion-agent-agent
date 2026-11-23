@@ -96,7 +96,7 @@ public class TurnService {
     private static final java.util.List<String> ACK_EXACT = java.util.List.of("응", "어", "네", "예", "넵", "응응", "네네",
             "오케이", "그래");
     private static final java.util.List<String> ACK_PREFIX = java.util.List.of("알겠", "알았", "잠깐", "잠시만", "기다려",
-            "준비됐", "비출게", "비춰볼게", "보여줄게", "다입었", "입었어", "입었다", "다했어", "괜찮아", "괜찮지",
+            "다시봐", "다시확인", "한번더", "준비됐", "비출게", "비춰볼게", "보여줄게", "다입었", "입었어", "입었다", "다했어", "괜찮아", "괜찮지",
             "어때", "이상해", "이상하지", "봐줘", "보여", "번졌", "묻었", "꼈어", "삐뚤", "짝짝", "다됐", "끝났", "깨끗", "번진");
     /** 화장 카메라 중 "너무 진해?", "어색해?"도 화면을 보고 답할 말입니다(2026-11-23 시뮬: 카메라가 꺼지고 "할 수 없는 일"). */
     private static final java.util.List<String> FACE_ACK_PREFIX = java.util.List.of("너무", "진해", "진하", "연해", "연하",
@@ -276,6 +276,15 @@ public class TurnService {
                 && session.lastTopicDate == null && !s.contains("지금") && Cities.in(utterance) == null
                 && !s.matches(".*(여기|우리동네|이동네|내위치|집).*")) {
             return new String[] {"weather", session.outfitCity + " " + utterance};
+        }
+        // "오늘 학교 가는데 뭐 입지?" 뒤 "체육 있는데": 같은 날 그 자리로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
+        if (intent == Intent.OTHER && day == null && "outfit".equals(session.lastTopic)
+                && SpokenOccasion.from(utterance) != null && s.length() <= 12) {
+            String date = session.lastTopicDate == null ? "오늘" : java.time.LocalDate.parse(session.lastTopicDate)
+                    .getMonthValue() + "월 " + java.time.LocalDate.parse(session.lastTopicDate).getDayOfMonth() + "일";
+            session.statedPlan = null;
+            return new String[] {"outfit", (session.outfitCity == null ? "" : session.outfitCity + " ") + date + " "
+                    + utterance.replaceAll("[?？.!~]", "").trim() + " 뭐 입지"};
         }
         // 추천 뒤 "광주는?", "서울 말고 부산은?": 같은 날 그 도시 날씨로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
         if (intent == Intent.OTHER && day == null && "outfit".equals(session.lastTopic)) {
