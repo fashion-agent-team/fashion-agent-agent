@@ -544,6 +544,13 @@ class TurnFlowTest {
     }
 
     @Test
+    void 네이비를_물으면_우산_답을_하지_않는다() throws Exception {
+        JsonNode r = turn("u_navy", """
+                {"utterance": "네이비 셔츠 입어도 돼?"}""");
+        assertThat(r.path("speech").asString()).startsWith("네, 입어도 돼요").doesNotContain("우산");
+    }
+
+    @Test
     void 화장_카메라_중_취소하면_카메라를_끈다() throws Exception {
         JsonNode first = turn("u_cancel", """
                 {"utterance": "얼굴 화장 봐줘"}""");
