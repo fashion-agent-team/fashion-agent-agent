@@ -357,6 +357,13 @@ class TurnFlowTest {
     }
 
     @Test
+    void 도시_날씨를_물으면_어느_도시인지_말한다() throws Exception {
+        JsonNode r = turn("u_city", """
+                {"utterance": "부산 날씨 어때?"}""");
+        assertThat(r.path("speech").asString()).startsWith("부산 날씨예요. ");
+    }
+
+    @Test
     void 날씨를_물으면_읽어준다() throws Exception {
         JsonNode r = turn("u5", """
                 {"utterance": "오늘 날씨 어때?"}""");
