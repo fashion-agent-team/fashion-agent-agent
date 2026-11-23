@@ -192,7 +192,8 @@ public class OutfitFlow {
                 || List.of("할게", "할래", "볼래").stream().anyMatch(s::contains) ? modeFrom(utterance) : null;
         // "아니 내일 거": 날을 말하면 거절이 아니라 그날로 다시 추천해 달라는 말(2026-11-23 시뮬: 대화를 끝냈음).
         // "너무 꾸민 건 싫어": 추천한 옷이 싫다는 말이지 봐 주기를 거절한 게 아닙니다(2026-11-23 시뮬: 대화를 끝냈음).
-        if (otherFeature(utterance) || SpokenDate.from(s, today()) != null || TurnService.dislikesStyle(s)) {
+        if (otherFeature(utterance) || SpokenDate.from(s, today()) != null || TurnService.dislikesStyle(s)
+                || s.matches(".*(거|걸|것|옷)말고.*")) {
             // "아니 그냥 날씨 어때?"처럼 다른 기능을 말하면 답이 아니라 새 요청입니다.
             sessions.save(session);
             return null;
