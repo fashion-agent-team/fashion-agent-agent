@@ -140,6 +140,9 @@ public class TurnService {
     /** 날씨·일정·옷 추천을 답했으면 무엇을 어느 날로 물었는지 남깁니다("모레는?"에 이어 답하려고). */
     private TurnResponse remember(AgentSession session, String topic, String utterance, TurnResponse res) {
         session.lastTopic = topic;
+        String said = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        session.lastWeatherRain = "weather".equals(topic)
+                && said.matches(".*(우산|비와|비가|비올|비오|비온|비소식|장화|우비).*");
         var d = SpokenDate.from(utterance, today());
         session.lastTopicDate = d == null || d.equals(today()) ? null : d.toString();
         sessions.save(session);
@@ -193,7 +196,7 @@ public class TurnService {
         if (intent == Intent.OTHER && day != null && rest.isEmpty()) {
             String date = day.getMonthValue() + "월 " + day.getDayOfMonth() + "일";
             return new String[] {"history".equals(session.lastTopic) ? "outfit" : session.lastTopic, switch (session.lastTopic) {
-                case "weather" -> date + " 날씨";
+                case "weather" -> date + (session.lastWeatherRain ? " 비 와?" : " 날씨");
                 case "schedule" -> date + " 일정";
                 default -> date + " 뭐 입지";
             }};
