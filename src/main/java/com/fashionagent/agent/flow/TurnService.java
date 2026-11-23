@@ -367,9 +367,13 @@ public class TurnService {
                 sb.append("조금 쌀쌀할 수 있어요. 얇은 겉옷을 하나 챙기세요. ");
             }
         }
+        // 오늘 비 확률은 하루 중 가장 높은 값입니다. 지금 하늘이 맑으면 "맑음, 비 100%"가 헷갈려서(2026-11-23 젯슨 확인)
+        // "지금은 안 오지만 오늘 중에"라고 말합니다.
+        boolean laterToday = day == null && !(condition.contains("비") || condition.contains("눈")
+                || condition.contains("소나기") || condition.contains("뇌우"));
         if (askedRain) {
             sb.append(umbrella
-                    ? "우산 챙기세요. 비나 눈 올 확률이 " + rain + "%예요. "
+                    ? "우산 챙기세요. " + (laterToday ? "지금은 안 오지만 오늘 중에 " : "") + "비나 눈 올 확률이 " + rain + "%예요. "
                     : "우산은 안 챙기셔도 돼요. 비 올 확률이 " + rain + "%예요. ");
         }
         if (day == null) {
@@ -381,7 +385,8 @@ public class TurnService {
         }
         sb.append("최저 ").append(min).append("도, 최고 ").append(max).append("도예요. ");
         if (!askedRain && umbrella) {
-            sb.append("비 올 확률이 ").append(rain).append("%라 우산을 챙기세요. ");
+            sb.append(laterToday ? "지금은 안 오지만 오늘 중에 " : "").append("비 올 확률이 ").append(rain)
+                    .append("%라 우산을 챙기세요. ");
         }
         sb.append(w.path("clothingAdvice").asString(""));
         return sb.toString().trim();
