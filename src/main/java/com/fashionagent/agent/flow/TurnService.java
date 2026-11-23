@@ -92,6 +92,37 @@ public class TurnService {
                 || s.startsWith("옷봐줘"));
     }
 
+    /** 짧은 대답. "어디야?"가 걸리지 않게 한 글자 말은 똑같을 때만 봅니다. */
+    private static final java.util.List<String> ACK_EXACT = java.util.List.of("응", "어", "네", "예", "넵", "응응", "네네",
+            "오케이", "그래");
+    private static final java.util.List<String> ACK_PREFIX = java.util.List.of("알겠", "알았", "잠깐", "잠시만", "기다려",
+            "준비됐", "비출게", "비춰볼게", "보여줄게");
+
+    /** 카메라를 켜 둔 채 짧게 대답만 했으면 카메라를 이어 갈 말, 아니면 null. */
+    static String cameraWaitSpeech(AgentSession session, String utterance) {
+        Next cam = session.lastNext;
+        if (cam != Next.camera_outfit && cam != Next.camera_worn && cam != Next.camera_face
+                && cam != Next.camera_teeth) {
+            return null;
+        }
+        String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        if (s.isEmpty() || s.length() > 6) {
+            return null;
+        }
+        if (cam == Next.camera_worn && java.util.List.of("뒤도", "뒤로", "뒷모습", "돌았", "돌게", "돌아").stream().anyMatch(s::contains)) {
+            return "네, 뒤로 돌아서 그대로 서 계시면 찍을게요.";
+        }
+        if (!ACK_EXACT.contains(s) && ACK_PREFIX.stream().noneMatch(s::startsWith)) {
+            return null;
+        }
+        return switch (cam) {
+            case camera_teeth -> "네, 입을 '이' 하고 벌린 채 폰을 입 가까이 비춰 주세요. 보이면 바로 알려 드릴게요.";
+            case camera_face -> "네, 폰을 얼굴 앞에 들고 비춰 주세요. 보이면 바로 알려 드릴게요.";
+            case camera_worn -> "네, 두세 걸음 떨어져 서 주시면 찍을게요.";
+            default -> "네, 옷을 폰으로 비춰 주세요. 보이면 바로 알려 드릴게요.";
+        };
+    }
+
     /** 지난 턴에 카메라(옷)를 켜 둔 상태였으면 그 카메라, 아니면 null. */
     static Next outfitCamera(AgentSession session) {
         return session.lastNext == Next.camera_outfit || session.lastNext == Next.camera_worn ? session.lastNext : null;
@@ -217,6 +248,13 @@ public class TurnService {
             if (answered != null) {
                 return answered;
             }
+        }
+
+        // 카메라를 켜 둔 채 "응", "알겠어", "뒤도 볼게": 2026-11-23 시뮬에서 "할 수 없는 일이에요"로 답하고 카메라를 껐음.
+        // 위의 네/아니요 질문들이 먼저 답을 가져가고, 남은 짧은 대답만 여기서 카메라를 이어 갑니다.
+        String waiting = cameraWaitSpeech(session, req.utterance());
+        if (waiting != null) {
+            return say(session, waiting, session.lastNext);
         }
 
         return switch (Intent.of(req.utterance(), inOutfit)) {

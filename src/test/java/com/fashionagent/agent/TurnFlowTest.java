@@ -346,6 +346,17 @@ class TurnFlowTest {
     }
 
     @Test
+    void 이_카메라를_켠_뒤_응이라고_하면_카메라를_이어_간다() throws Exception {
+        JsonNode first = turn("u_ack", """
+                {"utterance": "이에 뭐 꼈어?"}""");
+        assertThat(first.path("next").asString()).isEqualTo("camera_teeth");
+        JsonNode ack = turn("u_ack", """
+                {"sessionId": "%s", "utterance": "응"}""".formatted(first.path("sessionId").asString()));
+        assertThat(ack.path("next").asString()).isEqualTo("camera_teeth");
+        assertThat(ack.path("speech").asString()).startsWith("네,");
+    }
+
+    @Test
     void 날씨를_물으면_읽어준다() throws Exception {
         JsonNode r = turn("u5", """
                 {"utterance": "오늘 날씨 어때?"}""");
