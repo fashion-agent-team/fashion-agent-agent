@@ -155,6 +155,12 @@ public class TurnService {
                 default -> date + " 뭐 입지";
             }};
         }
+        // "내일 뭐 입지?" 뒤 "치마 입어도 돼?": 오늘이 아니라 그날 날씨로 답합니다.
+        if (intent == Intent.WEATHER && day == null && session.lastTopicDate != null && Intent.wearMay(s)
+                && ("outfit".equals(session.lastTopic) || "weather".equals(session.lastTopic))) {
+            var d = java.time.LocalDate.parse(session.lastTopicDate);
+            return new String[] {"weather", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 " + utterance};
+        }
         // 추천 뒤 "다른 거", "딴 거": "다른 거 추천해 줘"처럼 앞서 말한 날·자리로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
         if (intent == Intent.OTHER && "outfit".equals(session.lastTopic)
                 && s.matches("(그럼|그러면|아니)?(다른|딴)(거|걸|것|걸로|거로|옷|코디)(는|은|요|줘|없어|있어|보여줘|말해줘)*")) {
@@ -424,6 +430,21 @@ public class TurnService {
                 sb.append("네, 그렇게 입어도 돼요. ");
             } else {
                 sb.append("조금 쌀쌀할 수 있어요. 얇은 겉옷을 하나 챙기세요. ");
+            }
+        }
+        // "치마 입어도 돼?", "청바지 괜찮아?": 옷 자체는 괜찮고, 추위만 덧붙입니다(2026-11-23 시뮬).
+        if (!askedRain && Intent.wearMay(u)) {
+            boolean skirt = u.contains("치마") || u.contains("스커트") || u.contains("원피스");
+            boolean outer = "outer".equals(ClosetView.category(u));
+            boolean cold = w.path("needsOuter").asBoolean(false);
+            if (skirt && min <= 5) {
+                sb.append("네, 입어도 돼요. 다만 최저 ").append(min).append("도라 두꺼운 스타킹을 신고 겉옷을 챙기세요. ");
+            } else if (outer && !cold && max >= 22) {
+                sb.append("입어도 되지만 최고 ").append(max).append("도라 낮에는 더울 수 있어요. ");
+            } else if (cold && !outer) {
+                sb.append("네, 입어도 돼요. 다만 추우니 겉옷을 챙기세요. ");
+            } else {
+                sb.append("네, 입어도 돼요. ");
             }
         }
         // "목도리 해야 돼?", "장갑 챙길까?": 지금은 체감, 다른 날은 최저 기온으로(2026-11-23 시뮬).
