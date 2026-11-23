@@ -28,8 +28,13 @@ public final class SpokenOccasion {
         WORDS.put(Occasion.mourning, List.of("장례식", "장례", "조문", "빈소", "추도식"));
         WORDS.put(Occasion.wedding, List.of("결혼식", "웨딩", "예식", "하객"));
         WORDS.put(Occasion.formal, List.of("면접", "발표", "상견례", "시상식", "졸업식", "입학식", "세미나"));
-        WORDS.put(Occasion.business, List.of("회의", "미팅", "출근", "거래처", "수업", "강의", "회사", "출장", "사무실"));
-        WORDS.put(Occasion.active, List.of("운동", "헬스", "등산", "러닝", "조깅", "요가", "필라테스", "축구", "농구"));
+        WORDS.put(Occasion.business, List.of("회의", "미팅", "출근", "거래처", "수업", "강의", "회사", "출장", "사무실", "회식", "워크숍"));
+        WORDS.put(Occasion.active, List.of("운동", "헬스", "등산", "러닝", "조깅", "요가", "필라테스", "축구", "농구", "체육",
+                // 2026-11-23 시뮬: "오늘 소풍 가" 뒤 추천이 자리를 몰랐음
+                "소풍", "나들이", "캠핑", "산책", "체험학습"));
+        // "오늘 데이트인데 뭐 입지": 2026-11-23 시뮬에서 "일정은 없어요, 편한 상의"로 답했음.
+        // 자리 종류는 평상복(casual)이지만 평소보다 깔끔하게 입는 자리입니다(RuleOutfitJudge.DRESSY).
+        WORDS.put(Occasion.casual, List.of("데이트", "소개팅", "기념일", "생일파티", "돌잔치", "파티"));
     }
 
     private SpokenOccasion() {
@@ -37,7 +42,8 @@ public final class SpokenOccasion {
 
     /** 가장 엄격한 자리 하나. 없으면 null. */
     public static Spoken from(String utterance) {
-        String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        // "운동화 젖어?"의 '운동'은 자리가 아닙니다(2026-11-23 시뮬: 운동 자리로 추천했음).
+        String s = utterance == null ? "" : utterance.replaceAll("\\s+", "").replace("운동화", "").replace("운동복", "");
         for (Map.Entry<Occasion, List<String>> e : WORDS.entrySet()) {
             for (String w : e.getValue()) {
                 if (s.contains(w)) {

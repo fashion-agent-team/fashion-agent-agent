@@ -122,8 +122,14 @@ public class AgentSession {
     public String statedPlan;
     /** 마지막 날씨를 물은 도시("제주"). 이어서 "거기 우산 필요해?"에 그 도시로 답합니다. 내 위치면 null. */
     public String lastCity;
+    /** "흰 니트 괜찮아?" 뒤 "그럼 베이지?"에 옷을 이어 쓰려고 남긴 말. */
+    public String lastWearAsk;
+    /** 옷 추천을 그 도시 날씨로 했으면 도시 이름("제주"). "다른 거", "우산 챙겨?"에 이어 씁니다. */
+    public String outfitCity;
     /** 마지막 날씨 질문이 비·우산을 물었는지. "오늘 비 와?" 뒤 "내일은?"에 그날 비 소식으로 답합니다. */
     public boolean lastWeatherRain;
+    /** 방금 날씨를 "영하야?"로 물었으면 true. "모레는?"도 영하인지로 답합니다. */
+    public boolean lastWeatherFreeze;
 
     /** "이거 무슨 색이야?"로 카메라를 켠 중. 이때 온 옷 사진은 색·무늬만 읽어 줍니다(2026-11-13). */
     public boolean colorCheck;

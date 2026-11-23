@@ -39,11 +39,17 @@ public class RuleOutfitJudge implements OutfitJudge {
             Occasion.active, new Look("편한 운동복 상의", "운동복 바지", "움직이기 편한 옷이 좋아요."),
             Occasion.casual, new Look("편한 상의", "편한 바지", "특별한 일정이 없어요."));
 
+    /** 평상복 자리지만 꾸미는 자리(데이트·소개팅·파티): 2026-11-23 시뮬에서 "편한 상의"로 추천했음. */
+    public static final java.util.regex.Pattern DRESSY = java.util.regex.Pattern.compile(".*(데이트|소개팅|기념일|파티|돌잔치).*");
+    private static final Look DRESSY_LOOK = new Look("깔끔한 셔츠나 니트", "슬랙스나 깔끔한 바지",
+            "평소보다 조금 깔끔하게 입으면 좋아요.");
+
     @Override
     public AdviceJudgement advise(AdviceInput in) {
         Occasion occasion = Occasion.strictest(in.events());
         String title = Occasion.titleOf(in.events(), occasion);
-        Look look = LOOKS.get(occasion);
+        boolean dressy = occasion == Occasion.casual && title != null && DRESSY.matcher(title).matches();
+        Look look = dressy ? DRESSY_LOOK : LOOKS.get(occasion);
         Weather w = Weather.of(in.weather());
 
         List<Suggestion> suggestions = new ArrayList<>();
@@ -56,7 +62,7 @@ public class RuleOutfitJudge implements OutfitJudge {
         // 날짜·날씨·일정은 OutfitFlow가 앞에서 읽습니다(2026-11-09 발표 피드백: 정해진 순서로).
         // 여기서는 추천하는 옷과 까닭만 말합니다.
         StringBuilder speech = new StringBuilder();
-        if (title != null && occasion != Occasion.casual) {
+        if (title != null && (occasion != Occasion.casual || dressy)) {
             speech.append(look.why()).append(" ");
         }
         speech.append(look.top()).append("에 ");

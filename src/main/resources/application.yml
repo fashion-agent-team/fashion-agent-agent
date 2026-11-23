@@ -36,6 +36,9 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
+# 게이트웨이와 같은 로그인 토큰 비밀키(HS256, 32바이트 이상). 게이트웨이가 넘긴 Authorization 토큰을 여기서 확인합니다.
+jwt-secret: ${JWT_SECRET:}
+
 agent:
   tools: fake
   judge: rule

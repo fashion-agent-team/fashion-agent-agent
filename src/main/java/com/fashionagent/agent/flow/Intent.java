@@ -10,7 +10,7 @@ import java.util.List;
 public enum Intent {
     OUTFIT, CHECK, COLOR, SHOWN, CLOSET, CLOSET_HISTORY, CLOSET_REMOVE, FINISH, WHERE, MODE, WEATHER, SCHEDULE, FACE, HELP, OTHER;
 
-    private static final List<String> FINISH_WORDS = List.of("이걸로", "이거로", "이걸입", "이거입", "됐어", "다됐", "그만",
+    private static final List<String> FINISH_WORDS = List.of("이걸로", "이거로", "이걸입", "이거입", "그걸로", "그거로", "그걸입", "됐어", "다됐", "그만",
             "끝낼", "마칠");
     /**
      * 옷을 다 보여 줬다는 말. 2026-11-13 실서버 시뮬: "다 보여 줬어"가 GPT로 가서 처음 추천을 다시 하고(17초) 본 옷을 잊었음.
@@ -18,7 +18,13 @@ public enum Intent {
     private static final List<String> SHOWN_WORDS = List.of("다보여", "다보였", "다찍", "다봤", "더없어", "이게다", "이거다야",
             "이게전부", "이거전부");
     private static final List<String> OUTFIT_WORDS = List.of("뭐입", "뭘입", "옷추천", "추천해", "코디", "입을까", "입지",
-            "옷골라", "뭐신", "뭘신", "신을까", "추천다시", "다시추천", "추천또");
+            "옷골라", "옷좀골라", "골라줘", "골라줄래", "뭐신", "뭘신", "신을까", "추천다시", "다시추천", "추천또",
+            // 2026-11-23 시뮬: "추천 좀"이 GPT로 갔음
+            "추천좀", "추천부탁", "추천받",
+            // 2026-11-23 시뮬: "옷 고르는 거 도와줘", "출근룩"이 GPT로 갔음
+            "옷고르", "고르는거도와", "룩추천", "출근룩", "데이트룩", "하객룩", "등교룩", "면접룩",
+            // 2026-11-23 시뮬: "뭐 더 껴입어?"가 GPT로 갔음
+            "뭐더껴입", "뭘더껴입", "뭐껴입", "뭘껴입", "뭐더입", "뭘더입");
     /**
      * "옷 검사해 줘"처럼 꺼낸 옷을 바로 봐 달라는 말. 추천을 길게 말하지 않고 바로 카메라로 갑니다.
      * 2026-11-09 리허설: "옷 검사"가 키워드에 없어 GPT로 갔고, 얼굴 확인으로 넘어갔습니다.
@@ -46,33 +52,47 @@ public enum Intent {
     private static final List<String> WEATHER_WORDS = List.of("우산", "비와", "비가", "비올", "비오", "눈와", "눈이와",
             "눈올", "눈이올", "눈오", "추워", "추운", "춥", "더워", "더운", "덥", "기온", "온도", "일교차", "쌀쌀", "겉옷챙",
             "입어야돼", "입어야해", "입어야하", "입어야될", "입어야할",
-            "겉옷입어야", "외투챙", "몇도", "비온", "눈온", "장화", "우비", "레인부츠", "레인코트");
+            "겉옷입어야", "외투챙", "몇도", "영하", "비온", "눈온", "장화", "우비", "레인부츠", "레인코트",
+            "젖어", "젖을", "젖나", "젖겠");
     /** "오늘 반팔 입어도 돼?": 2026-11-23 시뮬에서 GPT로 갔음. 날씨로 네/아니요를 바로 답합니다. */
     static final List<String> LIGHT_WORDS = List.of("반팔", "반바지", "민소매", "나시", "얇게", "얇은옷");
     static final List<String> MAY_WORDS = List.of("입어도", "입고가도", "입고나가도", "괜찮", "될까", "되나", "신어도",
-            "신고가도");
+            "신고가도", "신어야");
     /** "목도리 해야 돼?", "장갑 챙길까?": 2026-11-23 시뮬에서 GPT로 갔음. 체감 온도로 네/아니요를 바로 답합니다. */
-    static final List<String> WARM_ITEMS = List.of("목도리", "머플러", "장갑", "털모자", "귀마개", "핫팩", "내복", "히트텍");
+    static final List<String> WARM_ITEMS = List.of("목도리", "머플러", "장갑", "털모자", "귀마개", "핫팩", "내복", "히트텍", "비니", "스타킹", "모자");
     static final List<String> NEED_WORDS = List.of("해야", "챙길", "챙겨", "필요", "할까", "낄까", "껴야", "쓸까", "써야",
-            "입을까", "입어야", "가져갈", "가져가");
+            "입을까", "입어야", "가져갈", "가져가", "안껴도", "안해도", "안써도", "안챙겨도", "안입어도", "써도", "신어야");
     /** "바지 몇 벌 있어?", "자켓 있어?": 2026-11-23 시뮬에서 GPT로 갔음. 옷장의 그 종류 목록을 읽어 줍니다. */
     private static final java.util.regex.Pattern OWN_ASK = java.util.regex.Pattern.compile(
             "(몇벌|몇개|몇벌이야|몇개야|있어|있나|있니|있는지|있을까|가지고있|갖고있)[?？!.~]*$");
 
     /** "할 줄 아는 거 말해 봐", "기능 설명해 줘" 같은 말. 2026-11-06 진행 님 폰 확인에서 못 알아들었던 말. */
     private static final List<String> HELP_WORDS = List.of("기능", "할줄", "할수있", "뭐해줄", "뭘해줄", "뭐도와", "뭘도와",
-            "무엇을도와", "뭐할수", "뭘할수", "무엇을할", "능력", "너소개", "자기소개", "사용법", "어떻게써");
+            "무엇을도와", "뭐할수", "뭘할수", "무엇을할", "능력", "너소개", "자기소개", "사용법", "어떻게써",
+            // 2026-11-23 시뮬: "도움말"이 GPT로 갔음
+            "도움말", "어떻게사용", "쓰는법", "쓰는방법", "사용방법");
 
     private static final List<String> PAST_DAY_WORDS = List.of("어제", "그제", "그저께", "지난주", "저번주", "지난번",
             "저번에", "일주일");
 
     /** inOutfitSession: 옷 추천 대화 중인지 (마무리·"어디야?"는 그때만). */
     /** "치마 입을까?", "반팔 입을까?": 뭐/무슨이 없으면 고를 옷이 아니라 그 옷을 입어도 되는지 물은 말. */
+    /** "뭐 신지?", "무슨 신발 신어?": 입을 옷은 안 묻고 신발만 물으면 true. */
+    static boolean asksShoes(String s) {
+        return s.matches(".*(뭐|뭘|무슨|어떤)(신|신발).*") && !s.contains("입") && !s.contains("옷");
+    }
+
     static boolean shall(String s) {
         return (s.contains("입을까") || s.contains("신을까")) && !s.matches(".*(뭐|뭘|무슨|어떤|어느|무엇|추천).*");
     }
 
     /** "반팔 입어도 돼?", "반팔 입을까?" */
+    /** "바람 많이 불어?", "바람 세?"(바람막이는 옷이라 뺍니다). */
+    static boolean asksWind(String s) {
+        String t = s.replaceAll("\\s+", "").replace("바람막이", "");
+        return t.matches(".*바람(이|은|도)?(많이|세게|강하게|엄청|좀)?(불|세|강해|많|심해|어때).*");
+    }
+
     static boolean lightMay(String s) {
         return containsAny(s, LIGHT_WORDS) && (containsAny(s, MAY_WORDS) || shall(s));
     }
@@ -82,7 +102,11 @@ public enum Intent {
         // "치마 입을까?"도(뭐/무슨이 없으면 고를 옷을 물은 게 아니라 그 옷을 입어도 되는지 물은 말).
         // "청바지에 니트 어때?"(2026-11-23 시뮬). "이 니트 어때?"는 비춘 옷을 묻는 말이라 뺍니다.
         boolean how = s.contains("어때") && !s.startsWith("이") && !s.startsWith("요");
-        return ClosetView.category(s) != null && (containsAny(s, MAY_WORDS) || shall(s) || how) && !containsAny(s, LIGHT_WORDS)
+        // "청바지 돼?"(2026-11-23 시뮬에서 GPT로 갔음)
+        boolean ok = s.matches(".*(돼|돼요|되지|되죠)[?？.!~]*") && !s.matches(".*(야|해야)(돼|돼요|되지|되죠)[?？.!~]*");
+        // "트레이닝복 괜찮아?"(2026-11-23 시뮬에서 GPT로 갔음): 옷장 종류에 없는 운동복도 옷으로 봅니다.
+        boolean garment = ClosetView.category(s) != null || s.matches(".*(트레이닝복|추리닝|츄리닝|운동복|체육복).*");
+        return garment && (containsAny(s, MAY_WORDS) || shall(s) || how || ok) && !containsAny(s, LIGHT_WORDS)
                 && !s.contains("어울") && !s.contains("옷장");
     }
 
@@ -110,6 +134,10 @@ public enum Intent {
         if (s.contains("입었") && containsAny(s, List.of("뭐", "뭘", "무슨", "어떤", "무엇"))) {
             return CLOSET_HISTORY;
         }
+        // "오늘 입은 옷 기억해?": '입은옷'(옷 검사)에 걸려 카메라 방식을 물었음(2026-11-23 시뮬).
+        if ((s.contains("입은") || s.contains("입었")) && s.matches(".*(기억|기록|알아|알고있).*")) {
+            return CLOSET_HISTORY;
+        }
         // "제일 많이 입은 옷 뭐야?": '입은옷'(옷 검사)에 걸려 카메라 방식을 물었음(2026-11-23 시뮬).
         // 최근 기록 3개로는 답이 안 맞아서 GPT가 옷장 도구로 답합니다.
         if (s.matches(".*(많이|자주|제일|가장)입(은|었).*")) {
@@ -120,6 +148,16 @@ public enum Intent {
             return CLOSET_HISTORY;
         }
         if (s.contains("옷장") && !containsAny(s, OUTFIT_WORDS) && !containsAny(s, SCHEDULE_CHANGE_WORDS)) {
+            return CLOSET;
+        }
+        // "코트 빼줘": 옷장을 말하지 않아도 옷 종류를 빼 달라면 옷장에서 빼기(2026-11-23 시뮬에서 GPT로 갔음).
+        if (!inOutfitSession && ClosetView.category(s) != null
+                && s.matches(".*(빼줘|빼주세요|삭제해|지워줘|버렸어|없애줘)[?？!.~]*")) {
+            return CLOSET_REMOVE;
+        }
+        // "패딩만 보여줘", "셔츠 목록 알려줘": 옷장에서 그 종류만(2026-11-23 시뮬에서 GPT로 갔음).
+        if (!inOutfitSession && ClosetView.category(s) != null
+                && s.matches(".*(만|들|목록|전부|다)(보여줘|알려줘|말해줘|읽어줘)[?？!.~]*")) {
             return CLOSET;
         }
         if (!inOutfitSession && ClosetView.category(s) != null && OWN_ASK.matcher(s).find()
@@ -143,22 +181,36 @@ public enum Intent {
                 && !s.contains("얼굴") && !FaceFlow.isTeeth(s)) {
             return CHECK;
         }
-        if (containsAny(s, OUTFIT_WORDS) && !wearMay(s) && !lightMay(s)) {
+        // 추천 없이 "따뜻하게 입고 싶어": 그 느낌으로 추천(2026-11-23 시뮬에서 GPT로 갔음).
+        if (s.matches(".*(따뜻|시원|편하|편한|가볍|가벼|단정|깔끔|캐주얼|포멀|격식)\\S*(입고싶|입을래|입고갈래|입고가고싶).*")) {
+            return OUTFIT;
+        }
+        // "비 와?" 뒤 "그럼 뭐 신어": 옷 추천은 신발을 말하지 않아서, 날씨로 어떤 신발이 좋은지 답합니다(2026-11-23 시뮬).
+        if (asksShoes(s)) {
+            return WEATHER;
+        }
+        // "장화 신을까?": "신을까"가 추천으로 갔음(2026-11-23 시뮬). 비 오는지로 답합니다.
+        // "히트텍 입을까?": '입을까'가 추천으로 갔음(2026-11-23 시뮬). 방한 소품은 체감 온도로 답합니다.
+        if (containsAny(s, OUTFIT_WORDS) && !wearMay(s) && !lightMay(s) && !s.matches(".*(장화|우비|레인부츠|레인코트).*")
+                && !(containsAny(s, WARM_ITEMS) && containsAny(s, NEED_WORDS))) {
             return OUTFIT;
         }
         if (s.contains("얼굴") || s.contains("화장") || FaceFlow.isTeeth(s) || FaceFlow.isMakeup(s)) {
             return FACE;
         }
         if (s.contains("날씨") || containsAny(s.replace("준비", ""), WEATHER_WORDS)
+                // "바람 많이 불어?": 2026-11-23 시뮬에서 GPT로 갔음. 바람 세기는 아직 없지만 날씨·체감으로 답합니다.
+                || asksWind(s)
                 || lightMay(s)
-                || (containsAny(s, WARM_ITEMS) && (containsAny(s, NEED_WORDS) || s.replaceAll("[?.!~]", "").length() <= 5))
+                || (containsAny(s, WARM_ITEMS) && (containsAny(s, NEED_WORDS) || (s.replaceAll("[?.!~]", "").length() <= 5
+                        && !s.matches(".*(있어|있나|있니|있지|있음|몇).*"))))
                 || wearMay(s)
                 // "토요일 비", "내일 눈": 날 + 비/눈만 말한 것(2026-11-23 시뮬)
                 || s.matches("(오늘|내일|모레|글피|이번주|다음주)?[월화수목금토일]?(요일)?(에)?(비|눈)[?？]*")
                         && s.matches(".*(오늘|내일|모레|글피|요일).*")                // "오늘 겉옷 필요 없지?"(2026-11-23 시뮬)
                 || (s.matches(".*(겉옷|외투|패딩|코트|점퍼|바람막이).*") && s.matches(".*(필요|없지|안입어도|안챙겨도|챙겨야|챙길까|가져갈까).*"))) {
             // "이번 주 날씨"처럼 여러 날은 GPT가 날짜를 하나씩 봅니다. 하루("내일", "토요일")는 바로 답합니다.
-            if (containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일")) {
+            if (containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일") && !s.matches(".*(이번달|다음달|담달)\\d{1,2}일.*")) {
                 return OTHER;
             }
             // "오늘이랑 내일 날씨 비교해 줘": 두 날을 같이 물으면 GPT가 하나씩 봅니다(2026-11-23 시뮬: 내일만 답했음).
@@ -175,7 +227,7 @@ public enum Intent {
                 || (s.matches(".*(오늘|내일|모레|글피|어제|그제|그저께|요일|\\d{1,2}월\\d{1,2}일).*")
                         && s.matches(".*(뭐있|무슨일있|뭐가있|무슨일정).*")))
                 && !containsAny(s, SCHEDULE_CHANGE_WORDS)
-                && !(containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일"))) {
+                && !(containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일") && !s.matches(".*(이번달|다음달|담달)\\d{1,2}일.*"))) {
             return SCHEDULE;
         }
         if (containsAny(s, HELP_WORDS)) {

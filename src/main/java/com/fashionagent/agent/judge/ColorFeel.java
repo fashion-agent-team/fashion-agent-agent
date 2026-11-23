@@ -186,6 +186,14 @@ public final class ColorFeel {
             return null;
         }
         String u = utterance.strip();
+        // "색 설명 짧게 해 줘" 뒤 "다시 길게": 2026-11-23 시뮬에서 GPT로 갔음.
+        String bare = u.replaceAll("[\\s?.!~]+", "");
+        if (bare.matches("다시(길게|자세히|풀어서)(해줘|해주세요|말해줘|해)?")) {
+            return true;
+        }
+        if (bare.matches("다시(짧게|간단히)(해줘|해주세요|말해줘|해)?")) {
+            return false;
+        }
         if (!ABOUT.matcher(u).find()) {
             return null;
         }

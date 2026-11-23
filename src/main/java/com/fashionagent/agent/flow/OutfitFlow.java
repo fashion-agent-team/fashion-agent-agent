@@ -186,9 +186,14 @@ public class OutfitFlow {
         session.checkOffered = false;
         String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
         // 방식을 고르는 답일 때만 방식으로 봅니다. 2026-11-23 시뮬: "더 따뜻하게 입고 싶어"의 '입고'로 입은 모습 카메라를 켰음.
-        String mode = s.length() <= 8 || SWITCH_WORDS.stream().anyMatch(s::contains)
+        // "편하게 입고 싶어", "따뜻하게 입을래": 입는 느낌을 말한 거라 방식이 아닙니다(2026-11-23 시뮬: 입은 모습 카메라를 켰음).
+        boolean style = s.matches(".*(편하|편한|따뜻|시원|캐주얼|단정|깔끔|가볍|가벼운|두껍|포멀|격식|꾸며|싶어|싶다).*");
+        String mode = style ? null : s.length() <= 8 || SWITCH_WORDS.stream().anyMatch(s::contains)
                 || List.of("할게", "할래", "볼래").stream().anyMatch(s::contains) ? modeFrom(utterance) : null;
-        if (otherFeature(utterance)) {
+        // "아니 내일 거": 날을 말하면 거절이 아니라 그날로 다시 추천해 달라는 말(2026-11-23 시뮬: 대화를 끝냈음).
+        // "너무 꾸민 건 싫어": 추천한 옷이 싫다는 말이지 봐 주기를 거절한 게 아닙니다(2026-11-23 시뮬: 대화를 끝냈음).
+        if (otherFeature(utterance) || SpokenDate.from(s, today()) != null || TurnService.dislikesStyle(s)
+                || s.matches(".*(거|걸|것|옷)말고.*")) {
             // "아니 그냥 날씨 어때?"처럼 다른 기능을 말하면 답이 아니라 새 요청입니다.
             sessions.save(session);
             return null;
@@ -236,7 +241,9 @@ public class OutfitFlow {
         if (mode == null) {
             String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
             // "봐 줘" 뒤 "아니, 됐어": 2026-11-23 시뮬에서 "내려놓고 볼게 또는 입고 볼게"를 다시 물었음.
-            if (NO.stream().anyMatch(s::contains)) {
+            // "이 옷 어때" → "괜찮아?"는 거절이 아니라 봐 달라는 물음입니다(2026-11-23 시뮬: 끝냈음).
+            boolean asking = utterance != null && utterance.strip().matches(".*(괜찮아|괜찮나|괜찮을까|괜찮아요)[?？]$");
+            if (!asking && NO.stream().anyMatch(s::contains)) {
                 session.modeAsked = 0;
                 sessions.save(session);
                 return new TurnResponse(session.sessionId, "알겠어요. 옷을 봐 드릴 게 생기면 언제든 불러 주세요.",

@@ -13,5 +13,7 @@ class CitiesTest {
         assertThat(Cities.in("서귀포 내일 날씨").name()).isEqualTo("서귀포");
         assertThat(Cities.in("오늘 날씨 어때?")).isNull();
         assertThat(Cities.in(null)).isNull();
+        assertThat(Cities.in("세종대왕 동상 보러 가는데 뭐 입지")).isNull();
+        assertThat(Cities.in("세종시 날씨").name()).isEqualTo("세종");
     }
 }

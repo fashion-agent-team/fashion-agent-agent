@@ -45,7 +45,8 @@ public class FakeAgentTools implements AgentTools {
             case ToolNames.CLOSET_OUTFITS -> Map.of("outfits", List.of());
             case ToolNames.CLOSET_REMOVE -> Map.of("removed", ((List<?>) args.get("garmentIds")).size());
             case ToolNames.SCHEDULE_ADD -> Map.of("eventId", "e_added", "occasion", "casual",
-                    "spokenSummary", "일정 '" + args.get("title") + "'을 등록했어요.");
+                    "spokenSummary", "일정 " + com.fashionagent.agent.assistant.AssistantTools.quoted(
+                            String.valueOf(args.get("title")), "을", "를") + " 등록했어요.");
             case ToolNames.SCHEDULE_DELETE -> Map.of("deleted", true);
             case ToolNames.SCHEDULE_SET_REMINDER -> reminder(args);
             case ToolNames.FACE_MAKEUP_CHECK -> makeup(String.valueOf(args.get("imageBase64")));

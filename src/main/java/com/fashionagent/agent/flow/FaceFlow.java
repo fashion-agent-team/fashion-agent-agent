@@ -47,7 +47,9 @@ public class FaceFlow {
     private static final List<String> TEETH_ANSWERS = List.of("이", "이요", "이를", "이로", "이부터", "이확인해줘");
     private static final List<String> MAKEUP_WORDS = List.of("화장", "얼굴", "눈썹", "입술", "메이크업",
             // 2026-11-23 시뮬: "립스틱 번졌어?", "눈썹 짝짝이야?"가 키워드에 안 걸렸음
-            "립스틱", "틴트", "아이라인", "아이섀도", "블러셔", "볼터치");
+            "립스틱", "틴트", "아이라인", "아이섀도", "블러셔", "볼터치",
+            // "립 색깔 괜찮아?"(2026-11-23 시뮬)
+            "립색", "립컬러", "립괜찮", "립어때", "립번", "립글로스");
 
     private final AgentTools tools;
     private final SessionStore sessions;

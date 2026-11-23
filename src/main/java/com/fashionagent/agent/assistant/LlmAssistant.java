@@ -119,7 +119,8 @@ public class LlmAssistant implements Assistant {
         // 해 버린 일을 GPT 답이 말하지 않으면(늦은 답 포함) 그 일을 직접 읽습니다. 사용자가 같은 일을 또 시키지 않게.
         if (speech != null && !speech.isBlank()
                 && toolbox.done.stream().anyMatch(d -> !d.mentionedIn(said))) {
-            log.warn("GPT 답이 한 일을 말하지 않아 바꿈: {}", speech);
+            // 답 문장에는 일정 이름 같은 사용자 정보가 들어 있어 길이만 남깁니다.
+            log.warn("GPT 답이 한 일을 말하지 않아 바꿈({}자)", speech == null ? 0 : speech.length());
             speech = null;
         }
         if (speech == null || speech.isBlank()) {

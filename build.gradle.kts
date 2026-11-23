@@ -23,6 +23,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    // 게이트웨이가 넘긴 로그인 토큰(JWT)을 직접 확인 (2026-11-23, X-User-Id 헤더 대신)
+    implementation("com.nimbusds:nimbus-jose-jwt:10.5")
     // 2026-11-04 판단·도구 선택 LLM을 Gemini에서 GPT로 바꿈 (openai 프로필)
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
     implementation("org.springframework.ai:spring-ai-starter-mcp-client")

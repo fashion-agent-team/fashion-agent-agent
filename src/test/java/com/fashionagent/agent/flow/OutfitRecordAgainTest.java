@@ -30,13 +30,14 @@ import com.fashionagent.agent.tools.ToolNames;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import com.fashionagent.agent.api.TestTokens;
 
 /**
  * 2026-11-20 점검: 같은 대화(세션 30분)에서 두 번째로 고른 코디가 기록되지 않던 문제와
  * "내려놓고 볼게, 내일 뭐 입지?"가 새 추천이 아니라 방식 바꾸기로 가던 문제.
  * 가짜 도구(FakeAgentTools)를 감싸 closet_wear가 몇 번, 어느 날짜로 불렸는지 봅니다.
  */
-@SpringBootTest
+@SpringBootTest(properties = TestTokens.PROPERTY)
 @AutoConfigureMockMvc
 class OutfitRecordAgainTest {
 
@@ -60,7 +61,7 @@ class OutfitRecordAgainTest {
     }
 
     private JsonNode turn(String userId, String body) throws Exception {
-        String out = mvc.perform(post("/api/v1/agent/turn").header("X-User-Id", userId)
+        String out = mvc.perform(post("/api/v1/agent/turn").header("Authorization", TestTokens.bearer(userId))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -94,7 +95,7 @@ class OutfitRecordAgainTest {
         showLaid(user, sid);
         assertThat(say(user, sid, "이걸로 할게").path("speech").asString()).contains("기록");
         say(user, sid, "아니요 괜찮아요");
-        verify(tools, times(1)).callForUser(eq(ToolNames.CLOSET_WEAR), eq(user),
+        verify(tools, times(1)).callForUser(eq(ToolNames.CLOSET_WEAR), eq(TestTokens.id(user)),
                 argThat(a -> today.equals(dateOf(a))));
         clearInvocations(tools);
 
@@ -108,7 +109,7 @@ class OutfitRecordAgainTest {
         // then
         assertThat(picked.path("speech").asString()).contains("기록");
         verify(tools, times(1)).callForUser(eq(ToolNames.CLOSET_WEAR), any(), anyMap());
-        verify(tools).callForUser(eq(ToolNames.CLOSET_WEAR), eq(user), argThat(a -> tomorrow.equals(dateOf(a))));
+        verify(tools).callForUser(eq(ToolNames.CLOSET_WEAR), eq(TestTokens.id(user)), argThat(a -> tomorrow.equals(dateOf(a))));
     }
 
     @Test

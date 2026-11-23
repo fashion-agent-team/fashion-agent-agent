@@ -59,6 +59,9 @@ class ColorFeelTest {
         assertThat(ColorFeel.detailCommand("색 설명 짧게 해 줘")).isFalse();
         assertThat(ColorFeel.detailCommand("색은 이름만 말해 줘")).isFalse();
         assertThat(ColorFeel.detailCommand("색 설명 자세히 해 줘")).isTrue();
+        assertThat(ColorFeel.detailCommand("다시 길게")).isTrue();
+        assertThat(ColorFeel.detailCommand("다시 짧게 해 줘")).isFalse();
+        assertThat(ColorFeel.detailCommand("다시 추천해 줘")).isNull();
         assertThat(ColorFeel.detailCommand("색 느낌도 말해 줘")).isTrue();
         assertThat(ColorFeel.detailCommand("이 옷 무슨 색이야")).isNull();
         assertThat(ColorFeel.detailCommand("오늘 날씨 어때")).isNull();

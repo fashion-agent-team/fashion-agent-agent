@@ -20,6 +20,14 @@ class SmallTalkTest {
     private final Clock afternoon = Clock.fixed(Instant.parse("2026-11-04T07:05:00Z"), ZoneId.of("UTC"));
 
     @Test
+    @DisplayName("When \"끝\" Then 마무리 인사로 답한다")
+    void endWords() {
+        assertThat(SmallTalk.reply("끝", afternoon)).startsWith("네, 알겠어요.");
+        assertThat(SmallTalk.reply("그만할게", afternoon)).startsWith("네, 알겠어요.");
+        assertThat(SmallTalk.reply("끝까지 봐줘", afternoon)).isNull();
+    }
+
+    @Test
     @DisplayName("Given UTC 시계 When \"지금 몇 시야?\" Then 서울 시각을 오전/오후 12시간제로 말한다")
     void timeInSeoul() {
         assertThat(SmallTalk.reply("지금 몇 시야?", afternoon)).isEqualTo("지금은 오후 4시 5분이에요.");
@@ -59,7 +67,7 @@ class SmallTalkTest {
             "너 누구야?, 옷 입는 걸",
             "이름이 뭐야, 옷 입는 걸",
             "잘 지냈어?, 잘 지내요",
-            "심심해, 잘 지내요",
+            "심심해, 옷 골라 볼까요",
             "바보야~, 서운해요",
             "잘 자, 푹 쉬세요",
     })

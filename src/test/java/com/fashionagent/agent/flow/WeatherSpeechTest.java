@@ -37,6 +37,17 @@ class WeatherSpeechTest {
     }
 
     @Test
+    void 히트텍_입어야_해는_한_번만_답한다() {
+        assertThat(TurnService.weatherSpeech(w("맑음"), null, "그럼 히트텍 입어야 해?"))
+                .startsWith("네, 챙기세요.").doesNotContain("겉옷을 챙기세요. 네");
+    }
+
+    @Test
+    void 영하냐고_물으면_최저_기온으로_답한다() {
+        assertThat(TurnService.weatherSpeech(w("맑음"), null, "오늘 영하야?")).startsWith("아니요, 최저 1도라 영하는 아니에요.");
+    }
+
+    @Test
     void 목도리_장갑은_추위로_네_아니요를_먼저_말한다() {
         assertThat(TurnService.weatherSpeech(w("맑음"), null, "목도리 해야 돼?")).startsWith("네, 챙기세요. 최저 1도라 추워요.");
         assertThat(TurnService.weatherSpeech(w("맑음"), "내일", "내일 장갑 챙길까?")).startsWith("네, 챙기세요. 최저 1도라 추워요.");
@@ -76,5 +87,20 @@ class WeatherSpeechTest {
     void 겉옷_우산을_거꾸로_물어도_네_아니요가_맞다() {
         assertThat(TurnService.weatherSpeech(w("맑음"), null, "오늘 겉옷 필요 없지?")).startsWith("아니요, 겉옷을 챙기세요.");
         assertThat(TurnService.weatherSpeech(w("맑음"), null, "오늘 우산 안 챙겨도 되지?")).startsWith("아니요, 우산 챙기세요.");
+    }
+
+    @Test
+    void 바람_물으면_세기는_없다고_말하고_모자는_추위로_답한다() {
+        assertThat(TurnService.weatherSpeech(w("비"), null, "바람 많이 불어?")).startsWith("바람 세기는 아직 못 알려 드려요.");
+        assertThat(TurnService.weatherSpeech(w("맑음"), null, "바람막이 챙길까?")).doesNotContain("바람 세기");
+        assertThat(TurnService.weatherSpeech(w("맑음"), null, "모자 써야 돼?")).startsWith("네, 챙기세요.");
+    }
+
+    @Test
+    void 소개팅에_청바지_운동화는_깔끔하게_맞추라고_답한다() {
+        assertThat(TurnService.dressyFitAdvice("소개팅", "오늘 소개팅인데 청바지 괜찮아?")).startsWith("네, 소개팅에 깔끔한 청바지는");
+        assertThat(TurnService.dressyFitAdvice("데이트", "운동화는?")).startsWith("네, 깨끗한 운동화면");
+        assertThat(TurnService.dressyFitAdvice("산책", "운동화는?")).isNull();
+        assertThat(TurnService.dressyFitAdvice("데이트", "니트 괜찮아?")).isNull();
     }
 }
