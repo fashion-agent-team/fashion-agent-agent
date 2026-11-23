@@ -143,8 +143,15 @@ public class OutfitFlow {
         // 첫 코디만 기록되고 두 번째로 고른 옷은 "정했어요"로 끝났음).
         session.recorded = false;
         LocalDate day = SpokenDate.from(utterance, today());
-        session.targetDate = day == null || day.equals(today()) ? null : day.toString();
-        rememberSpoken(session, utterance);
+        // "다른 거 추천해 줘": 날짜·자리를 새로 말하지 않았으면 앞서 말한 날("내일")과 자리("결혼식")를 이어 씁니다.
+        // 2026-11-23 시뮬: 결혼식 추천 뒤 "다른 거 추천해 줘"에 "일정은 없어요, 편한 상의"로 답했음.
+        String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        boolean again = session.advice != null && day == null && SpokenOccasion.from(utterance) == null
+                && (u.contains("다른") || u.contains("다시") || u.startsWith("또"));
+        if (!again) {
+            session.targetDate = day == null || day.equals(today()) ? null : day.toString();
+            rememberSpoken(session, utterance);
+        }
         session.outfitMode = modeFrom(utterance);
         session.modeAsked = 0;
         TurnResponse advice = advise(session, location);
@@ -177,8 +184,10 @@ public class OutfitFlow {
     /** "봐 드릴까요?"에 대한 답. 알아듣지 못하면 null(원래 대화로). */
     public TurnResponse answerCheckOffer(AgentSession session, String utterance) {
         session.checkOffered = false;
-        String mode = modeFrom(utterance);
         String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        // 방식을 고르는 답일 때만 방식으로 봅니다. 2026-11-23 시뮬: "더 따뜻하게 입고 싶어"의 '입고'로 입은 모습 카메라를 켰음.
+        String mode = s.length() <= 8 || SWITCH_WORDS.stream().anyMatch(s::contains)
+                || List.of("할게", "할래", "볼래").stream().anyMatch(s::contains) ? modeFrom(utterance) : null;
         if (otherFeature(utterance)) {
             // "아니 그냥 날씨 어때?"처럼 다른 기능을 말하면 답이 아니라 새 요청입니다.
             sessions.save(session);
