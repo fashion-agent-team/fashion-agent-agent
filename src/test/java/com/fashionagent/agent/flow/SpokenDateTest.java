@@ -27,6 +27,13 @@ class SpokenDateTest {
     }
 
     @Test
+    void 크리스마스와_새해를_읽는다() {
+        assertThat(d("크리스마스에 뭐 입지?")).isEqualTo(LocalDate.of(2026, 12, 25));
+        assertThat(d("크리스마스 이브 날씨")).isEqualTo(LocalDate.of(2026, 12, 24));
+        assertThat(d("새해 첫날 날씨")).isEqualTo(LocalDate.of(2027, 1, 1));
+    }
+
+    @Test
     void 며칠_뒤를_읽는다() {
         assertThat(d("3일 뒤 날씨")).isEqualTo(TODAY.plusDays(3));
         assertThat(d("100일 후 날씨")).isEqualTo(TODAY.plusDays(100));
