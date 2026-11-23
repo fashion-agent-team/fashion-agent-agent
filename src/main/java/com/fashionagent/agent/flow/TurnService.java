@@ -538,8 +538,10 @@ public class TurnService {
         }
         // "패딩 입어야 돼?", "겉옷 챙겨야 해?": 날씨를 읽기 전에 네/아니요부터(2026-11-23 시뮬).
         if (!askedRain && (u.contains("입어야") || u.contains("챙겨야") || u.contains("필요")
-                || u.contains("없지") || u.contains("안입어도") || u.contains("안챙겨도"))
+                || u.contains("없지") || u.contains("안입어도") || u.contains("안챙겨도")
+                || u.contains("챙길까") || u.contains("가져갈까"))
                 && (u.contains("겉옷") || u.contains("외투") || u.contains("패딩") || u.contains("코트")
+                        || u.contains("바람막이")
                         || u.contains("자켓") || u.contains("재킷") || u.contains("점퍼") || u.contains("입어야"))
                 && w.has("needsOuter")) {
             boolean neg = u.matches(".*(없지|없겠지|필요없|안입어도|안챙겨도).*");
