@@ -519,6 +519,28 @@ class TurnFlowTest {
     }
 
     @Test
+    void 화장_카메라_중_취소하면_카메라를_끈다() throws Exception {
+        JsonNode first = turn("u_cancel", """
+                {"utterance": "얼굴 화장 봐줘"}""");
+        assertThat(first.path("next").asString()).isEqualTo("camera_face");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_cancel", """
+                {"sessionId": "%s", "utterance": "취소"}""".formatted(sid));
+        assertThat(r.path("next").asString()).isEqualTo("listen");
+        assertThat(r.path("speech").asString()).startsWith("네, 알겠어요.");
+    }
+
+    @Test
+    void 날과_계획만_말한_뒤_추천은_그날로() throws Exception {
+        JsonNode first = turn("u_date_plan", """
+                {"utterance": "모레 데이트 있어"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_date_plan", """
+                {"sessionId": "%s", "utterance": "옷 추천해줘"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레의 패션");
+    }
+
+    @Test
     void 어제_일정을_물으면_어제_일정을_읽는다() throws Exception {
         JsonNode r = turn("u_past_sched", """
                 {"utterance": "어제 일정 뭐였지?"}""");

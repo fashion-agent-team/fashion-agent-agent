@@ -49,7 +49,8 @@ public enum Intent {
             "겉옷입어야", "외투챙", "몇도", "장화", "우비", "레인부츠", "레인코트");
     /** "오늘 반팔 입어도 돼?": 2026-11-23 시뮬에서 GPT로 갔음. 날씨로 네/아니요를 바로 답합니다. */
     static final List<String> LIGHT_WORDS = List.of("반팔", "반바지", "민소매", "나시", "얇게", "얇은옷");
-    static final List<String> MAY_WORDS = List.of("입어도", "입고가도", "입고나가도", "괜찮", "될까", "되나");
+    static final List<String> MAY_WORDS = List.of("입어도", "입고가도", "입고나가도", "괜찮", "될까", "되나", "신어도",
+            "신고가도");
     /** "목도리 해야 돼?", "장갑 챙길까?": 2026-11-23 시뮬에서 GPT로 갔음. 체감 온도로 네/아니요를 바로 답합니다. */
     static final List<String> WARM_ITEMS = List.of("목도리", "머플러", "장갑", "털모자", "귀마개", "핫팩", "내복", "히트텍");
     static final List<String> NEED_WORDS = List.of("해야", "챙길", "챙겨", "필요", "할까", "낄까", "껴야", "쓸까", "써야",
@@ -68,7 +69,10 @@ public enum Intent {
     /** inOutfitSession: 옷 추천 대화 중인지 (마무리·"어디야?"는 그때만). */
     /** "치마 입어도 돼?", "청바지 괜찮아?": 2026-11-23 시뮬에서 GPT로 갔음. 날씨로 네/아니요를 답합니다. */
     static boolean wearMay(String s) {
-        return ClosetView.category(s) != null && containsAny(s, MAY_WORDS) && !containsAny(s, LIGHT_WORDS)
+        // "치마 입을까?"도(뭐/무슨이 없으면 고를 옷을 물은 게 아니라 그 옷을 입어도 되는지 물은 말).
+        boolean shall = (s.contains("입을까") || s.contains("신을까"))
+                && !s.matches(".*(뭐|뭘|무슨|어떤|어느|무엇|추천).*");
+        return ClosetView.category(s) != null && (containsAny(s, MAY_WORDS) || shall) && !containsAny(s, LIGHT_WORDS)
                 && !s.contains("어울") && !s.contains("옷장");
     }
 
@@ -124,7 +128,7 @@ public enum Intent {
                 && !s.contains("얼굴") && !FaceFlow.isTeeth(s)) {
             return CHECK;
         }
-        if (containsAny(s, OUTFIT_WORDS)) {
+        if (containsAny(s, OUTFIT_WORDS) && !wearMay(s)) {
             return OUTFIT;
         }
         if (s.contains("얼굴") || s.contains("화장") || FaceFlow.isTeeth(s) || FaceFlow.isMakeup(s)) {
