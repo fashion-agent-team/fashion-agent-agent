@@ -193,10 +193,10 @@ public class TurnService {
             return null;
         }
         // 날짜 말과 "은/는/요" 말고 다른 말이 있으면("내일 3시 치과") 이어 묻기가 아닙니다(GPT가 일정 등록 등으로 봄).
-        String rest = s.replaceAll("그럼|그러면|다다음주|다음주|이번주|담주|오늘|내일|모레|글피|[월화수목금토일]요일"
+        String rest = s.replaceAll("그럼|그러면|^아니|다다음주|다음주|이번주|담주|오늘|내일|모레|글피|[월화수목금토일]요일"
                 + "|\\d{1,2}월|\\d{1,2}일|\\d{1,2}/\\d{1,2}", "")
                 // "내일 낮엔?", "토요일 아침은?": 시간대는 하루 예보로 답합니다(2026-11-23 시뮬에서 GPT로 갔음).
-                .replaceAll("^(아침|점심|낮|오전|오후|저녁|밤|새벽)", "").replaceAll("(에는|엔|에)$", "")
+                .replaceAll("^(아침|점심|낮|오전|오후|저녁|밤|새벽)", "").replaceAll("(에는|엔|에|거|꺼|걸로|거로|것)$", "")
                 .replaceAll("[은는요도]", "");
         // "내일 일정 뭐 있어?" 뒤 "그 다음날은?": 방금 말한 날의 다음 날(2026-11-23 시뮬에서 GPT로 갔음).
         boolean nextDay = intent == Intent.OTHER && s.matches("(그럼|그러면)?(그)?다음날(은|는|요|은요|는요)?");
@@ -541,7 +541,9 @@ public class TurnService {
             sb.append(feel).append(" ");
         }
         // "패딩 입어야 돼?", "겉옷 챙겨야 해?": 날씨를 읽기 전에 네/아니요부터(2026-11-23 시뮬).
-        if (!askedRain && (u.contains("입어야") || u.contains("챙겨야") || u.contains("필요")
+        // "히트텍 입어야 해?"는 아래 따뜻한 옷 답만 합니다(2026-11-23 시뮬: "네, 겉옷을 챙기세요. 네, 챙기세요."로 겹쳤음).
+        if (!askedRain && !u.matches(".*(히트텍|내복|목도리|머플러|장갑|털모자|귀마개|핫팩).*")
+                && (u.contains("입어야") || u.contains("챙겨야") || u.contains("필요")
                 || u.contains("없지") || u.contains("안입어도") || u.contains("안챙겨도")
                 || u.contains("챙길까") || u.contains("가져갈까"))
                 && (u.contains("겉옷") || u.contains("외투") || u.contains("패딩") || u.contains("코트")

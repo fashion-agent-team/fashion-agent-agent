@@ -188,7 +188,8 @@ public class OutfitFlow {
         // 방식을 고르는 답일 때만 방식으로 봅니다. 2026-11-23 시뮬: "더 따뜻하게 입고 싶어"의 '입고'로 입은 모습 카메라를 켰음.
         String mode = s.length() <= 8 || SWITCH_WORDS.stream().anyMatch(s::contains)
                 || List.of("할게", "할래", "볼래").stream().anyMatch(s::contains) ? modeFrom(utterance) : null;
-        if (otherFeature(utterance)) {
+        // "아니 내일 거": 날을 말하면 거절이 아니라 그날로 다시 추천해 달라는 말(2026-11-23 시뮬: 대화를 끝냈음).
+        if (otherFeature(utterance) || SpokenDate.from(s, today()) != null) {
             // "아니 그냥 날씨 어때?"처럼 다른 기능을 말하면 답이 아니라 새 요청입니다.
             sessions.save(session);
             return null;
