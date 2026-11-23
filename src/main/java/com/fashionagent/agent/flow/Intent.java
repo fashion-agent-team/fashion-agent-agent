@@ -157,7 +157,8 @@ public enum Intent {
         if (s.matches(".*(따뜻|시원|편하|편한|가볍|가벼|단정|깔끔|캐주얼|포멀|격식)\\S*(입고싶|입을래|입고갈래|입고가고싶).*")) {
             return OUTFIT;
         }
-        if (containsAny(s, OUTFIT_WORDS) && !wearMay(s) && !lightMay(s)) {
+        // "장화 신을까?": "신을까"가 추천으로 갔음(2026-11-23 시뮬). 비 오는지로 답합니다.
+        if (containsAny(s, OUTFIT_WORDS) && !wearMay(s) && !lightMay(s) && !s.matches(".*(장화|우비|레인부츠|레인코트).*")) {
             return OUTFIT;
         }
         if (s.contains("얼굴") || s.contains("화장") || FaceFlow.isTeeth(s) || FaceFlow.isMakeup(s)) {

@@ -640,6 +640,16 @@ class TurnFlowTest {
     }
 
     @Test
+    void 추천_뒤_체육_있는데는_운동_자리로_다시_추천() throws Exception {
+        JsonNode first = turn("u_gym", """
+                {"utterance": "모레 학교 가는데 뭐 입지"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_gym", """
+                {"sessionId": "%s", "utterance": "체육 있는데"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레의 패션").doesNotContain("할 수 없는");
+    }
+
+    @Test
     void 추천_뒤_다른_도시는은_그_도시로_다시_추천() throws Exception {
         JsonNode first = turn("u_city_switch", """
                 {"utterance": "내일 뭐 입지"}""");
@@ -711,13 +721,13 @@ class TurnFlowTest {
                 {"sessionId": "%s", "utterance": "괜찮아?"}""".formatted(sid));
         assertThat(r.path("speech").asString()).contains("비춰").doesNotContain("할 수 없는");
 
-        for (String u : new String[] {"번졌어?", "너무 진해?", "어색해?", "오른쪽 봐줘", "다 됐어"}) {
+        for (String u : new String[] {"번졌어?", "너무 진해?", "어색해?", "오른쪽 봐줘", "다시 봐줘", "다 됐어"}) {
             JsonNode q = turn("u_face_ok", """
                     {"sessionId": "%s", "utterance": "%s"}""".formatted(sid, u));
             assertThat(q.path("speech").asString()).contains("비춰");
         }
         JsonNode end = turn("u_face_ok", """
-                {"sessionId": "%s", "utterance": "됐어"}""".formatted(sid));
+                {"sessionId": "%s", "utterance": "알겠어 고마워"}""".formatted(sid));
         assertThat(end.path("next").asString()).isNotEqualTo("camera_face");
     }
 
