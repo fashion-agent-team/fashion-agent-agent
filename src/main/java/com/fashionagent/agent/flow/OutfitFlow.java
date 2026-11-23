@@ -847,6 +847,13 @@ public class OutfitFlow {
     // ── "어디야?" ─────────────────────────────────────────────────────
 
     public TurnResponse where(AgentSession session) {
+        // 2026-11-23 시뮬: 옷을 하나도 안 찍었는데 "방금 본 옷에서는 … 찾지 못했어요"라고 답했음.
+        if (session.seen.isEmpty() && session.lastDamage.isEmpty()) {
+            Next next = session.outfitMode == null ? Next.listen : cameraFor(session.outfitMode);
+            return new TurnResponse(session.sessionId, next == Next.listen
+                    ? "아직 본 옷이 없어요. \"봐 줘\"라고 하시면 옷을 봐 드릴게요."
+                    : "아직 본 옷이 없어요. 옷을 폰으로 비춰 주시면 봐 드릴게요.", next, null);
+        }
         List<String> sentences = new ArrayList<>();
         for (OutfitCheck.Damage d : session.lastDamage) {
             if (d.where() == null || d.where().isBlank()) {
