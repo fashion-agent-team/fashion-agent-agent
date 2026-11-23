@@ -713,6 +713,16 @@ class TurnFlowTest {
     }
 
     @Test
+    void 우산_뒤_겉옷은은_챙기라고_답한다() throws Exception {
+        JsonNode first = turn("u_outer_follow", """
+                {"utterance": "모레 우산 챙겨?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_outer_follow", """
+                {"sessionId": "%s", "utterance": "겉옷은?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).doesNotContain("입어도 돼요").doesNotContain("할 수 없는");
+    }
+
+    @Test
     void 옷_카메라에서_본_옷이_없을_때_그만은_카메라를_끈다() throws Exception {
         JsonNode first = turn("u_outfit_stop", """
                 {"utterance": "옷 검사해줘"}""");

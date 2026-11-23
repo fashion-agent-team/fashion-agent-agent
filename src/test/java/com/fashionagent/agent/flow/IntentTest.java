@@ -149,6 +149,7 @@ class IntentTest {
         assertThat(Intent.of("옷 색깔 봐줘", false)).isEqualTo(Intent.COLOR);
         assertThat(Intent.of("그럼 장화 신을까", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("도움말", false)).isEqualTo(Intent.HELP);
+        assertThat(Intent.of("추천 좀", false)).isEqualTo(Intent.OUTFIT);
         assertThat(Intent.of("이거 쓰는 법 알려줘", false)).isEqualTo(Intent.HELP);
         assertThat(Intent.of("바지 몇 벌 있어?", false)).isEqualTo(Intent.CLOSET);
         assertThat(Intent.of("자켓 있어?", false)).isEqualTo(Intent.CLOSET);
