@@ -212,6 +212,14 @@ public class TurnService {
                 // "내일 낮엔?", "토요일 아침은?": 시간대는 하루 예보로 답합니다(2026-11-23 시뮬에서 GPT로 갔음).
                 .replaceAll("^(아침|점심|낮|오전|오후|저녁|밤|새벽)", "").replaceAll("(에는|엔|에|거|꺼|걸로|거로|것)$", "")
                 .replaceAll("[은는요도]", "");
+        // "다음주 월요일 비 와?" 뒤 "화요일은?": 이번 주가 아니라 방금 말한 날이 있는 주의 화요일(2026-11-23 시뮬: 내일로 답함).
+        if (day != null && session.lastTopicDate != null && s.matches("(그럼|그러면)?[월화수목금토일]요일(은|는|요|은요|는요)?")) {
+            var last = java.time.LocalDate.parse(session.lastTopicDate);
+            var lastMonday = last.with(java.time.DayOfWeek.MONDAY);
+            if (lastMonday.isAfter(today.with(java.time.DayOfWeek.MONDAY))) {
+                day = lastMonday.with(day.getDayOfWeek());
+            }
+        }
         // "내일 일정 뭐 있어?" 뒤 "그 다음날은?": 방금 말한 날의 다음 날(2026-11-23 시뮬에서 GPT로 갔음).
         boolean nextDay = intent == Intent.OTHER && s.matches("(그럼|그러면)?(그)?다음날(은|는|요|은요|는요)?");
         if (nextDay) {
@@ -311,7 +319,9 @@ public class TurnService {
         // 추천 뒤 "우산 챙겨?"로 날씨를 한 번 물은 다음 "다른 거"도 옷으로(2026-11-23 시뮬에서 GPT로 갔음).
         if (intent == Intent.OTHER && ("outfit".equals(session.lastTopic)
                         || ("weather".equals(session.lastTopic) && session.advice != null))
-                && s.matches("(그럼|그러면|아니)?(다른|딴)(거|걸|것|걸로|거로|옷|코디)(는|은|요|줘|없어|있어|보여줘|말해줘)*")) {
+                && (s.matches("(그럼|그러면|아니)?(다른|딴)(거|걸|것|걸로|거로|옷|코디)(는|은|요|줘|없어|있어|보여줘|말해줘)*")
+                        // "그거 말고": 2026-11-23 시뮬에서 GPT로 갔음
+                        || s.matches("(아니)?(그거|그건|그걸|이거|이건)말고(요|다른거|딴거)?(는|줘|없어|추천해줘)?"))) {
             return new String[] {"outfit", "다른 거 추천해 줘"};
         }
         // 추천 뒤 "좀 더 캐주얼하게", "더 단정하게": 같은 날·자리로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
