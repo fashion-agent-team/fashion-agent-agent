@@ -15,9 +15,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import com.fashionagent.agent.api.TestTokens;
 
 /** 기본 설정(가짜 도구 + 규칙 판단 + 메모리 세션)으로 옷 추천 2단계를 처음부터 끝까지 돌려 봅니다. */
-@SpringBootTest
+@SpringBootTest(properties = TestTokens.PROPERTY)
 @AutoConfigureMockMvc
 class TurnFlowTest {
 
@@ -28,7 +29,7 @@ class TurnFlowTest {
     JsonMapper json;
 
     private JsonNode turn(String userId, String body) throws Exception {
-        String out = mvc.perform(post("/api/v1/agent/turn").header("X-User-Id", userId)
+        String out = mvc.perform(post("/api/v1/agent/turn").header("Authorization", TestTokens.bearer(userId))
                 .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -37,13 +38,13 @@ class TurnFlowTest {
 
     @Test
     void 미리_준비는_바로_202_본문은_없어도_된다() throws Exception {
-        mvc.perform(post("/api/v1/agent/warm").header("X-User-Id", "u-warm")
+        mvc.perform(post("/api/v1/agent/warm").header("Authorization", TestTokens.bearer("u-warm"))
                 .contentType(MediaType.APPLICATION_JSON).content("""
                         {"location": {"lat": 37.5, "lon": 127.0}}"""))
                 .andExpect(status().isAccepted());
-        mvc.perform(post("/api/v1/agent/warm").header("X-User-Id", "u-warm"))
+        mvc.perform(post("/api/v1/agent/warm").header("Authorization", TestTokens.bearer("u-warm")))
                 .andExpect(status().isAccepted());
-        mvc.perform(post("/api/v1/agent/warm").header("X-User-Id", " "))
+        mvc.perform(post("/api/v1/agent/warm").header("Authorization", "Bearer not-a-token"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -257,17 +258,17 @@ class TurnFlowTest {
 
     @Test
     void 게이트웨이가_붙인_내_정보는_세션에_두고_다음_말에서_바뀌면_바꾼다() throws Exception {
-        String out = mvc.perform(post("/api/v1/agent/turn").header("X-User-Id", "u-wearer")
+        String out = mvc.perform(post("/api/v1/agent/turn").header("Authorization", TestTokens.bearer("u-wearer"))
                 .contentType(MediaType.APPLICATION_JSON).content("""
                         {"utterance": "오늘 뭐 입지?", "wearer": {"gender": "남자", "heightCm": 180, "name": "진행"}}"""))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         String sid = json.readTree(out).path("sessionId").asString();
-        var session = sessions.find("u-wearer", sid).orElseThrow();
+        var session = sessions.find(TestTokens.id("u-wearer"), sid).orElseThrow();
         assertThat(session.wearer.path("heightCm").asInt()).isEqualTo(180);
         assertThat(session.wearer.has("name")).isFalse();
 
         turn("u-wearer", "{\"sessionId\": \"%s\", \"utterance\": \"아니요\"}".formatted(sid));
-        assertThat(sessions.find("u-wearer", sid).map(s -> s.wearer).orElse(null)).isNull();
+        assertThat(sessions.find(TestTokens.id("u-wearer"), sid).map(s -> s.wearer).orElse(null)).isNull();
     }
 
     @Test
@@ -280,7 +281,7 @@ class TurnFlowTest {
 
     @Test
     void 말도_사진도_없으면_400() throws Exception {
-        mvc.perform(post("/api/v1/agent/turn").header("X-User-Id", "u4")
+        mvc.perform(post("/api/v1/agent/turn").header("Authorization", TestTokens.bearer("u4"))
                 .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("bad_request"));

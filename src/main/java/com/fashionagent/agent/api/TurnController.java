@@ -2,6 +2,7 @@ package com.fashionagent.agent.api;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,8 +19,8 @@ import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * 앱과 대화하는 곳은 이 경로 하나입니다. 게이트웨이가 JWT를 확인하고 X-User-Id를 붙여서 넘깁니다.
- * 개발 중에는 게이트웨이 없이 X-User-Id 헤더를 직접 넣어 부르면 됩니다.
+ * 앱과 대화하는 곳은 이 경로 하나입니다. 게이트웨이가 앱의 로그인 토큰({@code Authorization: Bearer})을 그대로 넘기고,
+ * 여기서 그 토큰을 다시 확인해 사용자 id를 꺼냅니다({@link AccessTokens}). 사용자 정보를 따로 헤더에 싣지 않습니다.
  */
 @RestController
 @RequestMapping("/api/v1/agent")
@@ -30,10 +31,12 @@ public class TurnController {
 
     private final TurnService turns;
     private final Prefetch prefetch;
+    private final AccessTokens tokens;
 
-    public TurnController(TurnService turns, Prefetch prefetch) {
+    public TurnController(TurnService turns, Prefetch prefetch, AccessTokens tokens) {
         this.turns = turns;
         this.prefetch = prefetch;
+        this.tokens = tokens;
     }
 
     /**
@@ -41,21 +44,17 @@ public class TurnController {
      * 본문은 없어도 됩니다({"location": {...}} 선택). 불러오기 결과는 돌려주지 않습니다.
      */
     @PostMapping("/warm")
-    public ResponseEntity<Void> warm(@RequestHeader("X-User-Id") String userId,
+    public ResponseEntity<Void> warm(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @RequestBody(required = false) WarmRequest request) {
-        if (userId.isBlank()) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized", "X-User-Id가 비었어요.");
-        }
+        String userId = tokens.userId(authorization);
         prefetch.start(userId, request == null ? null : request.location());
         return ResponseEntity.accepted().build();
     }
 
     @PostMapping("/turn")
-    public TurnResponse turn(@RequestHeader("X-User-Id") String userId,
+    public TurnResponse turn(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @RequestBody TurnRequest request) {
-        if (userId.isBlank()) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized", "X-User-Id가 비었어요.");
-        }
+        String userId = tokens.userId(authorization);
         if (!request.hasImage() && !request.hasUtterance()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "bad_request", "utterance나 image 중 하나는 있어야 해요.");
         }

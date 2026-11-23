@@ -883,13 +883,16 @@ public class TurnService {
                 return say(session, Korean.josa(label, "은", "는") + " 일정이 없어요.", Next.listen);
             }
             StringBuilder sb = new StringBuilder(label + " 일정은 ");
+            String lastTitle = "";
             for (int i = 0; i < events.size(); i++) {
                 JsonNode e = events.get(i);
                 String start = e.path("start").asString("");
                 String time = spokenTime(start);
-                sb.append(i == 0 ? "" : ", ").append(time).append(" ").append(e.path("title").asString(""));
+                lastTitle = e.path("title").asString("");
+                sb.append(i == 0 ? "" : ", ").append(time).append(" ").append(lastTitle);
             }
-            sb.append("이에요.");
+            // "회의예요", "면접이에요": 마지막 일정 이름의 받침으로 고릅니다.
+            sb.append(Korean.josa(lastTitle, "이에요", "예요").substring(lastTitle.length())).append('.');
             sessions.save(session);
             return new TurnResponse(session.sessionId, sb.toString(), Next.listen, Result.of("schedule"));
         } catch (ToolException e) {

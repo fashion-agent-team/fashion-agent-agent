@@ -12,6 +12,7 @@ import org.springframework.ai.tool.annotation.ToolParam;
 
 import com.fashionagent.agent.api.Location;
 import com.fashionagent.agent.flow.ReminderFlow;
+import com.fashionagent.agent.judge.Korean;
 import com.fashionagent.agent.session.AgentSession;
 import com.fashionagent.agent.tools.AgentTools;
 import com.fashionagent.agent.tools.ToolException;
@@ -23,7 +24,7 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * 개별 기능에서 GPT가 고르는 도구. 대화 한 번마다 새로 만듭니다.
  *
- * <p>GPT는 userId, 위치, 사진을 채우지 않습니다. userId는 X-User-Id, 위치는 앱이 보낸 값,
+ * <p>GPT는 userId, 위치, 사진을 채우지 않습니다. userId는 로그인 토큰에서 꺼낸 값, 위치는 앱이 보낸 값,
  * 사진은 세션에 10분 들고 있는 직전 사진을 이 클래스가 넣습니다(약속 3절, 5-2절, 5-3절).
  * 도구가 실패하면 예외 대신 {"error": {...}} 를 GPT에 돌려줘서 사용자에게 말로 안내하게 합니다.
  */
@@ -160,7 +161,7 @@ public class AssistantTools {
             String title = eventTitles.get(eventId);
             boolean known = title != null && !title.isBlank();
             // "지웠어요."만 들으면 무엇을 지웠는지 알 수 없어서, 일정 이름이 답에 없으면 이름을 넣어 읽습니다.
-            done.add(new Done(known ? "일정 '" + title + "'을 지웠어요." : "일정을 지웠어요.",
+            done.add(new Done(known ? "일정 " + quoted(title, "을", "를") + " 지웠어요." : "일정을 지웠어요.",
                     known ? List.of("지웠|삭제", title) : List.of("지웠|삭제")));
         }
         return out;
@@ -199,12 +200,17 @@ public class AssistantTools {
         }
         Integer days = old.path("remindDaysBefore").isNumber() ? old.path("remindDaysBefore").asInt() : null;
         boolean remind = old.path("remind").asBoolean(true);
-        if (!remind || days != null) {
+        // 알림 시각(예: 2일 전 오후 4시)도 옮깁니다. 안 옮기면 새 일정은 아침 8시 기본값이 됩니다.
+        String time = old.path("remindTime").asString("");
+        if (!remind || days != null || !time.isBlank()) {
             Map<String, Object> r = new HashMap<>();
             r.put("eventId", newId);
             r.put("remind", remind);
             if (days != null) {
                 r.put("daysBefore", days);
+            }
+            if (remind && !time.isBlank()) {
+                r.put("time", time);
             }
             call(ToolNames.SCHEDULE_SET_REMINDER, r, true);
         }
@@ -216,8 +222,15 @@ public class AssistantTools {
         }
         events.remove(eventId);
         String label = spokenTime(when);
-        done.add(new Done("일정 '" + title + "'을 " + label + "로 바꿨어요.", List.of("바꿨|옮겼|변경", title)));
+        done.add(new Done("일정 " + quoted(title, "을", "를") + " " + Korean.josa(label, "으로", "로")
+                + " 바꿨어요.", List.of("바꿨|옮겼|변경", title)));
         return json.writeValueAsString(Map.of("changed", true, "eventId", newId, "title", title, "when", label));
+    }
+
+    /** 'title' 뒤에 맞는 조사. 따옴표 안 낱말의 받침으로 고릅니다("'회의'를", "'면접'을"). */
+    public static String quoted(String title, String withBatchim, String without) {
+        String withJosa = Korean.josa(title, withBatchim, without);
+        return "'" + title + "'" + withJosa.substring(title == null ? 0 : title.length());
     }
 
     /** "11월 17일 화요일 오전 11시", 분이 있으면 "오후 2시 30분". */
