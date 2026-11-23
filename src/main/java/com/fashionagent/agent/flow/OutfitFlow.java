@@ -554,7 +554,7 @@ public class OutfitFlow {
             return j;
         }
         return new CheckJudgement(j.verdicts(), j.comparison(), j.damage(), j.stillMissing(),
-                ColorFeel.insertAfterFirst(j.speech(), extra));
+                ColorFeel.insertAfter(j.speech(), extra, j.comparison() != null ? 1 : Math.min(3, garments.size())));
     }
 
     /** 2026-11-10 진행 님 대사: 처음 애매한 얼룩이 나왔을 때 한 번만 묻는다. */

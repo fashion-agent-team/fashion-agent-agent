@@ -166,8 +166,11 @@ public class RuleOutfitJudge implements OutfitJudge {
             sentences.add(Korean.josa(Korean.position(best.position()) + " " + best.label(), "이", "가") + " "
                     + Korean.position(other.position()) + " " + other.label() + "보다 " + place + " 더 잘 맞아요.");
         } else if (!in.now().isEmpty()) {
-            Garment g = in.now().get(0);
-            sentences.add(Korean.josa(g.label(), "은", "는") + " " + verdicts.get(0).notes().get(0));
+            // 한 사진에 여러 벌(입은 모습 등)이면 벌마다 말합니다. 2026-11-23 시뮬: 자켓만 말하고 바지는 이름도 안 나왔음.
+            for (int i = 0; i < Math.min(3, in.now().size()); i++) {
+                Garment g = in.now().get(i);
+                sentences.add(Korean.josa(g.label(), "은", "는") + " " + verdicts.get(i).notes().get(0));
+            }
         }
         damage.stream().filter(d -> !"ok".equals(d.action())).findFirst()
                 .or(() -> damage.stream().findFirst())

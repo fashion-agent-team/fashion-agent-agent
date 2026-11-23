@@ -142,12 +142,24 @@ public final class ColorFeel {
 
     /** 판단 문장의 첫 문장(어느 옷인지·맞는지) 뒤에 색 문장을 넣습니다. 끝 안내("이걸로 할게" 등)는 맨 뒤에 남습니다. */
     public static String insertAfterFirst(String speech, List<String> extra) {
+        return insertAfter(speech, extra, 1);
+    }
+
+    /** n번째 문장 뒤에 넣습니다. 한 사진의 여러 벌을 벌마다 말한 뒤에 색 느낌을 붙이려고 씁니다. */
+    public static String insertAfter(String speech, List<String> extra, int n) {
         if (extra.isEmpty()) {
             return speech;
         }
         String s = speech == null ? "" : speech.strip();
         String add = String.join(" ", extra);
-        int end = firstSentenceEnd(s);
+        int end = -1;
+        for (int k = 0; k < Math.max(1, n); k++) {
+            int next = firstSentenceEnd(s.substring(end < 0 ? 0 : end));
+            if (next < 0) {
+                break;
+            }
+            end = (end < 0 ? 0 : end) + next;
+        }
         if (end < 0) {
             return s.isEmpty() ? add : s + " " + add;
         }
