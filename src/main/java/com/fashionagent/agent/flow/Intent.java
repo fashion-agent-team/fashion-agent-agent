@@ -110,6 +110,11 @@ public enum Intent {
         if (s.contains("입었") && containsAny(s, List.of("뭐", "뭘", "무슨", "어떤", "무엇"))) {
             return CLOSET_HISTORY;
         }
+        // "제일 많이 입은 옷 뭐야?": '입은옷'(옷 검사)에 걸려 카메라 방식을 물었음(2026-11-23 시뮬).
+        // 최근 기록 3개로는 답이 안 맞아서 GPT가 옷장 도구로 답합니다.
+        if (s.matches(".*(많이|자주|제일|가장)입(은|었).*")) {
+            return OTHER;
+        }
         // "어제 입은 옷 뭐야?"는 '입은옷'(옷 검사)에 걸려 카메라가 켜졌습니다(2026-11-23 점검). 지난날 + 입은 = 기록.
         if (s.contains("입은") && containsAny(s, PAST_DAY_WORDS) && !containsAny(s, OUTFIT_WORDS)) {
             return CLOSET_HISTORY;

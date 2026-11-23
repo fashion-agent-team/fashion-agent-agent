@@ -163,6 +163,10 @@ public class TurnService {
         // "내일 출근하는데 비 와?" → "그럼 뭐 입지?"도 출근에 맞춰(2026-11-23 시뮬).
         if (intent == Intent.WEATHER && SpokenOccasion.from(utterance) != null) {
             session.statedPlan = utterance;
+        } else if (intent == Intent.WEATHER && session.statedPlan != null && day == null
+                && (Intent.wearMay(s) || Intent.lightMay(s))) {
+            // "토요일 결혼식이야" → "흰 블라우스 입어도 돼?": 그날 날씨와 자리로 답합니다(2026-11-23 시뮬: 오늘 날씨로 "네"라고 함).
+            return new String[] {"weather", session.statedPlan + " " + utterance};
         } else if (intent == Intent.OTHER && !s.contains("일정") && (SpokenOccasion.from(utterance) != null
                 || (day != null && s.length() <= 15 && s.matches(".*(있어|있음|이야|예요|가|가요|가야돼|간다|가는데|해|해요)$")))) {
             session.statedPlan = utterance;
@@ -174,6 +178,11 @@ public class TurnService {
         } else if (intent != Intent.OTHER && intent != Intent.WEATHER) {
             session.statedPlan = null;
         }
+        // "오늘 뭐 입었는지 기억해?" 뒤 "어제는?": 그날 입은 옷 기록(2026-11-23 시뮬에서 GPT로 갔음).
+        if (intent == Intent.OTHER && "history".equals(session.lastTopic)
+                && s.matches("(그럼|그러면)?(어제|그제|그저께|오늘|지난주|저번주|지난[월화수목금토일]요일|[월화수목금토일]요일)(은|는|요|은요|는요)?")) {
+            return new String[] {"history", s.replaceAll("^(그럼|그러면)", "").replaceAll("(은|는)?요?$", "") + " 뭐 입었어"};
+        }
         // "어제 날씨 어땠어?"처럼 지난 날을 말했으면 이어 묻기가 아닙니다.
         if (session.lastTopic == null || pastLabel(utterance) != null) {
             return null;
@@ -183,7 +192,7 @@ public class TurnService {
                 + "|\\d{1,2}월|\\d{1,2}일|\\d{1,2}/\\d{1,2}", "").replaceAll("[은는요도]", "");
         if (intent == Intent.OTHER && day != null && rest.isEmpty()) {
             String date = day.getMonthValue() + "월 " + day.getDayOfMonth() + "일";
-            return new String[] {session.lastTopic, switch (session.lastTopic) {
+            return new String[] {"history".equals(session.lastTopic) ? "outfit" : session.lastTopic, switch (session.lastTopic) {
                 case "weather" -> date + " 날씨";
                 case "schedule" -> date + " 일정";
                 default -> date + " 뭐 입지";
@@ -392,6 +401,7 @@ public class TurnService {
             return switch (follow[0]) {
                 case "weather" -> remember(session, "weather", said, weather(session, req.location(), said));
                 case "schedule" -> remember(session, "schedule", said, schedule(session, said));
+                case "history" -> remember(session, "history", said, closetFlow.history(session, said));
                 default -> remember(session, "outfit", said, outfit.start(session, req.location(), said));
             };
         }
@@ -406,7 +416,7 @@ public class TurnService {
             case SHOWN -> outfit.shown(session);
             case WHERE -> outfit.where(session);
             case CLOSET -> closetFlow.list(session, req.utterance());
-            case CLOSET_HISTORY -> closetFlow.history(session, req.utterance());
+            case CLOSET_HISTORY -> remember(session, "history", req.utterance(), closetFlow.history(session, req.utterance()));
             case CLOSET_REMOVE -> closetFlow.startRemove(session, req.utterance());
             case WEATHER -> remember(session, "weather", req.utterance(), weather(session, req.location(), req.utterance()));
             case SCHEDULE -> remember(session, "schedule", req.utterance(), schedule(session, req.utterance()));
