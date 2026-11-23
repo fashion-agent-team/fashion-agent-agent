@@ -53,7 +53,8 @@ final class Cities {
         if (utterance == null) {
             return null;
         }
-        String s = utterance.replaceAll("\\s+", "");
+        // "세종대왕 동상", "세종문화회관"은 세종시가 아닙니다(2026-11-23 시뮬: 세종 날씨로 추천).
+        String s = utterance.replaceAll("\\s+", "").replaceAll("세종대왕|세종문화회관|세종로|광주리|대구탕|부산스", "");
         for (var e : BY_WORD.entrySet()) {
             if (s.contains(e.getKey())) {
                 return e.getValue();
