@@ -700,6 +700,12 @@ public class TurnService {
             }
         }
         // "치마 입어도 돼?", "청바지 괜찮아?": 옷 자체는 괜찮고, 추위만 덧붙입니다(2026-11-23 시뮬).
+        // "뭐 신지?": 비·눈이면 방수 신발, 영하면 따뜻한 신발(2026-11-23 시뮬: 신발 없이 옷만 추천했음).
+        if (Intent.asksShoes(u)) {
+            sb.append(umbrella ? "비나 눈 소식이 있어서 방수 되는 신발이나 장화가 좋아요. "
+                    : min <= 0 ? "추우니 발이 따뜻한 부츠나 두꺼운 운동화가 좋아요. "
+                    : max >= 25 ? "더우니 가벼운 운동화나 샌들이 좋아요. " : "편한 운동화면 좋아요. ");
+        }
         if (!askedRain && Intent.wearMay(u)) {
             boolean skirt = u.contains("치마") || u.contains("스커트") || u.contains("원피스");
             boolean outer = "outer".equals(ClosetView.category(u));

@@ -75,6 +75,11 @@ public enum Intent {
 
     /** inOutfitSession: 옷 추천 대화 중인지 (마무리·"어디야?"는 그때만). */
     /** "치마 입을까?", "반팔 입을까?": 뭐/무슨이 없으면 고를 옷이 아니라 그 옷을 입어도 되는지 물은 말. */
+    /** "뭐 신지?", "무슨 신발 신어?": 입을 옷은 안 묻고 신발만 물으면 true. */
+    static boolean asksShoes(String s) {
+        return s.matches(".*(뭐|뭘|무슨|어떤)(신|신발).*") && !s.contains("입") && !s.contains("옷");
+    }
+
     static boolean shall(String s) {
         return (s.contains("입을까") || s.contains("신을까")) && !s.matches(".*(뭐|뭘|무슨|어떤|어느|무엇|추천).*");
     }
@@ -163,6 +168,10 @@ public enum Intent {
         // 추천 없이 "따뜻하게 입고 싶어": 그 느낌으로 추천(2026-11-23 시뮬에서 GPT로 갔음).
         if (s.matches(".*(따뜻|시원|편하|편한|가볍|가벼|단정|깔끔|캐주얼|포멀|격식)\\S*(입고싶|입을래|입고갈래|입고가고싶).*")) {
             return OUTFIT;
+        }
+        // "비 와?" 뒤 "그럼 뭐 신어": 옷 추천은 신발을 말하지 않아서, 날씨로 어떤 신발이 좋은지 답합니다(2026-11-23 시뮬).
+        if (asksShoes(s)) {
+            return WEATHER;
         }
         // "장화 신을까?": "신을까"가 추천으로 갔음(2026-11-23 시뮬). 비 오는지로 답합니다.
         if (containsAny(s, OUTFIT_WORDS) && !wearMay(s) && !lightMay(s) && !s.matches(".*(장화|우비|레인부츠|레인코트).*")) {
