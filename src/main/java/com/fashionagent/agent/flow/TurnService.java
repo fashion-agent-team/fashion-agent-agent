@@ -115,6 +115,11 @@ public class TurnService {
         if (s.matches("(취소|취소해|취소할래|그만할래|안할래|나중에할래|나중에|카메라꺼|카메라꺼줘|꺼줘|끌래|안볼래)(줘|요)?")) {
             return true;
         }
+        // 옷 카메라에서 아직 본 옷이 없는데 "그만"이면 끝냅니다(2026-11-23 시뮬: "옷을 보여 주실래요?"로 카메라가 계속 켜짐).
+        if ((cam == Next.camera_outfit || cam == Next.camera_worn) && (session.seen == null || session.seen.isEmpty())
+                && s.matches("(알았어|알겠어|응|네|그래)?(그만|그만해|그만해줘|됐어|됐어요|고마워|고마워요)")) {
+            return true;
+        }
         // "알겠어 고마워"도 끝내는 말(2026-11-23 시뮬: "알겠"이 카메라 유지 대답으로 잡혀 카메라가 계속 켜짐).
         return (cam == Next.camera_face || cam == Next.camera_teeth)
                 && s.matches("(알았어|알겠어|알겠어요|응|네|그래)?(그만|됐어|그만해|됐어요|그만해줘|고마워|고마워요|감사해|감사해요|감사합니다|땡큐)");
