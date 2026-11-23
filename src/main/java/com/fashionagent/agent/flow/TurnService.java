@@ -259,8 +259,10 @@ public class TurnService {
             if (intent == Intent.OTHER && named == null && ClosetView.category(s) != null
                     && s.replaceAll("(은|는|요|도|은요|는요)$", "").length() <= 8) {
                 String garment = utterance.replaceAll("[?？.!~]", "").trim().replaceAll("(은|는|도)(요)?$", "");
+                // "우산?" 뒤 "겉옷은?": 입어도 되냐가 아니라 챙겨야 하냐로(2026-11-23 시뮬: "네, 입어도 돼요"로 답함).
+                String ask = "outer".equals(ClosetView.category(s)) ? " 챙겨야 돼?" : " 입어도 돼?";
                 return new String[] {"weather", (session.lastCity == null ? "" : session.lastCity + " ") + prefix
-                        + garment + " 입어도 돼?"};
+                        + garment + ask};
             }
             if (intent == Intent.WEATHER && named == null && session.lastCity != null
                     && !s.matches(".*(여기|우리동네|이동네|내위치|집).*")) {
