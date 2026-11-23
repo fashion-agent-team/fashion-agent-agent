@@ -152,6 +152,9 @@ public class TurnService {
         };
     }
 
+    /** 옷 색 이름(긴 것부터). */
+    static final String COLORS = "아이보리|네이비|그레이|브라운|화이트|블랙|하늘색|베이지|흰색|하얀|까만|검정|검은|회색|남색|파란|파랑|빨간|빨강|분홍|핑크|노란|노랑|초록|녹색|카키|갈색|민트|보라|주황|크림|연두|흰";
+
     /** 날씨·일정·옷 추천을 답했으면 무엇을 어느 날로 물었는지 남깁니다("모레는?"에 이어 답하려고). */
     private TurnResponse remember(AgentSession session, String topic, String utterance, TurnResponse res) {
         session.lastTopic = topic;
@@ -160,6 +163,7 @@ public class TurnService {
                 && said.matches(".*(우산|비와|비가|비올|비오|비온|비소식|장화|우비).*");
         // "내일 영하야?" 뒤 "모레는?"도 영하인지로(2026-11-23 시뮬: 날씨만 읽었음).
         session.lastWeatherFreeze = "weather".equals(topic) && said.contains("영하");
+        session.lastWearAsk = "weather".equals(topic) && Intent.wearMay(said) ? utterance : null;
         var d = SpokenDate.from(utterance, today());
         session.lastTopicDate = d == null || d.equals(today()) ? null : d.toString();
         sessions.save(session);
@@ -270,6 +274,15 @@ public class TurnService {
             // "추워?" 뒤 "얼마나?": 같은 날 기온을 다시 말합니다(2026-11-23 시뮬에서 GPT로 갔음).
             if (intent == Intent.OTHER && s.matches("(그럼|그러면)?(얼마나|몇도)(추워|더워|춥|덥)?(야|요|예요|인데)?")) {
                 return new String[] {"weather", (session.lastCity == null ? "" : session.lastCity + " ") + prefix + "몇 도야?"};
+            }
+            // "흰 니트 괜찮아?" 뒤 "그럼 베이지?": 같은 옷을 그 색으로(2026-11-23 시뮬에서 GPT로 갔음).
+            if (intent == Intent.OTHER && named == null && session.lastWearAsk != null) {
+                var m = java.util.regex.Pattern.compile("(그럼|그러면)?(" + COLORS + ")(색|색깔)?(은|는|도|이면|면|으로|로)?(요)?(어때|어때요|괜찮아|괜찮아요|돼|되나)?")
+                        .matcher(s);
+                if (m.matches()) {
+                    String garmentAsk = session.lastWearAsk.replaceAll("(" + COLORS + ")(색|색깔)?\\s*", "").trim();
+                    return new String[] {"weather", m.group(2) + " " + garmentAsk};
+                }
             }
             // "치마 입어도 돼?" 뒤 "흰 원피스는?", "레깅스는?": 같은 날 그 옷을 입어도 되는지(2026-11-23 시뮬).
             // "몇 도야?" 뒤 "그럼 반팔?"도(2026-11-23 시뮬에서 GPT로 갔음).
