@@ -202,7 +202,9 @@ public class TurnService {
             // "토요일 결혼식이야" → "흰 블라우스 입어도 돼?": 그날 날씨와 자리로 답합니다(2026-11-23 시뮬: 오늘 날씨로 "네"라고 함).
             return new String[] {"weather", session.statedPlan + " " + utterance};
         } else if (intent == Intent.OTHER && !s.contains("일정") && (SpokenOccasion.from(utterance) != null
-                || (day != null && s.length() <= 15 && s.matches(".*(있어|있음|이야|야|이에요|예요|거든|가|가요|가야돼|간다|가는데|해|해요)$")))) {
+                || (day != null && s.length() <= 15 && s.matches(".*(있어|있음|이야|야|이에요|예요|거든|가|가요|가야돼|간다|가는데|해|해요)$"))
+                // "일요일 소개팅"처럼 날과 할 일만 짧게 말해도(2026-11-23 시뮬: 다음 "뭐 입을까"를 오늘로 추천)
+                || (day != null && s.length() <= 10 && s.matches(".*(요일|내일|모레|글피|주말|\\d일)[가-힣]{2,5}")))) {
             session.statedPlan = utterance;
         } else if (intent == Intent.OUTFIT && session.statedPlan != null && day == null
                 && SpokenOccasion.from(utterance) == null) {
