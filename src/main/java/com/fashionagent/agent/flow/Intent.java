@@ -18,7 +18,7 @@ public enum Intent {
     private static final List<String> SHOWN_WORDS = List.of("다보여", "다보였", "다찍", "다봤", "더없어", "이게다", "이거다야",
             "이게전부", "이거전부");
     private static final List<String> OUTFIT_WORDS = List.of("뭐입", "뭘입", "옷추천", "추천해", "코디", "입을까", "입지",
-            "옷골라", "뭐신", "뭘신", "신을까", "추천다시", "다시추천", "추천또");
+            "옷골라", "옷좀골라", "골라줘", "골라줄래", "뭐신", "뭘신", "신을까", "추천다시", "다시추천", "추천또");
     /**
      * "옷 검사해 줘"처럼 꺼낸 옷을 바로 봐 달라는 말. 추천을 길게 말하지 않고 바로 카메라로 갑니다.
      * 2026-11-09 리허설: "옷 검사"가 키워드에 없어 GPT로 갔고, 얼굴 확인으로 넘어갔습니다.
@@ -46,7 +46,7 @@ public enum Intent {
     private static final List<String> WEATHER_WORDS = List.of("우산", "비와", "비가", "비올", "비오", "눈와", "눈이와",
             "눈올", "눈이올", "눈오", "추워", "추운", "춥", "더워", "더운", "덥", "기온", "온도", "일교차", "쌀쌀", "겉옷챙",
             "입어야돼", "입어야해", "입어야하", "입어야될", "입어야할",
-            "겉옷입어야", "외투챙", "몇도", "비온", "눈온", "장화", "우비", "레인부츠", "레인코트");
+            "겉옷입어야", "외투챙", "몇도", "영하", "비온", "눈온", "장화", "우비", "레인부츠", "레인코트");
     /** "오늘 반팔 입어도 돼?": 2026-11-23 시뮬에서 GPT로 갔음. 날씨로 네/아니요를 바로 답합니다. */
     static final List<String> LIGHT_WORDS = List.of("반팔", "반바지", "민소매", "나시", "얇게", "얇은옷");
     static final List<String> MAY_WORDS = List.of("입어도", "입고가도", "입고나가도", "괜찮", "될까", "되나", "신어도",
@@ -152,6 +152,10 @@ public enum Intent {
         if (!inOutfitSession && OutfitFlow.switchFrom(s) != null && !containsAny(s, OUTFIT_WORDS)
                 && !s.contains("얼굴") && !FaceFlow.isTeeth(s)) {
             return CHECK;
+        }
+        // 추천 없이 "따뜻하게 입고 싶어": 그 느낌으로 추천(2026-11-23 시뮬에서 GPT로 갔음).
+        if (s.matches(".*(따뜻|시원|편하|편한|가볍|가벼|단정|깔끔|캐주얼|포멀|격식)\\S*(입고싶|입을래|입고갈래|입고가고싶).*")) {
+            return OUTFIT;
         }
         if (containsAny(s, OUTFIT_WORDS) && !wearMay(s) && !lightMay(s)) {
             return OUTFIT;

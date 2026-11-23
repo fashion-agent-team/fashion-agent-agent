@@ -97,7 +97,7 @@ public class TurnService {
             "오케이", "그래");
     private static final java.util.List<String> ACK_PREFIX = java.util.List.of("알겠", "알았", "잠깐", "잠시만", "기다려",
             "준비됐", "비출게", "비춰볼게", "보여줄게", "다입었", "입었어", "입었다", "다했어", "괜찮아", "괜찮지",
-            "어때", "이상해", "이상하지", "봐줘", "보여", "번졌", "묻었", "꼈어", "삐뚤", "짝짝", "다됐", "끝났", "깨끗");
+            "어때", "이상해", "이상하지", "봐줘", "보여", "번졌", "묻었", "꼈어", "삐뚤", "짝짝", "다됐", "끝났", "깨끗", "번진");
 
     /** 카메라를 켠 채 그만두자는 말이면 true. 옷 카메라의 "그만", "됐어"는 옷 마치기(FINISH)가 먼저 가져갑니다. */
     static boolean cameraCancel(AgentSession session, String utterance) {
@@ -255,7 +255,7 @@ public class TurnService {
             return new String[] {"outfit", "다른 거 추천해 줘"};
         }
         // 추천 뒤 "좀 더 캐주얼하게", "더 단정하게": 같은 날·자리로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
-        if (intent == Intent.OTHER && "outfit".equals(session.lastTopic)
+        if ((intent == Intent.OTHER || intent == Intent.OUTFIT) && "outfit".equals(session.lastTopic)
                 && s.matches("(그럼|그러면)?(좀|조금)?(더)?(캐주얼|편하|편한|가볍|가벼운|따뜻|시원|두껍|두꺼운|단정|깔끔|포멀|격식|차려입|꾸며|힙하|귀엽|귀여운|세련)"
                         + "[가-힣]{0,8}[?？!.~]*")
                 && !s.contains("않") && !s.contains("같") && s.length() <= 16) {
@@ -536,7 +536,11 @@ public class TurnService {
                 || u.contains("눈오") || u.contains("눈이");
 
         StringBuilder sb = new StringBuilder();
-        String feel = feeling(u, w.path("apparentTemperature").asDouble(), day);
+        // "오늘 영하야?": 최저 기온으로 네/아니요(2026-11-23 시뮬에서 GPT로 갔음).
+        if (u.contains("영하") && w.has("minTemperature")) {
+            sb.append(min < 0 ? "네, 최저 " + min + "도로 영하예요. " : "아니요, 최저 " + min + "도라 영하는 아니에요. ");
+        }
+        String feel = u.contains("영하") ? null : feeling(u, w.path("apparentTemperature").asDouble(), day);
         if (feel != null) {
             sb.append(feel).append(" ");
         }
