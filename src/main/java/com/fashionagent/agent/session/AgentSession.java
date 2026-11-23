@@ -118,6 +118,8 @@ public class AgentSession {
     /** 마지막으로 답한 날씨·일정·옷 추천("weather"·"schedule"·"outfit")과 그 날(오늘이면 null). "모레는?"에 이어 답합니다. */
     public String lastTopic;
     public String lastTopicDate;
+    /** "나 오늘 면접이야"처럼 자리만 말한 말. 다음 "뭐 입고 가면 좋을까?"에 그 자리·날로 추천합니다. */
+    public String statedPlan;
 
     /** "이거 무슨 색이야?"로 카메라를 켠 중. 이때 온 옷 사진은 색·무늬만 읽어 줍니다(2026-11-13). */
     public boolean colorCheck;

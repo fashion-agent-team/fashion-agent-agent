@@ -42,4 +42,14 @@ class WeatherSpeechTest {
                 .startsWith("네, 입어도 돼요. 다만 최저 1도라 두꺼운 스타킹을 신고 겉옷을 챙기세요.");
         assertThat(TurnService.weatherSpeech(w("맑음"), null, "청바지 괜찮아?")).startsWith("네, 입어도 돼요. 다만 추우니 겉옷을 챙기세요.");
     }
+
+    @Test
+    void 거꾸로_물으면_네_아니요도_거꾸로() {
+        assertThat(TurnService.weatherSpeech(w("맑음"), null, "목도리 필요 없지?")).startsWith("아니요, 챙기세요.");
+    }
+
+    @Test
+    void 장화_우비는_비로_답한다() {
+        assertThat(TurnService.weatherSpeech(w("비"), null, "장화 신어야 돼?")).startsWith("우산 챙기세요.");
+    }
 }

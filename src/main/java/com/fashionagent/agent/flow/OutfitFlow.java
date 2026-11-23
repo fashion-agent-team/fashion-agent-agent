@@ -193,7 +193,9 @@ public class OutfitFlow {
             sessions.save(session);
             return null;
         }
-        if (mode == null && NO.stream().anyMatch(s::contains)) {
+        // "검정 정장 괜찮아?"는 거절이 아니라 질문입니다(2026-11-23 시뮬: "괜찮"에 걸려 대화를 끝냈음).
+        boolean asksOk = s.indexOf("괜찮") > 2 && NO.stream().filter(w -> !"괜찮".equals(w)).noneMatch(s::contains);
+        if (mode == null && NO.stream().anyMatch(s::contains) && !asksOk) {
             sessions.save(session);
             return new TurnResponse(session.sessionId, "그럼요, 알겠어요. 옷 고르다가 봐 줄 게 생기면 언제든 불러 주세요.", Next.done, null);
         }
