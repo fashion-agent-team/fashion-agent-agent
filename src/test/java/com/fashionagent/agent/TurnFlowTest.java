@@ -384,6 +384,9 @@ class TurnFlowTest {
         JsonNode again = turn("u_casual", """
                 {"sessionId": "%s", "utterance": "좀 더 캐주얼하게"}""".formatted(sid));
         assertThat(again.path("speech").asString()).contains("결혼식");
+        JsonNode warm = turn("u_casual", """
+                {"sessionId": "%s", "utterance": "더 따뜻하게"}""".formatted(sid));
+        assertThat(warm.path("speech").asString()).contains("결혼식");
     }
 
     @Test
