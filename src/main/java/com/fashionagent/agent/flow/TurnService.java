@@ -51,7 +51,7 @@ public class TurnService {
         return handle(userId, req, null);
     }
 
-    /** @param wearer 게이트웨이가 붙인 내 정보(X-User-Profile 풀어 둔 것). 없으면 null이고 그대로 둡니다. */
+    /** @param wearer 게이트웨이가 바디 wearer에 넣은 내 정보. 없으면 null이고 그대로 둡니다. */
     public TurnResponse handle(String userId, TurnRequest req, JsonNode wearer) {
         AgentSession found = req.sessionId() == null ? null
                 : sessions.find(userId, req.sessionId()).orElse(null);

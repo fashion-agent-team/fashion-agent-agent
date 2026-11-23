@@ -61,8 +61,8 @@ public enum Intent {
         if (inOutfitSession && s.contains("어디")) {
             return WHERE;
         }
-        // 옷 추천 중 "입고 볼게", "내려놓고 볼게"
-        if (inOutfitSession && OutfitFlow.switchFrom(s) != null) {
+        // 옷 추천 중 "입고 볼게", "내려놓고 볼게". "내려놓고 볼게, 내일 뭐 입지?"는 새 추천이라 아래 OUTFIT으로.
+        if (inOutfitSession && OutfitFlow.switchFrom(s) != null && !containsAny(s, OUTFIT_WORDS)) {
             return MODE;
         }
         // "옷장 확인해 줘", "옷장에 뭐 있어?": 옷장 목록. "옷장에서 옷 추천해 줘"는 추천으로.

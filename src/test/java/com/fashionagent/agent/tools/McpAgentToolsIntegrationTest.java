@@ -27,7 +27,7 @@ import tools.jackson.databind.json.JsonMapper;
         "spring.ai.mcp.server.protocol=STREAMABLE",
         "spring.ai.mcp.server.name=mcp-weather-test",
         "server.shutdown=immediate" })
-class McpAgentToolsTest {
+class McpAgentToolsIntegrationTest {
 
     @LocalServerPort
     int port;
@@ -44,6 +44,16 @@ class McpAgentToolsTest {
             public Map<String, Object> weatherToday(@ToolParam(description = "위도") double lat,
                     @ToolParam(description = "경도") double lon) {
                 return Map.of("condition", "맑음", "apparentTemperature", 9.5, "lat", lat);
+            }
+
+            /** 늦게 끝나는 쓰기 도구. 부른 횟수를 셉니다. */
+            static final java.util.concurrent.atomic.AtomicInteger ADDS = new java.util.concurrent.atomic.AtomicInteger();
+
+            @Tool(name = "schedule_add", description = "일정 등록(늦음)")
+            public Map<String, Object> scheduleAdd(String userId, String title) throws InterruptedException {
+                ADDS.incrementAndGet();
+                Thread.sleep(1500);
+                return Map.of("eventId", "e_1");
             }
 
             @Tool(name = "schedule_list", description = "일정")
@@ -73,6 +83,20 @@ class McpAgentToolsTest {
                 .isInstanceOf(ToolException.class)
                 .hasMessageContaining("not_found")
                 .hasMessageContaining("u-real");
+    }
+
+    @Test
+    void 시간_초과된_쓰기_도구는_다시_부르지_않는다() throws Exception {
+        String url = "http://localhost:" + port + "/mcp";
+        var tools = new McpAgentTools(Map.of("weather", url, "schedule", url), json, java.time.Duration.ofMillis(300));
+        // 연결을 먼저 맺어 둠(예전에는 맺어 둔 연결이 실패하면 한 번 더 불렀음)
+        tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", 37.5, "lon", 127.0));
+        WeatherServer.WeatherTools.ADDS.set(0);
+        assertThatThrownBy(() -> tools.callForUser(ToolNames.SCHEDULE_ADD, "u1", Map.of("title", "면접")))
+                .isInstanceOf(ToolException.class)
+                .hasMessageContaining("upstream_timeout");
+        Thread.sleep(2000);
+        assertThat(WeatherServer.WeatherTools.ADDS.get()).isEqualTo(1);
     }
 
     @Test
