@@ -152,4 +152,16 @@ class ClosetFlowTest {
         assertThat(f.answerRemove(s, "오늘 날씨 어때")).isNull();
         assertThat(s.closetRemoveIds).isNull();
     }
+
+    @Test
+    void pastDay() {
+        var mon = java.time.LocalDate.of(2026, 11, 23); // 월요일
+        assertThat(ClosetFlow.pastDay("11월20일에뭐입었지?", mon)).isEqualTo(java.time.LocalDate.of(2026, 11, 20));
+        assertThat(ClosetFlow.pastDay("12월25일에뭐입었지?", mon)).isEqualTo(java.time.LocalDate.of(2025, 12, 25));
+        assertThat(ClosetFlow.pastDay("지난월요일에뭐입었어?", mon)).isEqualTo(java.time.LocalDate.of(2026, 11, 16));
+        assertThat(ClosetFlow.pastDay("금요일에뭐입었어?", mon)).isEqualTo(java.time.LocalDate.of(2026, 11, 20));
+        assertThat(ClosetFlow.pastDay("지난주금요일에뭐입었어?", mon)).isEqualTo(java.time.LocalDate.of(2026, 11, 20));
+        assertThat(ClosetFlow.pastDay("2월30일에뭐입었어?", mon)).isNull();
+        assertThat(ClosetFlow.pastDay("어제뭐입었지?", mon)).isNull();
+    }
 }
