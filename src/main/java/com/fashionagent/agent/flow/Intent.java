@@ -66,6 +66,12 @@ public enum Intent {
             "저번에", "일주일");
 
     /** inOutfitSession: 옷 추천 대화 중인지 (마무리·"어디야?"는 그때만). */
+    /** "치마 입어도 돼?", "청바지 괜찮아?": 2026-11-23 시뮬에서 GPT로 갔음. 날씨로 네/아니요를 답합니다. */
+    static boolean wearMay(String s) {
+        return ClosetView.category(s) != null && containsAny(s, MAY_WORDS) && !containsAny(s, LIGHT_WORDS)
+                && !s.contains("어울") && !s.contains("옷장");
+    }
+
     public static Intent of(String utterance, boolean inOutfitSession) {
         String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
         if (inOutfitSession && containsAny(s, FINISH_WORDS)) {
@@ -126,7 +132,8 @@ public enum Intent {
         }
         if (s.contains("날씨") || containsAny(s.replace("준비", ""), WEATHER_WORDS)
                 || (containsAny(s, LIGHT_WORDS) && containsAny(s, MAY_WORDS))
-                || (containsAny(s, WARM_ITEMS) && containsAny(s, NEED_WORDS))) {
+                || (containsAny(s, WARM_ITEMS) && containsAny(s, NEED_WORDS))
+                || wearMay(s)) {
             // "이번 주 날씨"처럼 여러 날은 GPT가 날짜를 하나씩 봅니다. 하루("내일", "토요일")는 바로 답합니다.
             if (containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일")) {
                 return OTHER;

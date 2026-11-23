@@ -475,6 +475,16 @@ class TurnFlowTest {
     }
 
     @Test
+    void 내일_추천_뒤_치마_입어도_되냐면_내일_날씨로_답한다() throws Exception {
+        JsonNode first = turn("u_skirt", """
+                {"utterance": "내일 뭐 입지?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_skirt", """
+                {"sessionId": "%s", "utterance": "치마 입어도 돼?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).contains("입어도 돼요").doesNotContain("지금 ");
+    }
+
+    @Test
     void 어제_일정을_물으면_어제_일정을_읽는다() throws Exception {
         JsonNode r = turn("u_past_sched", """
                 {"utterance": "어제 일정 뭐였지?"}""");
