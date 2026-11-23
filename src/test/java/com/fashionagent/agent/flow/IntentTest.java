@@ -67,6 +67,7 @@ class IntentTest {
         assertThat(Intent.of("지난주에 입은 옷 다시 입을까?", false)).isNotEqualTo(Intent.CLOSET_HISTORY);
         assertThat(Intent.of("옷장에서 원피스 지워줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
         assertThat(Intent.of("옷장에서 버린 바지 빼 줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
+        assertThat(Intent.of("옷장 비워 줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
         assertThat(Intent.of("내일 뭐 입지?", false)).isEqualTo(Intent.OUTFIT);
     }
 
@@ -139,5 +140,8 @@ class IntentTest {
         assertThat(Intent.of("약속 잡아 줘", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("패딩 입어야 돼?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("내일 뭐 입어야 해?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("지금 몇 도야?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("오늘 반팔 입어도 돼?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("반팔 뭐 입지?", false)).isEqualTo(Intent.OUTFIT);
     }
 }

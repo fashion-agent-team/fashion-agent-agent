@@ -325,6 +325,27 @@ class TurnFlowTest {
     }
 
     @Test
+    void 반팔_입어도_되냐고_물으면_날씨로_답한다() throws Exception {
+        JsonNode r = turn("u_light", """
+                {"utterance": "오늘 반팔 입어도 돼?"}""");
+        assertThat(r.path("speech").asString())
+                .matches("^(아니요, 그렇게 입기엔 추워요|네, 그렇게 입어도 돼요|조금 쌀쌀할 수 있어요).*");
+    }
+
+    @Test
+    void 뭐라고_하면_지난_말을_다시_읽어_준다() throws Exception {
+        JsonNode first = turn("u_repeat", """
+                {"utterance": "오늘 날씨 어때?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode again = turn("u_repeat", """
+                {"sessionId": "%s", "utterance": "뭐라고?"}""".formatted(sid));
+        assertThat(again.path("speech").asString()).isEqualTo("다시 말씀드릴게요. " + first.path("speech").asString());
+        JsonNode twice = turn("u_repeat", """
+                {"sessionId": "%s", "utterance": "다시 말해 줘"}""".formatted(sid));
+        assertThat(twice.path("speech").asString()).isEqualTo(again.path("speech").asString());
+    }
+
+    @Test
     void 날씨를_물으면_읽어준다() throws Exception {
         JsonNode r = turn("u5", """
                 {"utterance": "오늘 날씨 어때?"}""");

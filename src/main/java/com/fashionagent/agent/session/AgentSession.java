@@ -113,6 +113,8 @@ public class AgentSession {
      * 2026-11-12 진행 님 폰: 옷 추천을 들은 뒤(카메라는 안 켬) 일정을 지웠더니 카메라가 켜졌습니다.
      */
     public com.fashionagent.agent.api.TurnResponse.Next lastNext;
+    /** 지난 턴에 한 말. "뭐라고?", "다시 말해 줘"에 그대로 다시 읽어 줍니다. */
+    public String lastSpeech;
 
     /** "이거 무슨 색이야?"로 카메라를 켠 중. 이때 온 옷 사진은 색·무늬만 읽어 줍니다(2026-11-13). */
     public boolean colorCheck;

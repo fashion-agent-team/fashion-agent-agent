@@ -171,4 +171,11 @@ class RuleOutfitJudgeTest {
         assertThat(ok.verdicts().get(0).fit()).isEqualTo("good");
         assertThat(bad.verdicts().get(0).fit()).isEqualTo("bad");
     }
+
+    @org.junit.jupiter.api.Test
+    void 다른_날_옷이면_오늘을_그날로_바꾼다() {
+        org.assertj.core.api.Assertions.assertThat(RuleOutfitJudge.onDay("갈색 자켓은 오늘 쌀쌀한데 겉옷까지 잘 챙기셨어요. 오늘은 다른 옷으로 바꾸고", "내일"))
+                .isEqualTo("갈색 자켓은 내일 쌀쌀한데 겉옷까지 잘 챙기셨어요. 내일은 다른 옷으로 바꾸고");
+        org.assertj.core.api.Assertions.assertThat(RuleOutfitJudge.onDay("오늘 입기 좋아요.", "오늘")).isEqualTo("오늘 입기 좋아요.");
+    }
 }

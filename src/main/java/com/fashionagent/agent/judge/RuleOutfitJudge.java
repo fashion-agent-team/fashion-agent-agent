@@ -186,7 +186,17 @@ public class RuleOutfitJudge implements OutfitJudge {
         } else {
             sentences.add("마음에 들면 \"이걸로 할게\"라고 말해 주세요.");
         }
-        return new CheckJudgement(verdicts, comparison, damage, missing, String.join(" ", sentences));
+        return new CheckJudgement(verdicts, comparison, damage, missing, onDay(String.join(" ", sentences), in.day()));
+    }
+
+    /**
+     * 다른 날 옷을 볼 때 "오늘"을 그날로 바꿉니다. 2026-11-23 시뮬: "내일 뭐 입지?" 뒤 옷을 보여 주니 "오늘 쌀쌀한데"라고 함.
+     */
+    static String onDay(String speech, String day) {
+        if (speech == null || day == null || "오늘".equals(day)) {
+            return speech;
+        }
+        return speech.replace("오늘은", Korean.josa(day, "은", "는")).replace("오늘 ", day + " ");
     }
 
     /** 두 벌 이상 있는 종류 중 처음 나온 종류의 옷들. 없으면 빈 목록. */
@@ -241,8 +251,8 @@ public class RuleOutfitJudge implements OutfitJudge {
         String name = g.name() == null ? "" : g.name();
         boolean unknownKind = g.category() == null || "other".equals(g.category()) || g.name() == null;
         if (!unknownKind && w.apparent() < 12 && LIGHT.stream().anyMatch(name::contains)) {
-            return new Fit("bad", "오늘 체감 " + Math.round(w.apparent()) + "도라 " + Korean.josa(name, "은", "는")
-                    + " 추울 수 있어요.");
+            // 판단 문장은 "주황 티셔츠는 …" 뒤에 붙으므로 옷 이름을 다시 말하지 않습니다(2026-11-23 시뮬: "티셔츠는"이 두 번).
+            return new Fit("bad", "오늘 체감 " + Math.round(w.apparent()) + "도라 추울 수 있어요.");
         }
         if ("outer".equals(g.category()) && w.needsOuter()) {
             return "bad".equals(fit.fit()) ? fit : new Fit(fit.fit(), "오늘 쌀쌀한데 겉옷까지 잘 챙기셨어요.");

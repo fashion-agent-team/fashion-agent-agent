@@ -59,13 +59,30 @@ public class TurnService {
         AgentSession session = found != null ? found : new AgentSession("s_" + UUID.randomUUID(), userId);
         // 회원정보를 바꾸면 다음 말부터 바로 쓰이게 매번 새 값으로 바꿉니다.
         session.wearer = wearer;
+        // "뭐라고?", "다시 말해 줘": 지난 말을 다시 읽어 줍니다. 2026-11-23 시뮬: "할 수 없는 일이에요"로 답했음.
+        if (!req.hasImage() && isRepeatRequest(req.utterance()) && session.lastSpeech != null) {
+            return new TurnResponse(session.sessionId, "다시 말씀드릴게요. " + session.lastSpeech,
+                    session.lastNext != null ? session.lastNext : Next.listen, null);
+        }
         TurnResponse res = turn(session, req, inOutfit);
         // 다음 턴에 카메라를 보던 중인지 알 수 있게 이번 next를 기억합니다.
-        if (res.next() != session.lastNext) {
+        if (res.next() != session.lastNext || (res.speech() != null && !res.speech().equals(session.lastSpeech))) {
             session.lastNext = res.next();
+            if (res.speech() != null) {
+                session.lastSpeech = res.speech();
+            }
             sessions.save(session);
         }
         return res;
+    }
+
+    private static final java.util.List<String> REPEAT_WORDS = java.util.List.of("다시말", "다시얘기", "다시읽어",
+            "한번더말", "뭐라고", "뭐라구", "뭐라했", "못들었", "잘못들", "안들려", "못알아들");
+
+    /** "뭐라고?", "다시 말해 줘", "못 들었어"처럼 지난 말을 다시 해 달라는 짧은 말. */
+    static boolean isRepeatRequest(String utterance) {
+        String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        return s.length() <= 10 && REPEAT_WORDS.stream().anyMatch(s::contains);
     }
 
     /** "봐 줘", "봐 주세요", "확인해 줘"처럼 짧게 봐 달라는 말. */
@@ -292,6 +309,17 @@ public class TurnService {
                         || u.contains("자켓") || u.contains("재킷") || u.contains("점퍼") || u.contains("입어야"))
                 && w.has("needsOuter")) {
             sb.append(w.path("needsOuter").asBoolean() ? "네, 겉옷을 챙기세요. " : "아니요, 겉옷은 없어도 돼요. ");
+        }
+        // "반팔 입어도 돼?": 겉옷이 필요하면 아니요, 최고 24도 이상이면 네(2026-11-23 시뮬).
+        if (!askedRain && Intent.LIGHT_WORDS.stream().anyMatch(u::contains)
+                && Intent.MAY_WORDS.stream().anyMatch(u::contains)) {
+            if (w.path("needsOuter").asBoolean(false)) {
+                sb.append("아니요, 그렇게 입기엔 추워요. 겉옷을 챙기세요. ");
+            } else if (max >= 24) {
+                sb.append("네, 그렇게 입어도 돼요. ");
+            } else {
+                sb.append("조금 쌀쌀할 수 있어요. 얇은 겉옷을 하나 챙기세요. ");
+            }
         }
         if (askedRain) {
             sb.append(umbrella
