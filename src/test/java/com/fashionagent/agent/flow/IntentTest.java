@@ -139,5 +139,8 @@ class IntentTest {
         assertThat(Intent.of("약속 잡아 줘", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("패딩 입어야 돼?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("내일 뭐 입어야 해?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("지금 몇 도야?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("오늘 반팔 입어도 돼?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("반팔 뭐 입지?", false)).isEqualTo(Intent.OUTFIT);
     }
 }

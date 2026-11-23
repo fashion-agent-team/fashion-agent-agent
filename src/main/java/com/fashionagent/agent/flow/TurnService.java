@@ -293,6 +293,17 @@ public class TurnService {
                 && w.has("needsOuter")) {
             sb.append(w.path("needsOuter").asBoolean() ? "네, 겉옷을 챙기세요. " : "아니요, 겉옷은 없어도 돼요. ");
         }
+        // "반팔 입어도 돼?": 겉옷이 필요하면 아니요, 최고 24도 이상이면 네(2026-11-23 시뮬).
+        if (!askedRain && Intent.LIGHT_WORDS.stream().anyMatch(u::contains)
+                && Intent.MAY_WORDS.stream().anyMatch(u::contains)) {
+            if (w.path("needsOuter").asBoolean(false)) {
+                sb.append("아니요, 그렇게 입기엔 추워요. 겉옷을 챙기세요. ");
+            } else if (max >= 24) {
+                sb.append("네, 그렇게 입어도 돼요. ");
+            } else {
+                sb.append("조금 쌀쌀할 수 있어요. 얇은 겉옷을 하나 챙기세요. ");
+            }
+        }
         if (askedRain) {
             sb.append(umbrella
                     ? "우산 챙기세요. 비나 눈 올 확률이 " + rain + "%예요. "

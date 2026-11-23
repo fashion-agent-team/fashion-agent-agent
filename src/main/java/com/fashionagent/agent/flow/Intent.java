@@ -46,7 +46,10 @@ public enum Intent {
     private static final List<String> WEATHER_WORDS = List.of("우산", "비와", "비가", "비올", "비오", "눈와", "눈이와",
             "눈올", "눈이올", "눈오", "추워", "추운", "춥", "더워", "더운", "덥", "기온", "온도", "일교차", "쌀쌀", "겉옷챙",
             "입어야돼", "입어야해", "입어야하", "입어야될", "입어야할",
-            "겉옷입어야", "외투챙");
+            "겉옷입어야", "외투챙", "몇도");
+    /** "오늘 반팔 입어도 돼?": 2026-11-23 시뮬에서 GPT로 갔음. 날씨로 네/아니요를 바로 답합니다. */
+    static final List<String> LIGHT_WORDS = List.of("반팔", "반바지", "민소매", "나시", "얇게", "얇은옷");
+    static final List<String> MAY_WORDS = List.of("입어도", "입고가도", "입고나가도", "괜찮", "될까", "되나");
 
     /** "할 줄 아는 거 말해 봐", "기능 설명해 줘" 같은 말. 2026-11-06 진행 님 폰 확인에서 못 알아들었던 말. */
     private static final List<String> HELP_WORDS = List.of("기능", "할줄", "할수있", "뭐해줄", "뭘해줄", "뭐도와", "뭘도와",
@@ -110,7 +113,8 @@ public enum Intent {
         if (s.contains("얼굴") || s.contains("화장") || FaceFlow.isTeeth(s) || FaceFlow.isMakeup(s)) {
             return FACE;
         }
-        if (s.contains("날씨") || containsAny(s.replace("준비", ""), WEATHER_WORDS)) {
+        if (s.contains("날씨") || containsAny(s.replace("준비", ""), WEATHER_WORDS)
+                || (containsAny(s, LIGHT_WORDS) && containsAny(s, MAY_WORDS))) {
             // "이번 주 날씨"처럼 여러 날은 GPT가 날짜를 하나씩 봅니다. 하루("내일", "토요일")는 바로 답합니다.
             if (containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일")) {
                 return OTHER;
