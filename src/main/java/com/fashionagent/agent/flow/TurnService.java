@@ -260,7 +260,8 @@ public class TurnService {
                     && s.replaceAll("(은|는|요|도|은요|는요)$", "").length() <= 8) {
                 String garment = utterance.replaceAll("[?？.!~]", "").trim().replaceAll("(은|는|도)(요)?$", "");
                 // "우산?" 뒤 "겉옷은?": 입어도 되냐가 아니라 챙겨야 하냐로(2026-11-23 시뮬: "네, 입어도 돼요"로 답함).
-                String ask = "outer".equals(ClosetView.category(s)) ? " 챙겨야 돼?" : " 입어도 돼?";
+                String ask = "outer".equals(ClosetView.category(s)) ? " 챙겨야 돼?"
+                        : "shoes".equals(ClosetView.category(s)) ? " 신어도 돼?" : " 입어도 돼?";
                 return new String[] {"weather", (session.lastCity == null ? "" : session.lastCity + " ") + prefix
                         + garment + ask};
             }
@@ -675,7 +676,11 @@ public class TurnService {
             boolean outer = "outer".equals(ClosetView.category(u));
             String wear = "shoes".equals(ClosetView.category(u)) ? "신어도" : "입어도";
             boolean cold = w.path("needsOuter").asBoolean(false);
-            if (skirt && min <= 5) {
+            boolean openShoes = u.contains("샌들") || u.contains("슬리퍼") || u.contains("쪼리");
+            if (openShoes && max < 20) {
+                // "샌들 신어도 돼?": 추운 날엔 발이 시립니다(2026-11-23 시뮬).
+                sb.append("신을 수는 있지만 최고 ").append(max).append("도라 발이 시려요. 운동화나 구두가 좋아요. ");
+            } else if (skirt && min <= 5) {
                 sb.append("네, " + wear + " 돼요. 다만 최저 ").append(min).append("도라 두꺼운 스타킹을 신고 겉옷을 챙기세요. ");
             } else if (outer && !cold && max >= 22) {
                 sb.append(wear + " 되지만 최고 ").append(max).append("도라 낮에는 더울 수 있어요. ");
