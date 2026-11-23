@@ -744,6 +744,27 @@ class TurnFlowTest {
     }
 
     @Test
+    void 추천_뒤_어제_입은_거_말고는_다시_추천() throws Exception {
+        JsonNode first = turn("u_not_yesterday", """
+                {"utterance": "모레 뭐 입지"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_not_yesterday", """
+                {"sessionId": "%s", "utterance": "어제 입은 거 말고"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레");
+        assertThat(r.path("next").asString()).isEqualTo("listen");
+    }
+
+    @Test
+    void 데이트야_뒤_뭐_입지는_그날로() throws Exception {
+        JsonNode first = turn("u_date_plan", """
+                {"utterance": "모레 데이트야"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_date_plan", """
+                {"sessionId": "%s", "utterance": "뭐 입지"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레");
+    }
+
+    @Test
     void 추천_뒤_그거_말고는_다시_추천() throws Exception {
         JsonNode first = turn("u_not_that", """
                 {"utterance": "모레 뭐 입지"}""");
@@ -794,7 +815,7 @@ class TurnFlowTest {
             assertThat(q.path("speech").asString()).contains("비춰");
         }
         JsonNode end = turn("u_face_ok", """
-                {"sessionId": "%s", "utterance": "알겠어 고마워"}""".formatted(sid));
+                {"sessionId": "%s", "utterance": "끝"}""".formatted(sid));
         assertThat(end.path("next").asString()).isNotEqualTo("camera_face");
     }
 

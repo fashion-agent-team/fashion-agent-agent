@@ -112,7 +112,7 @@ public class TurnService {
             return false;
         }
         String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
-        if (s.matches("(취소|취소해|취소할래|그만할래|안할래|나중에할래|나중에|카메라꺼|카메라꺼줘|꺼줘|끌래|안볼래)(줘|요)?")) {
+        if (s.matches("(취소|취소해|취소할래|그만할래|안할래|나중에할래|나중에|카메라꺼|카메라꺼줘|꺼줘|끌래|안볼래|끝|끝이야|끝내자|끝낼게|종료)(줘|요)?")) {
             return true;
         }
         // 옷 카메라에서 아직 본 옷이 없는데 "그만"이면 끝냅니다(2026-11-23 시뮬: "옷을 보여 주실래요?"로 카메라가 계속 켜짐).
@@ -189,7 +189,7 @@ public class TurnService {
             // "토요일 결혼식이야" → "흰 블라우스 입어도 돼?": 그날 날씨와 자리로 답합니다(2026-11-23 시뮬: 오늘 날씨로 "네"라고 함).
             return new String[] {"weather", session.statedPlan + " " + utterance};
         } else if (intent == Intent.OTHER && !s.contains("일정") && (SpokenOccasion.from(utterance) != null
-                || (day != null && s.length() <= 15 && s.matches(".*(있어|있음|이야|예요|가|가요|가야돼|간다|가는데|해|해요)$")))) {
+                || (day != null && s.length() <= 15 && s.matches(".*(있어|있음|이야|야|이에요|예요|거든|가|가요|가야돼|간다|가는데|해|해요)$")))) {
             session.statedPlan = utterance;
         } else if (intent == Intent.OUTFIT && session.statedPlan != null && day == null
                 && SpokenOccasion.from(utterance) == null) {
@@ -203,6 +203,12 @@ public class TurnService {
         if (intent == Intent.OTHER && "history".equals(session.lastTopic)
                 && s.matches("(그럼|그러면)?(어제|그제|그저께|오늘|지난주|저번주|지난[월화수목금토일]요일|[월화수목금토일]요일)(은|는|요|은요|는요)?")) {
             return new String[] {"history", s.replaceAll("^(그럼|그러면)", "").replaceAll("(은|는)?요?$", "") + " 뭐 입었어"};
+        }
+        // 추천 뒤 "어제 입은 거 말고": 다시 추천(2026-11-23 시뮬: '입은'으로 입은 모습 카메라를 켰음).
+        if ((intent == Intent.OTHER || intent == Intent.OUTFIT || intent == Intent.CLOSET_HISTORY)
+                && "outfit".equals(session.lastTopic) && s.matches(".*(거|걸|것|옷)말고(요|다른거|딴거)?(줘|추천해줘)?")
+                && s.length() <= 16 && (day == null || day.isBefore(today))) {
+            return new String[] {"outfit", "다른 거 추천해 줘"};
         }
         // "어제 날씨 어땠어?"처럼 지난 날을 말했으면 이어 묻기가 아닙니다.
         if (session.lastTopic == null || pastLabel(utterance) != null) {
