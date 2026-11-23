@@ -262,15 +262,36 @@ public class TurnService {
         }
         // "내일 뭐 입지?" 뒤 "치마 입어도 돼?": 오늘이 아니라 그날 날씨로 답합니다.
         // "장화 신어야 돼?", "추워?"도 마찬가지(날을 안 말했고 "지금"도 아니면 방금 말한 날).
+        // "내일 일정" 뒤 "그날 부산 날씨는?"처럼 도시를 말해도 "그날"이면 그날로(2026-11-23 시뮬: 오늘 부산 날씨로 답함).
         if (intent == Intent.WEATHER && day == null && session.lastTopicDate != null && !s.contains("지금")
-                && !s.contains("밖에") && Cities.in(utterance) == null
+                && !s.contains("밖에") && (Cities.in(utterance) == null || s.contains("그날"))
                 && ("outfit".equals(session.lastTopic) || "weather".equals(session.lastTopic)
                         || ("schedule".equals(session.lastTopic) && s.contains("그날")))) {
             var d = java.time.LocalDate.parse(session.lastTopicDate);
-            return new String[] {"weather", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 " + utterance};
+            String in = "outfit".equals(session.lastTopic) && session.outfitCity != null ? session.outfitCity + " " : "";
+            return new String[] {"weather", in + d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 " + utterance};
+        }
+        // "대전은?"으로 그 도시 추천 뒤 "거기 비 와?": 오늘이어도 그 도시 날씨로(2026-11-23 시뮬: 내 위치로 답함).
+        if (intent == Intent.WEATHER && day == null && "outfit".equals(session.lastTopic) && session.outfitCity != null
+                && session.lastTopicDate == null && !s.contains("지금") && Cities.in(utterance) == null
+                && !s.matches(".*(여기|우리동네|이동네|내위치|집).*")) {
+            return new String[] {"weather", session.outfitCity + " " + utterance};
+        }
+        // 추천 뒤 "광주는?", "서울 말고 부산은?": 같은 날 그 도시 날씨로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
+        if (intent == Intent.OTHER && day == null && "outfit".equals(session.lastTopic)) {
+            String last = s.replaceAll("^(그럼|그러면)", "").replaceAll("^[가-힣]{2,3}말고", "");
+            Cities.City named = Cities.in(last);
+            if (named != null && last.length() <= named.name().length() + 4
+                    && last.matches("[가-힣]+(은|는|은요|는요|이면|면|에서는|에선|가면)")) {
+                String date = session.lastTopicDate == null ? "오늘" : java.time.LocalDate.parse(session.lastTopicDate)
+                        .getMonthValue() + "월 " + java.time.LocalDate.parse(session.lastTopicDate).getDayOfMonth() + "일";
+                return new String[] {"outfit", named.name() + " " + date + " 뭐 입지"};
+            }
         }
         // 추천 뒤 "다른 거", "딴 거": "다른 거 추천해 줘"처럼 앞서 말한 날·자리로 다시 추천(2026-11-23 시뮬에서 GPT로 갔음).
-        if (intent == Intent.OTHER && "outfit".equals(session.lastTopic)
+        // 추천 뒤 "우산 챙겨?"로 날씨를 한 번 물은 다음 "다른 거"도 옷으로(2026-11-23 시뮬에서 GPT로 갔음).
+        if (intent == Intent.OTHER && ("outfit".equals(session.lastTopic)
+                        || ("weather".equals(session.lastTopic) && session.advice != null))
                 && s.matches("(그럼|그러면|아니)?(다른|딴)(거|걸|것|걸로|거로|옷|코디)(는|은|요|줘|없어|있어|보여줘|말해줘)*")) {
             return new String[] {"outfit", "다른 거 추천해 줘"};
         }
@@ -289,6 +310,12 @@ public class TurnService {
             var d = java.time.LocalDate.parse(session.lastTopicDate);
             return new String[] {"outfit", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 " + utterance};
         }
+        // "광주 날씨" 뒤 "그럼 뭐 입지": 오늘이어도 그 도시 날씨로 추천(2026-11-23 시뮬: 내 위치로 추천).
+        if (intent == Intent.OUTFIT && day == null && "weather".equals(session.lastTopic)
+                && session.lastTopicDate == null && session.lastCity != null && Cities.in(utterance) == null
+                && (s.startsWith("그럼") || s.startsWith("그러면") || s.startsWith("거기") || s.startsWith("그때"))) {
+            return new String[] {"outfit", session.lastCity + " 오늘 뭐 입지"};
+        }
         // 일정 뒤 "그날 뭐 입지?"도(2026-11-23 시뮬: "모레는 일정이 없어요" 뒤 오늘로 추천).
         // "내일 서울은?" 뒤 "거기 뭐 입어"도 그날로(2026-11-23 시뮬: 오늘로 추천).
         if (intent == Intent.OUTFIT && day == null
@@ -297,7 +324,8 @@ public class TurnService {
                 && (s.startsWith("그럼") || s.startsWith("그러면") || s.startsWith("그날") || s.startsWith("그때")
                         || s.startsWith("거기"))) {
             var d = java.time.LocalDate.parse(session.lastTopicDate);
-            return new String[] {"outfit", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 뭐 입지"};
+            String in = "weather".equals(session.lastTopic) && session.lastCity != null ? session.lastCity + " " : "";
+            return new String[] {"outfit", in + d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 뭐 입지"};
         }
         return null;
     }
@@ -456,13 +484,13 @@ public class TurnService {
                 case "weather" -> remember(session, "weather", said, weather(session, req.location(), said));
                 case "schedule" -> remember(session, "schedule", said, schedule(session, said));
                 case "history" -> remember(session, "history", said, closetFlow.history(session, said));
-                default -> remember(session, "outfit", said, outfit.start(session, req.location(), said));
+                default -> remember(session, "outfit", said, outfitIn(session, req.location(), said));
             };
         }
 
         return switch (intent) {
             case OUTFIT -> remember(session, "outfit", req.utterance(),
-                    outfit.start(session, req.location(), req.utterance()));
+                    outfitIn(session, req.location(), req.utterance()));
             case CHECK -> outfit.startCheck(session, req.location(), req.utterance());
             case COLOR -> color.start(session);
             case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
@@ -499,6 +527,30 @@ public class TurnService {
                 yield say(session, r.speech(), r.next() == Next.camera_outfit && camera != null ? camera : r.next());
             }
         };
+    }
+
+    /**
+     * 옷 추천. "제주도 가는데 뭐 입지?", "모레 제주 날씨" 뒤 "그날 뭐 입지"처럼 도시를 말했으면 그 도시 날씨로 추천하고
+     * 어느 도시 기준인지 먼저 말합니다(2026-11-23 시뮬: 제주 날씨를 묻고 서울 날씨로 추천했음).
+     */
+    private TurnResponse outfitIn(AgentSession session, Location location, String utterance) {
+        Cities.City city = Cities.in(utterance);
+        String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        // "다른 거 추천해 줘"는 앞서 말한 도시를 이어 씁니다.
+        if (city == null && session.outfitCity != null && SpokenDate.from(utterance, today()) == null
+                && (u.contains("다른") || u.contains("다시") || u.startsWith("또") || u.contains("말고"))) {
+            city = Cities.in(session.outfitCity);
+        }
+        session.outfitCity = city == null ? null : city.name();
+        if (city == null) {
+            return outfit.start(session, location, utterance);
+        }
+        TurnResponse r = outfit.start(session, city.at(), utterance);
+        if (r.speech() == null || r.speech().equals(SpokenDate.SAY_IMPOSSIBLE)) {
+            return r;
+        }
+        return new TurnResponse(r.sessionId(), city.name() + " 날씨로 볼게요. " + r.speech(), r.next(), r.result(),
+                r.gptConsent(), r.colorDetail());
     }
 
     /**

@@ -601,6 +601,55 @@ class TurnFlowTest {
     }
 
     @Test
+    void 다른_도시_날씨_뒤_그날_뭐_입지는_그_도시로() throws Exception {
+        JsonNode first = turn("u_city_outfit", """
+                {"utterance": "모레 제주도 날씨"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_city_outfit", """
+                {"sessionId": "%s", "utterance": "그날 뭐 입지"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("제주 날씨로 볼게요. 모레의 패션");
+        JsonNode again = turn("u_city_outfit", """
+                {"sessionId": "%s", "utterance": "다른 거"}""".formatted(sid));
+        assertThat(again.path("speech").asString()).startsWith("제주 날씨로 볼게요.");
+    }
+
+    @Test
+    void 오늘_도시_날씨_뒤_그럼_뭐_입지는_그_도시로() throws Exception {
+        JsonNode first = turn("u_city_today", """
+                {"utterance": "부산 날씨"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_city_today", """
+                {"sessionId": "%s", "utterance": "그럼 뭐 입지"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("부산 날씨로 볼게요. 오늘의 패션");
+        JsonNode w = turn("u_city_today", """
+                {"sessionId": "%s", "utterance": "거기 비 와?"}""".formatted(sid));
+        assertThat(w.path("speech").asString()).startsWith("부산 날씨예요.");
+        JsonNode again = turn("u_city_today", """
+                {"sessionId": "%s", "utterance": "다른 거"}""".formatted(sid));
+        assertThat(again.path("speech").asString()).startsWith("부산 날씨로 볼게요.");
+    }
+
+    @Test
+    void 일정_뒤_그날_부산_날씨는은_그날_부산으로() throws Exception {
+        JsonNode first = turn("u_sched_city", """
+                {"utterance": "모레 일정 알려줘"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_sched_city", """
+                {"sessionId": "%s", "utterance": "그날 부산 날씨는?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("부산 날씨예요. 모레").doesNotContain("지금");
+    }
+
+    @Test
+    void 추천_뒤_다른_도시는은_그_도시로_다시_추천() throws Exception {
+        JsonNode first = turn("u_city_switch", """
+                {"utterance": "내일 뭐 입지"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_city_switch", """
+                {"sessionId": "%s", "utterance": "서울 말고 부산은?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("부산 날씨로 볼게요. 내일의 패션");
+    }
+
+    @Test
     void 날씨_뒤_거기_뭐_입어는_그날로() throws Exception {
         JsonNode first = turn("u_there_day", """
                 {"utterance": "모레 날씨 어때"}""");
