@@ -508,8 +508,19 @@ public class TurnService {
             return say(session, SpokenDate.SAY_IMPOSSIBLE, Next.listen);
         }
         var asked = SpokenDate.from(utterance, today);
+        // "어제 일정 뭐였지?": 지난 날은 SpokenDate가 안 읽어 "오늘은 일정이 없어요"로 답했음(2026-11-23 시뮬).
+        String past = pastLabel(utterance);
+        if (asked == null && past != null) {
+            String u = utterance.replaceAll("\\s+", "");
+            asked = switch (past) {
+                case "어제" -> today.minusDays(1);
+                case "그제" -> today.minusDays(2);
+                default -> ClosetFlow.pastDay(u, today);
+            };
+        }
         var day = asked == null ? today : asked;
-        String label = SpokenDate.label(day, today);
+        String label = day.equals(today.minusDays(1)) ? "어제" : day.equals(today.minusDays(2)) ? "그제"
+                : SpokenDate.label(day, today);
         try {
             JsonNode r = tools.callForUser(ToolNames.SCHEDULE_LIST, session.userId, Map.of("date", day.toString()));
             JsonNode events = r.path("events");
@@ -529,6 +540,18 @@ public class TurnService {
         } catch (ToolException e) {
             return say(session, "미안해요, 지금은 일정을 못 가져왔어요. 조금 있다가 다시 물어봐 주실래요?", Next.listen);
         }
+    }
+
+    /** 지난 날을 말했으면 "어제"/"그제"/"지난", 아니면 null. */
+    static String pastLabel(String utterance) {
+        String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        if (u.contains("어제")) {
+            return "어제";
+        }
+        if (u.contains("그제") || u.contains("그저께")) {
+            return "그제";
+        }
+        return u.matches(".*(지난|저번)(주)?[월화수목금토일]요일.*") ? "지난" : null;
     }
 
     /** "2026-11-04T14:00:00+09:00" → "오후 2시", 분이 있으면 "오후 2시 30분". */

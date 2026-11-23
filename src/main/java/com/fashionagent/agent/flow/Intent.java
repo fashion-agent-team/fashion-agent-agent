@@ -136,7 +136,11 @@ public enum Intent {
         // "오늘 약속 있어?" 2026-11-23 시뮬
         // "내일 몇 시에 나가야 돼?": 그날 일정을 읽어 줍니다(2026-11-23 시뮬).
         if ((s.contains("일정") || s.contains("스케줄") || s.contains("약속")
-                || s.matches(".*몇시에(나가|나서|출발|가야|일어나).*")) && !containsAny(s, SCHEDULE_CHANGE_WORDS)
+                || s.matches(".*몇시에(나가|나서|출발|가야|일어나).*")
+                // "12월 25일에 뭐 있어?", "어제 뭐 있었지?"(2026-11-23 시뮬)
+                || (s.matches(".*(오늘|내일|모레|글피|어제|그제|그저께|요일|\\d{1,2}월\\d{1,2}일).*")
+                        && s.matches(".*(뭐있|무슨일있|뭐가있|무슨일정).*")))
+                && !containsAny(s, SCHEDULE_CHANGE_WORDS)
                 && !(containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일"))) {
             return SCHEDULE;
         }
