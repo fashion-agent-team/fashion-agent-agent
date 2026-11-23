@@ -122,6 +122,8 @@ public class AgentSession {
     public String statedPlan;
     /** 마지막 날씨를 물은 도시("제주"). 이어서 "거기 우산 필요해?"에 그 도시로 답합니다. 내 위치면 null. */
     public String lastCity;
+    /** 마지막 날씨 질문이 비·우산을 물었는지. "오늘 비 와?" 뒤 "내일은?"에 그날 비 소식으로 답합니다. */
+    public boolean lastWeatherRain;
 
     /** "이거 무슨 색이야?"로 카메라를 켠 중. 이때 온 옷 사진은 색·무늬만 읽어 줍니다(2026-11-13). */
     public boolean colorCheck;
