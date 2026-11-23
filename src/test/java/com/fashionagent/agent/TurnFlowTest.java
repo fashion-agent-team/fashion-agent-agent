@@ -532,6 +532,18 @@ class TurnFlowTest {
     }
 
     @Test
+    void 흰_셔츠_뒤_그럼_베이지는_같은_옷을_그_색으로_본다() throws Exception {
+        JsonNode first = turn("u_beige", """
+                {"utterance": "결혼식에 뭐 입지?"}""");
+        String sid = first.path("sessionId").asString();
+        turn("u_beige", """
+                {"sessionId": "%s", "utterance": "흰 셔츠 입어도 돼?"}""".formatted(sid));
+        JsonNode r = turn("u_beige", """
+                {"sessionId": "%s", "utterance": "그럼 베이지?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("네, 입어도 돼요").doesNotContain("결혼식에는 흰색");
+    }
+
+    @Test
     void 화장_카메라_중_취소하면_카메라를_끈다() throws Exception {
         JsonNode first = turn("u_cancel", """
                 {"utterance": "얼굴 화장 봐줘"}""");
