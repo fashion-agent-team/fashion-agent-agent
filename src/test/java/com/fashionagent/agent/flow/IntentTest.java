@@ -67,6 +67,7 @@ class IntentTest {
         assertThat(Intent.of("지난주에 입은 옷 다시 입을까?", false)).isNotEqualTo(Intent.CLOSET_HISTORY);
         assertThat(Intent.of("옷장에서 원피스 지워줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
         assertThat(Intent.of("옷장에서 버린 바지 빼 줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
+        assertThat(Intent.of("옷장 비워 줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
         assertThat(Intent.of("내일 뭐 입지?", false)).isEqualTo(Intent.OUTFIT);
     }
 

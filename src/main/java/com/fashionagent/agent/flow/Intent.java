@@ -29,7 +29,7 @@ public enum Intent {
     private static final List<String> STAIN_WORDS = List.of("얼룩", "묻었", "묻은", "찢어", "찢어진", "구멍", "보풀", "올나간");
 
     /** "옷장에서 검정 패딩 지워 줘", "옷장에서 버린 바지 빼 줘". */
-    private static final List<String> CLOSET_REMOVE_WORDS = List.of("지워", "지우", "삭제", "빼줘", "빼", "버렸", "없애");
+    private static final List<String> CLOSET_REMOVE_WORDS = List.of("지워", "지우", "비워", "비우", "삭제", "빼줘", "빼", "버렸", "없애");
     /** 일정 등록·삭제는 GPT로 보냅니다. 2026-11-12: "일정 없애 줘"가 오늘 일정 읽기로 갔습니다. */
     private static final List<String> SCHEDULE_CHANGE_WORDS = List.of("넣어", "등록", "추가", "잡아", "지워", "지우",
             "삭제", "취소", "빼", "없애", "없앨", "없에");

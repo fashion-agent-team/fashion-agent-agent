@@ -251,8 +251,8 @@ public class RuleOutfitJudge implements OutfitJudge {
         String name = g.name() == null ? "" : g.name();
         boolean unknownKind = g.category() == null || "other".equals(g.category()) || g.name() == null;
         if (!unknownKind && w.apparent() < 12 && LIGHT.stream().anyMatch(name::contains)) {
-            return new Fit("bad", "오늘 체감 " + Math.round(w.apparent()) + "도라 " + Korean.josa(name, "은", "는")
-                    + " 추울 수 있어요.");
+            // 판단 문장은 "주황 티셔츠는 …" 뒤에 붙으므로 옷 이름을 다시 말하지 않습니다(2026-11-23 시뮬: "티셔츠는"이 두 번).
+            return new Fit("bad", "오늘 체감 " + Math.round(w.apparent()) + "도라 추울 수 있어요.");
         }
         if ("outer".equals(g.category()) && w.needsOuter()) {
             return "bad".equals(fit.fit()) ? fit : new Fit(fit.fit(), "오늘 쌀쌀한데 겉옷까지 잘 챙기셨어요.");

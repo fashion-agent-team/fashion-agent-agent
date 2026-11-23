@@ -119,6 +119,7 @@ class ClosetFlowTest {
     void unspecified() {
         assertThat(ClosetFlow.unspecified("옷장에서 옷 지워 줘")).isTrue();
         assertThat(ClosetFlow.unspecified("옷장에서 하나 삭제해 줘")).isTrue();
+        assertThat(ClosetFlow.unspecified("옷장 비워 줘")).isTrue();
         assertThat(ClosetFlow.unspecified("옷장에서 빨간 니트 지워 줘")).isFalse();
         assertThat(ClosetFlow.unspecified("옷장에서 바지 빼 줘")).isFalse();
     }

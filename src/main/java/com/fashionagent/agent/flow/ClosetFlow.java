@@ -150,7 +150,8 @@ public class ClosetFlow {
             return say(session, "미안해요, 지금은 옷장을 못 열었어요. 조금 있다가 다시 말씀해 주실래요?", null);
         }
         List<JsonNode> found = matches(list.path("garments"), utterance, category != null || unspecified(utterance));
-        if (found.isEmpty() && unspecified(utterance) && list.path("garments").isEmpty()) {
+        // 2026-11-23 시뮬: 빈 옷장에서 "첫째 거 지워 줘"에 "그 옷을 찾지 못했어요"라고 답했음.
+        if (found.isEmpty() && category == null && list.path("garments").isEmpty()) {
             return say(session, "옷장이 아직 비어 있어요.", null);
         }
         if (found.isEmpty()) {
@@ -262,7 +263,7 @@ public class ClosetFlow {
      */
     static boolean unspecified(String utterance) {
         String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
-        String rest = s.replaceAll("옷장|에서|에|옷|좀|하나|한벌|지워|지우|삭제|없애|빼|버렸|줘|주세요|주라|해|할래|싶어|요|거|것|를|을", "");
+        String rest = s.replaceAll("옷장|에서|에|옷|좀|하나|한벌|지워|지우|비워|비우|삭제|없애|빼|버렸|줘|주세요|주라|해|할래|싶어|요|거|것|를|을", "");
         return rest.isEmpty();
     }
 
