@@ -51,7 +51,8 @@ public final class SmallTalk {
             return null;
         }
         ZonedDateTime now = ZonedDateTime.now(clock.withZone(SEOUL));
-        if (containsAny(s, TIME)) {
+        // "내일 몇 시에 나가야 돼?"는 지금 시각이 아니라 일정을 묻는 말(2026-11-23 시뮬).
+        if (containsAny(s, TIME) && !s.matches(".*(내일|모레|글피|요일|주말|몇시에|까지).*")) {
             int h = now.getHour();
             String half = h < 12 ? "오전" : "오후";
             int h12 = h % 12 == 0 ? 12 : h % 12;

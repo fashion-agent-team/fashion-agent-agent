@@ -56,7 +56,7 @@ public enum Intent {
             "입을까", "입어야", "가져갈", "가져가");
     /** "바지 몇 벌 있어?", "자켓 있어?": 2026-11-23 시뮬에서 GPT로 갔음. 옷장의 그 종류 목록을 읽어 줍니다. */
     private static final java.util.regex.Pattern OWN_ASK = java.util.regex.Pattern.compile(
-            "(몇벌|몇개|있어|있나|있니|있는지|있을까|가지고있|갖고있)[?？!.~]*$");
+            "(몇벌|몇개|몇벌이야|몇개야|있어|있나|있니|있는지|있을까|가지고있|갖고있)[?？!.~]*$");
 
     /** "할 줄 아는 거 말해 봐", "기능 설명해 줘" 같은 말. 2026-11-06 진행 님 폰 확인에서 못 알아들었던 말. */
     private static final List<String> HELP_WORDS = List.of("기능", "할줄", "할수있", "뭐해줄", "뭘해줄", "뭐도와", "뭘도와",
@@ -134,7 +134,9 @@ public enum Intent {
             return WEATHER;
         }
         // "오늘 약속 있어?" 2026-11-23 시뮬
-        if ((s.contains("일정") || s.contains("스케줄") || s.contains("약속")) && !containsAny(s, SCHEDULE_CHANGE_WORDS)
+        // "내일 몇 시에 나가야 돼?": 그날 일정을 읽어 줍니다(2026-11-23 시뮬).
+        if ((s.contains("일정") || s.contains("스케줄") || s.contains("약속")
+                || s.matches(".*몇시에(나가|나서|출발|가야|일어나).*")) && !containsAny(s, SCHEDULE_CHANGE_WORDS)
                 && !(containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일"))) {
             return SCHEDULE;
         }
