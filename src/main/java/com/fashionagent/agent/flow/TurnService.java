@@ -286,6 +286,13 @@ public class TurnService {
         if (feel != null) {
             sb.append(feel).append(" ");
         }
+        // "패딩 입어야 돼?", "겉옷 챙겨야 해?": 날씨를 읽기 전에 네/아니요부터(2026-11-23 시뮬).
+        if (!askedRain && (u.contains("입어야") || u.contains("챙겨야") || u.contains("필요해") || u.contains("필요할"))
+                && (u.contains("겉옷") || u.contains("외투") || u.contains("패딩") || u.contains("코트")
+                        || u.contains("자켓") || u.contains("재킷") || u.contains("점퍼") || u.contains("입어야"))
+                && w.has("needsOuter")) {
+            sb.append(w.path("needsOuter").asBoolean() ? "네, 겉옷을 챙기세요. " : "아니요, 겉옷은 없어도 돼요. ");
+        }
         if (askedRain) {
             sb.append(umbrella
                     ? "우산 챙기세요. 비나 눈 올 확률이 " + rain + "%예요. "

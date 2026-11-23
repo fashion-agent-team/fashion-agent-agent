@@ -318,6 +318,13 @@ class TurnFlowTest {
     }
 
     @Test
+    void 겉옷_입어야_하냐고_물으면_네_아니요부터_답한다() throws Exception {
+        JsonNode r = turn("u_outer", """
+                {"utterance": "패딩 입어야 돼?"}""");
+        assertThat(r.path("speech").asString()).matches("^(네, 겉옷을 챙기세요|아니요, 겉옷은 없어도 돼요)\\..*");
+    }
+
+    @Test
     void 날씨를_물으면_읽어준다() throws Exception {
         JsonNode r = turn("u5", """
                 {"utterance": "오늘 날씨 어때?"}""");
