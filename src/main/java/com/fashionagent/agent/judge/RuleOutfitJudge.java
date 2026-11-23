@@ -178,7 +178,11 @@ public class RuleOutfitJudge implements OutfitJudge {
             sentences.add("어울림 " + in.colorHarmony().path("score").asInt() + "점이에요." + (reason.isBlank() ? "" : " " + reason));
         }
         if (!missing.isEmpty()) {
-            sentences.add(String.join(", ", missing.stream().map(Korean::category).toList()) + "도 보여 주세요.");
+            // 보여 줬지만 안 맞은 종류는 "다른 상의"로 말합니다(2026-11-23 시뮬: 추울 수 있다고 한 티셔츠 뒤에 "상의도 보여 주세요").
+            Set<String> shownBad = new LinkedHashSet<>();
+            in.now().stream().filter(g -> "bad".equals(verdictOf(verdicts, g.id()))).forEach(g -> shownBad.add(g.category()));
+            sentences.add(String.join(", ", missing.stream()
+                    .map(c -> (shownBad.contains(c) ? "다른 " : "") + Korean.category(c)).toList()) + "도 보여 주세요.");
         } else {
             sentences.add("마음에 들면 \"이걸로 할게\"라고 말해 주세요.");
         }

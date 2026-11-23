@@ -287,6 +287,37 @@ class TurnFlowTest {
     }
 
     @Test
+    void 보여_주는_방식을_물었을_때_아니면_접고_짧게_내려놓고도_알아듣는다() throws Exception {
+        // 2026-11-23 시뮬: "아니"에 방식을 또 물었고, 두 번 물은 뒤 "내려놓고"는 못 알아들었음
+        JsonNode ask = turn("u_mode", """
+                {"utterance": "옷 검사해 줘"}""");
+        String sid = ask.path("sessionId").asString();
+        JsonNode no = turn("u_mode", """
+                {"sessionId": "%s", "utterance": "아니"}""".formatted(sid));
+        assertThat(no.path("speech").asString()).doesNotContain("입고 볼게");
+        assertThat(no.path("next").asString()).isEqualTo("listen");
+
+        turn("u_mode", """
+                {"sessionId": "%s", "utterance": "응"}""".formatted(sid));
+        JsonNode laid = turn("u_mode", """
+                {"sessionId": "%s", "utterance": "내려놓고"}""".formatted(sid));
+        assertThat(laid.path("next").asString()).isEqualTo("camera_outfit");
+    }
+
+    @Test
+    void 추천_뒤_날씨를_물어도_봐_줘로_옷_보기를_이어_간다() throws Exception {
+        // 2026-11-23 시뮬: 날씨를 한 번 물은 뒤 "봐 줘"를 못 알아들었음
+        JsonNode advice = turn("u_look", """
+                {"utterance": "오늘 뭐 입지?"}""");
+        String sid = advice.path("sessionId").asString();
+        turn("u_look", """
+                {"sessionId": "%s", "utterance": "아니 그냥 날씨 어때?"}""".formatted(sid));
+        JsonNode look = turn("u_look", """
+                {"sessionId": "%s", "utterance": "봐 줘"}""".formatted(sid));
+        assertThat(look.path("speech").asString()).contains("내려놓고");
+    }
+
+    @Test
     void 날씨를_물으면_읽어준다() throws Exception {
         JsonNode r = turn("u5", """
                 {"utterance": "오늘 날씨 어때?"}""");

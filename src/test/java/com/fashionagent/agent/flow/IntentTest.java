@@ -33,7 +33,10 @@ class IntentTest {
         assertThat(Intent.of("입고 볼게", true)).isEqualTo(Intent.MODE);
         assertThat(Intent.of("내려놓고 보여줄게", true)).isEqualTo(Intent.MODE);
         assertThat(Intent.of("흰 셔츠 입고 갈게", true)).isNotEqualTo(Intent.MODE);
+        assertThat(Intent.of("내려놓고", true)).isEqualTo(Intent.MODE);   // 2026-11-23: 짧게 방식만
         assertThat(Intent.of("입고 볼게", false)).isNotEqualTo(Intent.MODE);
+        assertThat(Intent.of("입고 볼게", false)).isEqualTo(Intent.CHECK);   // 2026-11-23: 처음부터 방식만 말해도 옷 보기
+        assertThat(Intent.of("흰 셔츠 입고 갈게", false)).isNotEqualTo(Intent.CHECK);
         assertThat(Intent.of("내려놓고 볼게, 내일 뭐 입지?", true)).isEqualTo(Intent.OUTFIT);   // 2026-11-20: 새 추천
     }
 
@@ -58,6 +61,10 @@ class IntentTest {
         // 2026-11-12 시뮬 2회차
         assertThat(Intent.of("어제 뭐 입었지?", false)).isEqualTo(Intent.CLOSET_HISTORY);
         assertThat(Intent.of("지난주에 무슨 옷 입었어", false)).isEqualTo(Intent.CLOSET_HISTORY);
+        // 2026-11-23 점검: "입은 옷"이 옷 검사로 가서 카메라가 켜졌음
+        assertThat(Intent.of("어제 입은 옷 뭐야?", false)).isEqualTo(Intent.CLOSET_HISTORY);
+        assertThat(Intent.of("그저께 입은 거 알려 줘", false)).isEqualTo(Intent.CLOSET_HISTORY);
+        assertThat(Intent.of("지난주에 입은 옷 다시 입을까?", false)).isNotEqualTo(Intent.CLOSET_HISTORY);
         assertThat(Intent.of("옷장에서 원피스 지워줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
         assertThat(Intent.of("옷장에서 버린 바지 빼 줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
         assertThat(Intent.of("내일 뭐 입지?", false)).isEqualTo(Intent.OUTFIT);

@@ -115,6 +115,15 @@ class ClosetFlowTest {
     }
 
     @Test
+    @DisplayName("같은 옷을 다르게 불러도 찾는다(블레이저 → 자켓, 데님 → 청바지)")
+    void sameName() {
+        assertThat(ClosetFlow.sameName("옷장에서블레이저지워줘", "자켓")).isTrue();
+        assertThat(ClosetFlow.sameName("옷장에서데님지워줘", "청바지")).isTrue();
+        assertThat(ClosetFlow.sameName("옷장에서패딩지워줘", "패딩점퍼")).isTrue();
+        assertThat(ClosetFlow.sameName("옷장에서코트지워줘", "자켓")).isFalse();
+    }
+
+    @Test
     @DisplayName("색만 말해도 그 색 옷만, 없는 옷이면 못 찾았다고 한다")
     void match() {
         var all = json.readTree(CLOSET).path("garments");
