@@ -115,7 +115,9 @@ public class OutfitFlow {
     /** 옷 추천 중 "입고 볼게"처럼 방식을 바꾸는 말이면 그 방식, 아니면 null. */
     public static String switchFrom(String utterance) {
         String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
-        return SWITCH_WORDS.stream().anyMatch(s::contains) ? modeFrom(s) : null;
+        // "내려놓고", "입고"처럼 짧게 방식만 말해도 바꿉니다(2026-11-23 시뮬: 방식을 두 번 물은 뒤 "내려놓고"를 못 알아들음).
+        boolean shortAnswer = s.replaceAll("[?.!,~]", "").length() <= 5;
+        return shortAnswer || SWITCH_WORDS.stream().anyMatch(s::contains) ? modeFrom(s) : null;
     }
 
     /** 앱이 보낸 outfitMode. laid·worn이 아니면 null. */
@@ -133,12 +135,23 @@ public class OutfitFlow {
      * 말에 방식이 있으면("입고 볼게, 뭐 입지?") 기억해 두었다가 방식은 묻지 않습니다. 앱이 기억한 방식은 쓰지 않고 매번 고릅니다.
      */
     public TurnResponse start(AgentSession session, Location location, String utterance) {
+        if (SpokenDate.impossible(utterance, today())) {
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, SpokenDate.SAY_IMPOSSIBLE, Next.listen, null);
+        }
         // 같은 대화(30분)에서 "내일 뭐 입지?"를 다시 물으면 새 코디라 다시 기록합니다(2026-11-20 점검:
         // 첫 코디만 기록되고 두 번째로 고른 옷은 "정했어요"로 끝났음).
         session.recorded = false;
         LocalDate day = SpokenDate.from(utterance, today());
-        session.targetDate = day == null || day.equals(today()) ? null : day.toString();
-        rememberSpoken(session, utterance);
+        // "다른 거 추천해 줘": 날짜·자리를 새로 말하지 않았으면 앞서 말한 날("내일")과 자리("결혼식")를 이어 씁니다.
+        // 2026-11-23 시뮬: 결혼식 추천 뒤 "다른 거 추천해 줘"에 "일정은 없어요, 편한 상의"로 답했음.
+        String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        boolean again = session.advice != null && day == null && SpokenOccasion.from(utterance) == null
+                && (u.contains("다른") || u.contains("다시") || u.startsWith("또") || u.contains("말고"));
+        if (!again) {
+            session.targetDate = day == null || day.equals(today()) ? null : day.toString();
+            rememberSpoken(session, utterance);
+        }
         session.outfitMode = modeFrom(utterance);
         session.modeAsked = 0;
         TurnResponse advice = advise(session, location);
@@ -171,14 +184,18 @@ public class OutfitFlow {
     /** "봐 드릴까요?"에 대한 답. 알아듣지 못하면 null(원래 대화로). */
     public TurnResponse answerCheckOffer(AgentSession session, String utterance) {
         session.checkOffered = false;
-        String mode = modeFrom(utterance);
         String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        // 방식을 고르는 답일 때만 방식으로 봅니다. 2026-11-23 시뮬: "더 따뜻하게 입고 싶어"의 '입고'로 입은 모습 카메라를 켰음.
+        String mode = s.length() <= 8 || SWITCH_WORDS.stream().anyMatch(s::contains)
+                || List.of("할게", "할래", "볼래").stream().anyMatch(s::contains) ? modeFrom(utterance) : null;
         if (otherFeature(utterance)) {
             // "아니 그냥 날씨 어때?"처럼 다른 기능을 말하면 답이 아니라 새 요청입니다.
             sessions.save(session);
             return null;
         }
-        if (mode == null && NO.stream().anyMatch(s::contains)) {
+        // "검정 정장 괜찮아?"는 거절이 아니라 질문입니다(2026-11-23 시뮬: "괜찮"에 걸려 대화를 끝냈음).
+        boolean asksOk = s.indexOf("괜찮") > 2 && NO.stream().filter(w -> !"괜찮".equals(w)).noneMatch(s::contains);
+        if (mode == null && NO.stream().anyMatch(s::contains) && !asksOk) {
             sessions.save(session);
             return new TurnResponse(session.sessionId, "그럼요, 알겠어요. 옷 고르다가 봐 줄 게 생기면 언제든 불러 주세요.", Next.done, null);
         }
@@ -218,6 +235,13 @@ public class OutfitFlow {
         String mode = modeFrom(utterance);
         if (mode == null) {
             String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+            // "봐 줘" 뒤 "아니, 됐어": 2026-11-23 시뮬에서 "내려놓고 볼게 또는 입고 볼게"를 다시 물었음.
+            if (NO.stream().anyMatch(s::contains)) {
+                session.modeAsked = 0;
+                sessions.save(session);
+                return new TurnResponse(session.sessionId, "알겠어요. 옷을 봐 드릴 게 생기면 언제든 불러 주세요.",
+                        Next.listen, null);
+            }
             if (session.modeAsked < MAX_MODE_ASKS && s.length() <= 10) {
                 session.modeAsked++;
                 sessions.save(session);
@@ -532,7 +556,7 @@ public class OutfitFlow {
             return j;
         }
         return new CheckJudgement(j.verdicts(), j.comparison(), j.damage(), j.stillMissing(),
-                ColorFeel.insertAfterFirst(j.speech(), extra));
+                ColorFeel.insertAfter(j.speech(), extra, j.comparison() != null ? 1 : Math.min(3, garments.size())));
     }
 
     /** 2026-11-10 진행 님 대사: 처음 애매한 얼룩이 나왔을 때 한 번만 묻는다. */
@@ -700,10 +724,17 @@ public class OutfitFlow {
         }
 
         List<Garment> outfit = List.copyOf(session.wornGarments);
-        List<SeenBrief> before = session.seen.stream()
+        List<SeenBrief> before = new ArrayList<>(session.seen.stream()
                 .map(s -> new SeenBrief(s.garment().id(), s.garment().category(), s.garment().name(),
                         s.garment().colorName(), s.fit(), s.garment().label()))
-                .toList();
+                .toList());
+        // 입은 모습에서 겉옷을 입었으면 안의 상의는 가려 안 보일 수 있습니다. 2026-11-23 시뮬: 자켓을 입고 돌았는데
+        // "상의도 보여 주세요"라고 했음. 상의는 본 것으로 두고 "상의도"를 묻지 않습니다.
+        boolean outer = outfit.stream().anyMatch(g -> "outer".equals(g.category()));
+        boolean top = outfit.stream().anyMatch(g -> "top".equals(g.category()) || "dress".equals(g.category()));
+        if (outer && !top) {
+            before.add(new SeenBrief("covered-top", "top", null, null, "ok", "겉옷 안에 입어 가려진 상의"));
+        }
         JsonNode color = colorCheck(session, outfit, inspect);
         CheckJudgement j = withColors(session, outfit, judge.check(new CheckInput(session.weather, session.events,
                 session.advice, outfit, before, SpokenDate.label(targetDay(session), today()), session.wearer, color)));
@@ -825,6 +856,13 @@ public class OutfitFlow {
     // ── "어디야?" ─────────────────────────────────────────────────────
 
     public TurnResponse where(AgentSession session) {
+        // 2026-11-23 시뮬: 옷을 하나도 안 찍었는데 "방금 본 옷에서는 … 찾지 못했어요"라고 답했음.
+        if (session.seen.isEmpty() && session.lastDamage.isEmpty()) {
+            Next next = session.outfitMode == null ? Next.listen : cameraFor(session.outfitMode);
+            return new TurnResponse(session.sessionId, next == Next.listen
+                    ? "아직 본 옷이 없어요. \"봐 줘\"라고 하시면 옷을 봐 드릴게요."
+                    : "아직 본 옷이 없어요. 옷을 폰으로 비춰 주시면 봐 드릴게요.", next, null);
+        }
         List<String> sentences = new ArrayList<>();
         for (OutfitCheck.Damage d : session.lastDamage) {
             if (d.where() == null || d.where().isBlank()) {
@@ -976,7 +1014,7 @@ public class OutfitFlow {
                     Result.of("outfit_worn_offer"));
         }
         sessions.save(session);
-        return new TurnResponse(session.sessionId, picked + " 오늘 멋지게 잘 다녀오세요.", Next.done, null);
+        return new TurnResponse(session.sessionId, picked + " " + goodDay(session), Next.done, null);
     }
 
     private static boolean otherFeature(String utterance) {
@@ -984,6 +1022,13 @@ public class OutfitFlow {
             case WEATHER, SCHEDULE, FACE, HELP, OUTFIT, COLOR -> true;
             default -> false;
         };
+    }
+
+    /** "오늘 멋지게 잘 다녀오세요." 다른 날 옷이면 그날로(2026-11-23 시뮬: 내일 옷을 정했는데 "오늘 멋지게"). */
+    private String goodDay(AgentSession session) {
+        LocalDate day = targetDay(session);
+        String label = SpokenDate.label(day, today());
+        return day.equals(today()) ? "오늘 멋지게 잘 다녀오세요." : Korean.josa(label, "은", "는") + " 멋지게 잘 다녀오세요.";
     }
 
     static final String OFFER_WORN = "다 입으신 뒤에 입은 모습도 확인해 보실래요? 네 또는 아니요로 말씀해 주세요.";
@@ -1001,7 +1046,7 @@ public class OutfitFlow {
         }
         if (NO.stream().anyMatch(s::contains)) {
             sessions.save(session);
-            return new TurnResponse(session.sessionId, "그럼요. 오늘 멋지게 잘 다녀오세요.", Next.done, null);
+            return new TurnResponse(session.sessionId, "그럼요. " + goodDay(session), Next.done, null);
         }
         if (YES.stream().anyMatch(s::startsWith) || s.contains("입고") || s.contains("볼게")) {
             session.outfitMode = WORN;

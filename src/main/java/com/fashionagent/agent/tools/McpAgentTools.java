@@ -117,7 +117,7 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
     }
 
     private McpSchema.CallToolResult callOnce(String tool, String server, Map<String, Object> args) {
-        return client(tool, server).callTool(McpSchema.CallToolRequest.builder().name(tool).arguments(args).build());
+        return client(tool, server).callTool(McpSchema.CallToolRequest.builder(tool).arguments(args).build());
     }
 
     private JsonNode parse(String tool, McpSchema.CallToolResult result) {
@@ -153,7 +153,7 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
         String endpoint = uri.getPath() == null || uri.getPath().isBlank() ? "/mcp" : uri.getPath();
         var transport = HttpClientStreamableHttpTransport.builder(base).endpoint(endpoint).build();
         McpSyncClient client = McpClient.sync(transport)
-                .clientInfo(new McpSchema.Implementation("fashion-agent-agent", "패션 에이전트 agent", "0.0.1"))
+                .clientInfo(McpSchema.Implementation.builder("fashion-agent-agent", "0.0.1").title("패션 에이전트 agent").build())
                 .requestTimeout(timeout)
                 .build();
         client.initialize();

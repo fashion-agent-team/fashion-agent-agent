@@ -41,10 +41,13 @@ public class FaceFlow {
     static final String START_TEETH = "좋아요, 이 같이 볼게요. 폰을 입 가까이 대고 '이' 하고 입을 벌린 채 비춰 주고 계시면 제가 봐 드릴게요.";
 
     /** 처음 말에서 치아를 알아보는 말. "이쪽 옷"처럼 흔한 말과 겹치지 않게 좁게 둡니다. */
-    private static final List<String> TEETH_WORDS = List.of("치아", "이빨", "이사이", "이확인", "이에낀", "이에뭐", "입안");
+    private static final List<String> TEETH_WORDS = List.of("치아", "이빨", "이사이", "이확인", "이에낀", "이에뭐", "입안",
+            "이닦", "양치", "이좀봐", "이봐줘");
     /** "얼굴을 볼까요, 이를 확인할까요?"에 대한 답에서만 쓰는 짧은 말. */
     private static final List<String> TEETH_ANSWERS = List.of("이", "이요", "이를", "이로", "이부터", "이확인해줘");
-    private static final List<String> MAKEUP_WORDS = List.of("화장", "얼굴", "눈썹", "입술", "메이크업");
+    private static final List<String> MAKEUP_WORDS = List.of("화장", "얼굴", "눈썹", "입술", "메이크업",
+            // 2026-11-23 시뮬: "립스틱 번졌어?", "눈썹 짝짝이야?"가 키워드에 안 걸렸음
+            "립스틱", "틴트", "아이라인", "아이섀도", "블러셔", "볼터치");
 
     private final AgentTools tools;
     private final SessionStore sessions;
@@ -68,7 +71,8 @@ public class FaceFlow {
         if (isTeeth(s)) {
             return startTeeth(session);
         }
-        if (s.contains("화장") || s.contains("눈썹") || s.contains("입술") || s.contains("메이크업")) {
+        // "얼굴"만 말하면 화장·이 중에 고르게 묻고, 화장 쪽 말(눈썹·립스틱 등)이 있으면 바로 화장으로.
+        if (isMakeup(s.replace("얼굴", ""))) {
             return startMakeup(session);
         }
         session.faceChoiceAsked = 1;
@@ -83,6 +87,11 @@ public class FaceFlow {
             session.faceChoiceAsked = 0;
             return null;
         }
+        // "그만할래", "됐어": 같은 질문을 되풀이하지 않고 멈춥니다(2026-11-23 시뮬).
+        if (s.matches(".*(그만|취소|안할래|안할게|됐어|됐다|나중에|안볼래|필요없).*")) {
+            session.faceChoiceAsked = 0;
+            return reply(session, "네, 알겠어요. 필요하면 다시 불러 주세요.", Next.listen, null);
+        }
         if (isTeeth(s) || TEETH_ANSWERS.contains(s) || s.startsWith("이를") || s.startsWith("이요")) {
             return startTeeth(session);
         }
@@ -91,7 +100,7 @@ public class FaceFlow {
         }
         if (session.faceChoiceAsked < MAX_CHOICE_ASKS && s.length() <= 6) {
             session.faceChoiceAsked++;
-            return reply(session, "얼굴이라고 하시면 화장을, 이라고 하시면 치아를 볼게요. " + ASK_CHOICE, Next.listen, null);
+            return reply(session, "화장이라고 하시면 얼굴 화장을, 치아라고 하시면 이를 볼게요. " + ASK_CHOICE, Next.listen, null);
         }
         session.faceChoiceAsked = 0;
         return null;

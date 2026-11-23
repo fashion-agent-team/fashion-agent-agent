@@ -38,6 +38,12 @@ public final class SpokenDate {
         if (m.find()) {
             return monthDay(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), today);
         }
+        // "100일 뒤 날씨", "2주 후": 2026-11-23 시뮬에서 오늘 날씨로 답했음.
+        Matcher after = Pattern.compile("(\\d{1,3})(일|주)(뒤|후|있다가)").matcher(s);
+        if (after.find()) {
+            int n = Integer.parseInt(after.group(1));
+            return today.plusDays("주".equals(after.group(2)) ? 7L * n : n);
+        }
         if (s.contains("글피")) {
             return today.plusDays(3);
         }
@@ -51,12 +57,36 @@ public final class SpokenDate {
         if (m.find()) {
             return weekday(m.group(1), DAYS.get(m.group(2)), today);
         }
+        // "주말에 결혼식 가는데 뭐 입지?": 오늘로 추천했음(2026-11-23 시뮬). 주말은 토요일(주말이면 오늘)로 봅니다.
+        if (s.contains("주말")) {
+            if (s.contains("다음주말") || s.contains("담주말")) {
+                return weekday("다음주", DayOfWeek.SATURDAY, today);
+            }
+            return today.getDayOfWeek() == DayOfWeek.SUNDAY ? today : today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+        }
         m = DAY_ONLY.matcher(s);
         if (m.find()) {
             return dayOfMonth(Integer.parseInt(m.group(1)), today);
         }
         return null;
     }
+
+    /**
+     * "2월 30일", "13월 5일"처럼 날짜를 말했는데 없는 날이면 true. 2026-11-23 시뮬: 없는 날을 물으면 조용히 오늘로 답했음.
+     */
+    public static boolean impossible(String utterance, LocalDate today) {
+        String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        Matcher m = MONTH_DAY.matcher(s);
+        if (!m.find()) {
+            m = SLASH.matcher(s);
+            if (!m.find()) {
+                return false;
+            }
+        }
+        return monthDay(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), today) == null;
+    }
+
+    static final String SAY_IMPOSSIBLE = "그런 날짜는 없어요. 몇 월 며칠인지 다시 말씀해 주실래요?";
 
     /** 지난 날이면 내년. 없는 날(2월 30일 등)이면 null. */
     private static LocalDate monthDay(int month, int day, LocalDate today) {

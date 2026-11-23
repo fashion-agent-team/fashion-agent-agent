@@ -287,6 +287,141 @@ class TurnFlowTest {
     }
 
     @Test
+    void 보여_주는_방식을_물었을_때_아니면_접고_짧게_내려놓고도_알아듣는다() throws Exception {
+        // 2026-11-23 시뮬: "아니"에 방식을 또 물었고, 두 번 물은 뒤 "내려놓고"는 못 알아들었음
+        JsonNode ask = turn("u_mode", """
+                {"utterance": "옷 검사해 줘"}""");
+        String sid = ask.path("sessionId").asString();
+        JsonNode no = turn("u_mode", """
+                {"sessionId": "%s", "utterance": "아니"}""".formatted(sid));
+        assertThat(no.path("speech").asString()).doesNotContain("입고 볼게");
+        assertThat(no.path("next").asString()).isEqualTo("listen");
+
+        turn("u_mode", """
+                {"sessionId": "%s", "utterance": "응"}""".formatted(sid));
+        JsonNode laid = turn("u_mode", """
+                {"sessionId": "%s", "utterance": "내려놓고"}""".formatted(sid));
+        assertThat(laid.path("next").asString()).isEqualTo("camera_outfit");
+    }
+
+    @Test
+    void 추천_뒤_날씨를_물어도_봐_줘로_옷_보기를_이어_간다() throws Exception {
+        // 2026-11-23 시뮬: 날씨를 한 번 물은 뒤 "봐 줘"를 못 알아들었음
+        JsonNode advice = turn("u_look", """
+                {"utterance": "오늘 뭐 입지?"}""");
+        String sid = advice.path("sessionId").asString();
+        turn("u_look", """
+                {"sessionId": "%s", "utterance": "아니 그냥 날씨 어때?"}""".formatted(sid));
+        JsonNode look = turn("u_look", """
+                {"sessionId": "%s", "utterance": "봐 줘"}""".formatted(sid));
+        assertThat(look.path("speech").asString()).contains("내려놓고");
+    }
+
+    @Test
+    void 겉옷_입어야_하냐고_물으면_네_아니요부터_답한다() throws Exception {
+        JsonNode r = turn("u_outer", """
+                {"utterance": "패딩 입어야 돼?"}""");
+        assertThat(r.path("speech").asString()).matches("^(네, 겉옷을 챙기세요|아니요, 겉옷은 없어도 돼요)\\..*");
+    }
+
+    @Test
+    void 반팔_입어도_되냐고_물으면_날씨로_답한다() throws Exception {
+        JsonNode r = turn("u_light", """
+                {"utterance": "오늘 반팔 입어도 돼?"}""");
+        assertThat(r.path("speech").asString())
+                .matches("^(아니요, 그렇게 입기엔 추워요|네, 그렇게 입어도 돼요|조금 쌀쌀할 수 있어요).*");
+    }
+
+    @Test
+    void 뭐라고_하면_지난_말을_다시_읽어_준다() throws Exception {
+        JsonNode first = turn("u_repeat", """
+                {"utterance": "오늘 날씨 어때?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode again = turn("u_repeat", """
+                {"sessionId": "%s", "utterance": "뭐라고?"}""".formatted(sid));
+        assertThat(again.path("speech").asString()).isEqualTo("다시 말씀드릴게요. " + first.path("speech").asString());
+        JsonNode twice = turn("u_repeat", """
+                {"sessionId": "%s", "utterance": "다시 말해 줘"}""".formatted(sid));
+        assertThat(twice.path("speech").asString()).isEqualTo(again.path("speech").asString());
+    }
+
+    @Test
+    void 이_카메라를_켠_뒤_응이라고_하면_카메라를_이어_간다() throws Exception {
+        JsonNode first = turn("u_ack", """
+                {"utterance": "이에 뭐 꼈어?"}""");
+        assertThat(first.path("next").asString()).isEqualTo("camera_teeth");
+        JsonNode ack = turn("u_ack", """
+                {"sessionId": "%s", "utterance": "응"}""".formatted(first.path("sessionId").asString()));
+        assertThat(ack.path("next").asString()).isEqualTo("camera_teeth");
+        assertThat(ack.path("speech").asString()).startsWith("네,");
+    }
+
+    @Test
+    void 도시_날씨를_물으면_어느_도시인지_말한다() throws Exception {
+        JsonNode r = turn("u_city", """
+                {"utterance": "부산 날씨 어때?"}""");
+        assertThat(r.path("speech").asString()).startsWith("부산 날씨예요. ");
+    }
+
+    @Test
+    void 추천_뒤_입고_싶다는_말로_카메라를_켜지_않고_다른_거는_자리를_이어_간다() throws Exception {
+        JsonNode advice = turn("u_again", """
+                {"utterance": "결혼식 가는데 뭐 입지?"}""");
+        String sid = advice.path("sessionId").asString();
+        JsonNode warm = turn("u_again", """
+                {"sessionId": "%s", "utterance": "더 따뜻하게 입고 싶어"}""".formatted(sid));
+        assertThat(warm.path("next").asString()).isNotEqualTo("camera_worn");
+        JsonNode again = turn("u_again", """
+                {"sessionId": "%s", "utterance": "다른 거 추천해 줘"}""".formatted(sid));
+        assertThat(again.path("speech").asString()).contains("결혼식");
+    }
+
+    @Test
+    void 추천_뒤_좀_더_캐주얼하게는_같은_자리로_다시_추천한다() throws Exception {
+        JsonNode advice = turn("u_casual", """
+                {"utterance": "결혼식 가는데 뭐 입지?"}""");
+        String sid = advice.path("sessionId").asString();
+        JsonNode again = turn("u_casual", """
+                {"sessionId": "%s", "utterance": "좀 더 캐주얼하게"}""".formatted(sid));
+        assertThat(again.path("speech").asString()).contains("결혼식");
+        JsonNode warm = turn("u_casual", """
+                {"sessionId": "%s", "utterance": "더 따뜻하게"}""".formatted(sid));
+        assertThat(warm.path("speech").asString()).contains("결혼식");
+    }
+
+    @Test
+    void 옷을_안_찍었는데_어디냐고_물으면_아직_본_옷이_없다고_한다() throws Exception {
+        JsonNode start = turn("u_where0", """
+                {"utterance": "옷 검사해 줘"}""");
+        String sid = start.path("sessionId").asString();
+        turn("u_where0", """
+                {"sessionId": "%s", "utterance": "내려놓고"}""".formatted(sid));
+        JsonNode where = turn("u_where0", """
+                {"sessionId": "%s", "utterance": "어디야?"}""".formatted(sid));
+        assertThat(where.path("speech").asString()).startsWith("아직 본 옷이 없어요");
+        assertThat(where.path("next").asString()).isEqualTo("camera_outfit");
+    }
+
+    @Test
+    void 날씨_뒤_날짜만_말하면_그날_날씨를_답하고_그럼_뭐_입지는_그날로_추천한다() throws Exception {
+        JsonNode first = turn("u_follow", """
+                {"utterance": "내일 날씨 어때?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode next = turn("u_follow", """
+                {"sessionId": "%s", "utterance": "모레는?"}""".formatted(sid));
+        assertThat(next.path("speech").asString()).startsWith("모레는");
+        JsonNode wear = turn("u_follow", """
+                {"sessionId": "%s", "utterance": "그럼 뭐 입지?"}""".formatted(sid));
+        assertThat(wear.path("speech").asString()).startsWith("모레의 패션을 추천해 드릴게요.");
+        JsonNode sat = turn("u_follow", """
+                {"sessionId": "%s", "utterance": "토요일은?"}""".formatted(sid));
+        assertThat(sat.path("speech").asString()).contains("의 패션을 추천해 드릴게요.");
+        JsonNode add = turn("u_follow", """
+                {"sessionId": "%s", "utterance": "내일 3시 치과"}""".formatted(sid));
+        assertThat(add.path("speech").asString()).doesNotContain("패션을 추천");
+    }
+
+    @Test
     void 날씨를_물으면_읽어준다() throws Exception {
         JsonNode r = turn("u5", """
                 {"utterance": "오늘 날씨 어때?"}""");
@@ -350,6 +485,244 @@ class TurnFlowTest {
         JsonNode r = turn("u5d", """
                 {"utterance": "%s월 %s일 날씨 어때?"}""".formatted(Integer.parseInt(p[1]), Integer.parseInt(p[2])));
         assertThat(r.path("speech").asString()).contains("아직 알 수 없어요").contains("16일");
+    }
+
+    @Test
+    void 내일_추천_뒤_치마_입어도_되냐면_내일_날씨로_답한다() throws Exception {
+        JsonNode first = turn("u_skirt", """
+                {"utterance": "내일 뭐 입지?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_skirt", """
+                {"sessionId": "%s", "utterance": "치마 입어도 돼?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).contains("입어도 돼요").doesNotContain("지금 ");
+        JsonNode boots = turn("u_skirt", """
+                {"sessionId": "%s", "utterance": "장화 신어야 돼?"}""".formatted(sid));
+        assertThat(boots.path("speech").asString()).doesNotContain("지금 ");
+    }
+
+    @Test
+    void 면접이라고_말한_뒤_뭐_입을지_물으면_면접에_맞춘다() throws Exception {
+        JsonNode first = turn("u_plan", """
+                {"utterance": "나 모레 면접이야"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_plan", """
+                {"sessionId": "%s", "utterance": "뭐 입고 가면 좋을까?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레의 패션");
+    }
+
+    @Test
+    void 추천_뒤_괜찮아_질문은_대화를_끝내지_않는다() throws Exception {
+        JsonNode first = turn("u_suit", """
+                {"utterance": "오늘 뭐 입지?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_suit", """
+                {"sessionId": "%s", "utterance": "검정 정장 괜찮아?"}""".formatted(sid));
+        assertThat(r.path("next").asString()).isNotEqualTo("done");
+        assertThat(r.path("speech").asString()).startsWith("네, 입어도 돼요.");
+    }
+
+    @Test
+    void 결혼식_추천_뒤_흰_셔츠를_물으면_피하라고_한다() throws Exception {
+        JsonNode first = turn("u_white", """
+                {"utterance": "결혼식에 뭐 입지?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_white", """
+                {"sessionId": "%s", "utterance": "흰 셔츠 입어도 돼?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("결혼식에는 흰색 옷은").doesNotContain("네, 입어도 돼요");
+    }
+
+    @Test
+    void 화장_카메라_중_취소하면_카메라를_끈다() throws Exception {
+        JsonNode first = turn("u_cancel", """
+                {"utterance": "얼굴 화장 봐줘"}""");
+        assertThat(first.path("next").asString()).isEqualTo("camera_face");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_cancel", """
+                {"sessionId": "%s", "utterance": "취소"}""".formatted(sid));
+        assertThat(r.path("next").asString()).isEqualTo("listen");
+        assertThat(r.path("speech").asString()).startsWith("네, 알겠어요.");
+    }
+
+    @Test
+    void 날과_계획만_말한_뒤_추천은_그날로() throws Exception {
+        JsonNode first = turn("u_date_plan", """
+                {"utterance": "모레 데이트 있어"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_date_plan", """
+                {"sessionId": "%s", "utterance": "옷 추천해줘"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레의 패션");
+    }
+
+    @Test
+    void 도시_날씨_뒤_거기와_다른_도시를_이어_묻는다() throws Exception {
+        JsonNode first = turn("u_city", """
+                {"utterance": "부산 날씨 어때?"}""");
+        assertThat(first.path("speech").asString()).startsWith("부산 날씨예요.");
+        String sid = first.path("sessionId").asString();
+        JsonNode there = turn("u_city", """
+                {"sessionId": "%s", "utterance": "거기 우산 필요해?"}""".formatted(sid));
+        assertThat(there.path("speech").asString()).startsWith("부산 날씨예요.");
+        JsonNode seoul = turn("u_city", """
+                {"sessionId": "%s", "utterance": "서울은?"}""".formatted(sid));
+        assertThat(seoul.path("speech").asString()).startsWith("서울 날씨예요.");
+        JsonNode here = turn("u_city", """
+                {"sessionId": "%s", "utterance": "여기는?"}""".formatted(sid));
+        assertThat(here.path("speech").asString()).doesNotContain("날씨예요.").doesNotContain("할 수 없는");
+    }
+
+    @Test
+    void 일정_뒤_그날_뭐_입지는_그날로() throws Exception {
+        JsonNode first = turn("u_sched_day", """
+                {"utterance": "모레 일정 있어?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_sched_day", """
+                {"sessionId": "%s", "utterance": "그날 뭐 입지?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레의 패션");
+    }
+
+    @Test
+    void 토요일_결혼식이라고_말한_뒤_흰_블라우스를_물으면_피하라고_한다() throws Exception {
+        JsonNode plan = turn("u_plan_white", """
+                {"utterance": "이번주 토요일 결혼식이야"}""");
+        String sid = plan.path("sessionId").asString();
+        JsonNode r = turn("u_plan_white", """
+                {"sessionId": "%s", "utterance": "흰 블라우스 입어도 돼?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("결혼식에는 흰색 옷은");
+    }
+
+    @Test
+    void 입은_옷_기록_뒤_어제는은_어제_기록을_읽는다() throws Exception {
+        JsonNode first = turn("u_hist_follow", """
+                {"utterance": "나 오늘 뭐 입었는지 기억해?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_hist_follow", """
+                {"sessionId": "%s", "utterance": "어제는?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).contains("어제").doesNotContain("할 수 없는");
+    }
+
+    @Test
+    void 비_와_뒤_내일은은_내일_비_소식으로_답한다() throws Exception {
+        JsonNode first = turn("u_rain_follow", """
+                {"utterance": "오늘 비 와?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_rain_follow", """
+                {"sessionId": "%s", "utterance": "내일은?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).containsAnyOf("우산", "비");
+    }
+
+    @Test
+    void 일정_뒤_그_다음날은과_그날_날씨는을_이어_답한다() throws Exception {
+        JsonNode first = turn("u_nextday", """
+                {"utterance": "내일 일정 뭐 있어?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode next = turn("u_nextday", """
+                {"sessionId": "%s", "utterance": "그 다음날은?"}""".formatted(sid));
+        assertThat(next.path("speech").asString()).contains("모레").doesNotContain("할 수 없는");
+        JsonNode w = turn("u_nextday", """
+                {"sessionId": "%s", "utterance": "그날 날씨는?"}""".formatted(sid));
+        assertThat(w.path("speech").asString()).startsWith("모레").doesNotContain("지금");
+    }
+
+    @Test
+    void 화장_카메라_중_괜찮아는_비춰_달라고_한다() throws Exception {
+        JsonNode first = turn("u_face_ok", """
+                {"utterance": "화장 좀 봐줘"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_face_ok", """
+                {"sessionId": "%s", "utterance": "괜찮아?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).contains("비춰").doesNotContain("할 수 없는");
+
+        for (String u : new String[] {"번졌어?", "다 됐어"}) {
+            JsonNode q = turn("u_face_ok", """
+                    {"sessionId": "%s", "utterance": "%s"}""".formatted(sid, u));
+            assertThat(q.path("speech").asString()).contains("비춰");
+        }
+    }
+
+    @Test
+    void 추워_뒤_얼마나는_기온으로_답한다() throws Exception {
+        JsonNode first = turn("u_howmuch", """
+                {"utterance": "추워?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_howmuch", """
+                {"sessionId": "%s", "utterance": "얼마나?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).contains("도").doesNotContain("할 수 없는");
+    }
+
+    @Test
+    void 방식을_묻는_중_옷장을_물으면_옷장으로_답한다() throws Exception {
+        JsonNode first = turn("u_mode_escape", """
+                {"utterance": "옷 검사해 줘"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_mode_escape", """
+                {"sessionId": "%s", "utterance": "옷장에 셔츠 있어?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).contains("옷장").doesNotContain("내려놓고 볼게");
+    }
+
+    @Test
+    void 내일_추천_뒤_추천해준_거_말고는_내일로_다시_추천한다() throws Exception {
+        JsonNode first = turn("u_notthis", """
+                {"utterance": "내일 뭐 입어?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_notthis", """
+                {"sessionId": "%s", "utterance": "추천해준 거 말고"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("내일");
+    }
+
+    @Test
+    void 결혼식_원피스_뒤_흰_원피스는_피하라고_한다() throws Exception {
+        JsonNode first = turn("u_dress", """
+                {"utterance": "모레 결혼식 가는데 원피스 입어도 돼?"}""");
+        assertThat(first.path("speech").asString()).contains("입어도 돼요");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_dress", """
+                {"sessionId": "%s", "utterance": "흰 원피스는?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("결혼식에는 흰색 옷은");
+    }
+
+    @Test
+    void 출근하는데_비_와_뒤_그럼_뭐_입지는_출근에_맞춘다() throws Exception {
+        JsonNode first = turn("u_work_rain", """
+                {"utterance": "모레 출근하는데 비 와?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_work_rain", """
+                {"sessionId": "%s", "utterance": "그럼 뭐 입지?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레의 패션");
+    }
+
+    @Test
+    void 지난_날씨는_알_수_없다고_한다() throws Exception {
+        JsonNode r = turn("u_past_weather", """
+                {"utterance": "어제 날씨 어땠어?"}""");
+        assertThat(r.path("speech").asString()).startsWith("지난 날씨는 알 수 없어요.");
+    }
+
+    @Test
+    void 어제_일정을_물으면_어제_일정을_읽는다() throws Exception {
+        JsonNode r = turn("u_past_sched", """
+                {"utterance": "어제 일정 뭐였지?"}""");
+        assertThat(r.path("speech").asString()).startsWith("어제");
+    }
+
+    @Test
+    void 얼굴_고르기_중_그만할래면_멈춘다() throws Exception {
+        JsonNode ask = turn("u_face_stop", """
+                {"utterance": "얼굴 봐줘"}""");
+        String sid = ask.path("sessionId").asString();
+        JsonNode stop = turn("u_face_stop", """
+                {"sessionId": "%s", "utterance": "그만할래"}""".formatted(sid));
+        assertThat(stop.path("speech").asString()).startsWith("네, 알겠어요.");
+        assertThat(stop.path("next").asString()).isEqualTo("listen");
+    }
+
+    @Test
+    void 추천_뒤_다른_거면_같은_날로_다시_추천한다() throws Exception {
+        JsonNode first = turn("u_other", """
+                {"utterance": "내일 뭐 입지?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode again = turn("u_other", """
+                {"sessionId": "%s", "utterance": "다른 거"}""".formatted(sid));
+        assertThat(again.path("speech").asString()).startsWith("내일의 패션을 추천해 드릴게요.");
     }
 
     @Test

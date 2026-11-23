@@ -166,8 +166,11 @@ public class RuleOutfitJudge implements OutfitJudge {
             sentences.add(Korean.josa(Korean.position(best.position()) + " " + best.label(), "이", "가") + " "
                     + Korean.position(other.position()) + " " + other.label() + "보다 " + place + " 더 잘 맞아요.");
         } else if (!in.now().isEmpty()) {
-            Garment g = in.now().get(0);
-            sentences.add(Korean.josa(g.label(), "은", "는") + " " + verdicts.get(0).notes().get(0));
+            // 한 사진에 여러 벌(입은 모습 등)이면 벌마다 말합니다. 2026-11-23 시뮬: 자켓만 말하고 바지는 이름도 안 나왔음.
+            for (int i = 0; i < Math.min(3, in.now().size()); i++) {
+                Garment g = in.now().get(i);
+                sentences.add(Korean.josa(g.label(), "은", "는") + " " + verdicts.get(i).notes().get(0));
+            }
         }
         damage.stream().filter(d -> !"ok".equals(d.action())).findFirst()
                 .or(() -> damage.stream().findFirst())
@@ -178,11 +181,25 @@ public class RuleOutfitJudge implements OutfitJudge {
             sentences.add("어울림 " + in.colorHarmony().path("score").asInt() + "점이에요." + (reason.isBlank() ? "" : " " + reason));
         }
         if (!missing.isEmpty()) {
-            sentences.add(String.join(", ", missing.stream().map(Korean::category).toList()) + "도 보여 주세요.");
+            // 보여 줬지만 안 맞은 종류는 "다른 상의"로 말합니다(2026-11-23 시뮬: 추울 수 있다고 한 티셔츠 뒤에 "상의도 보여 주세요").
+            Set<String> shownBad = new LinkedHashSet<>();
+            in.now().stream().filter(g -> "bad".equals(verdictOf(verdicts, g.id()))).forEach(g -> shownBad.add(g.category()));
+            sentences.add(String.join(", ", missing.stream()
+                    .map(c -> (shownBad.contains(c) ? "다른 " : "") + Korean.category(c)).toList()) + "도 보여 주세요.");
         } else {
             sentences.add("마음에 들면 \"이걸로 할게\"라고 말해 주세요.");
         }
-        return new CheckJudgement(verdicts, comparison, damage, missing, String.join(" ", sentences));
+        return new CheckJudgement(verdicts, comparison, damage, missing, onDay(String.join(" ", sentences), in.day()));
+    }
+
+    /**
+     * 다른 날 옷을 볼 때 "오늘"을 그날로 바꿉니다. 2026-11-23 시뮬: "내일 뭐 입지?" 뒤 옷을 보여 주니 "오늘 쌀쌀한데"라고 함.
+     */
+    static String onDay(String speech, String day) {
+        if (speech == null || day == null || "오늘".equals(day)) {
+            return speech;
+        }
+        return speech.replace("오늘은", Korean.josa(day, "은", "는")).replace("오늘 ", day + " ");
     }
 
     /** 두 벌 이상 있는 종류 중 처음 나온 종류의 옷들. 없으면 빈 목록. */
@@ -237,8 +254,8 @@ public class RuleOutfitJudge implements OutfitJudge {
         String name = g.name() == null ? "" : g.name();
         boolean unknownKind = g.category() == null || "other".equals(g.category()) || g.name() == null;
         if (!unknownKind && w.apparent() < 12 && LIGHT.stream().anyMatch(name::contains)) {
-            return new Fit("bad", "오늘 체감 " + Math.round(w.apparent()) + "도라 " + Korean.josa(name, "은", "는")
-                    + " 추울 수 있어요.");
+            // 판단 문장은 "주황 티셔츠는 …" 뒤에 붙으므로 옷 이름을 다시 말하지 않습니다(2026-11-23 시뮬: "티셔츠는"이 두 번).
+            return new Fit("bad", "오늘 체감 " + Math.round(w.apparent()) + "도라 추울 수 있어요.");
         }
         if ("outer".equals(g.category()) && w.needsOuter()) {
             return "bad".equals(fit.fit()) ? fit : new Fit(fit.fit(), "오늘 쌀쌀한데 겉옷까지 잘 챙기셨어요.");
@@ -356,7 +373,7 @@ public class RuleOutfitJudge implements OutfitJudge {
 
         String outerReason() {
             return bigRangeMatters() ? "일교차가 " + Math.round(range) + "도라 겉옷이 필요해요."
-                    : "체감 " + Math.round(apparent) + "도라 쌀쌀해요.";
+                    : "체감 " + Math.round(apparent) + "도라 " + (apparent <= 5 ? "추워요." : "쌀쌀해요.");
         }
     }
 }

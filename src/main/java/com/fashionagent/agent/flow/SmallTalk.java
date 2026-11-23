@@ -51,11 +51,17 @@ public final class SmallTalk {
             return null;
         }
         ZonedDateTime now = ZonedDateTime.now(clock.withZone(SEOUL));
-        if (containsAny(s, TIME)) {
+        // "내일 몇 시에 나가야 돼?"는 지금 시각이 아니라 일정을 묻는 말(2026-11-23 시뮬).
+        if (containsAny(s, TIME) && !s.matches(".*(내일|모레|글피|요일|주말|몇시에|까지|부터).*")) {
             int h = now.getHour();
             String half = h < 12 ? "오전" : "오후";
             int h12 = h % 12 == 0 ? 12 : h % 12;
             return "지금은 " + half + " " + h12 + "시 " + now.getMinute() + "분이에요.";
+        }
+        if (containsAny(s, DATE) && (s.contains("내일") || s.contains("모레"))) {
+            ZonedDateTime d = now.plusDays(s.contains("모레") ? 2 : 1);
+            return (s.contains("모레") ? "모레는 " : "내일은 ") + d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 "
+                    + d.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN) + "이에요.";
         }
         if (containsAny(s, DATE)) {
             return "오늘은 " + now.getMonthValue() + "월 " + now.getDayOfMonth() + "일 "

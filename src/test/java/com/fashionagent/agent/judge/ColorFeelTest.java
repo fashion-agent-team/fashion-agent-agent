@@ -63,4 +63,12 @@ class ColorFeelTest {
         assertThat(ColorFeel.detailCommand("이 옷 무슨 색이야")).isNull();
         assertThat(ColorFeel.detailCommand("오늘 날씨 어때")).isNull();
     }
+
+    @org.junit.jupiter.api.Test
+    void insertAfter_n번째_문장_뒤() {
+        org.assertj.core.api.Assertions.assertThat(ColorFeel.insertAfter("가는 좋아요. 나는 좋아요. 끝이에요.", java.util.List.of("색."), 2))
+                .isEqualTo("가는 좋아요. 나는 좋아요. 색. 끝이에요.");
+        org.assertj.core.api.Assertions.assertThat(ColorFeel.insertAfter("가는 좋아요. 끝이에요.", java.util.List.of("색."), 3))
+                .isEqualTo("가는 좋아요. 색. 끝이에요.");
+    }
 }

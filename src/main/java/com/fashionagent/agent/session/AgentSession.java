@@ -113,9 +113,22 @@ public class AgentSession {
      * 2026-11-12 진행 님 폰: 옷 추천을 들은 뒤(카메라는 안 켬) 일정을 지웠더니 카메라가 켜졌습니다.
      */
     public com.fashionagent.agent.api.TurnResponse.Next lastNext;
+    /** 지난 턴에 한 말. "뭐라고?", "다시 말해 줘"에 그대로 다시 읽어 줍니다. */
+    public String lastSpeech;
+    /** 마지막으로 답한 날씨·일정·옷 추천("weather"·"schedule"·"outfit")과 그 날(오늘이면 null). "모레는?"에 이어 답합니다. */
+    public String lastTopic;
+    public String lastTopicDate;
+    /** "나 오늘 면접이야"처럼 자리만 말한 말. 다음 "뭐 입고 가면 좋을까?"에 그 자리·날로 추천합니다. */
+    public String statedPlan;
+    /** 마지막 날씨를 물은 도시("제주"). 이어서 "거기 우산 필요해?"에 그 도시로 답합니다. 내 위치면 null. */
+    public String lastCity;
+    /** 마지막 날씨 질문이 비·우산을 물었는지. "오늘 비 와?" 뒤 "내일은?"에 그날 비 소식으로 답합니다. */
+    public boolean lastWeatherRain;
 
     /** "이거 무슨 색이야?"로 카메라를 켠 중. 이때 온 옷 사진은 색·무늬만 읽어 줍니다(2026-11-13). */
     public boolean colorCheck;
+    /** 색 확인에서 본 옷(최근 4벌). "이 두 개 어울려?"에 쓰려고 둡니다. */
+    public List<com.fashionagent.agent.model.Garment> colorSeen = new ArrayList<>();
 
     public AgentSession() {
     }

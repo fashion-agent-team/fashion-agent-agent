@@ -27,6 +27,21 @@ class SpokenDateTest {
     }
 
     @Test
+    void 며칠_뒤를_읽는다() {
+        assertThat(d("3일 뒤 날씨")).isEqualTo(TODAY.plusDays(3));
+        assertThat(d("100일 후 날씨")).isEqualTo(TODAY.plusDays(100));
+        assertThat(d("2주 뒤에 뭐 입지")).isEqualTo(TODAY.plusDays(14));
+    }
+
+    @Test
+    void 주말은_이번_토요일() {
+        LocalDate monday = LocalDate.of(2026, 11, 23);
+        assertThat(SpokenDate.from("주말에 결혼식 가는데 뭐 입지?", monday)).isEqualTo(LocalDate.of(2026, 11, 28));
+        assertThat(SpokenDate.from("다음 주말에 뭐 입지?", monday)).isEqualTo(LocalDate.of(2026, 12, 5));
+        assertThat(SpokenDate.from("주말 뭐 입지", LocalDate.of(2026, 11, 29))).isEqualTo(LocalDate.of(2026, 11, 29));
+    }
+
+    @Test
     void 일만_말하면_이번_달_지났으면_다음_달() {
         assertThat(d("20일에 뭐 입지")).isEqualTo(LocalDate.of(2026, 11, 20));
         assertThat(d("5일 옷 추천해 줘")).isEqualTo(LocalDate.of(2026, 12, 5));
@@ -71,5 +86,14 @@ class SpokenDateTest {
         assertThat(SpokenDate.labelAsAsked("모레 날씨", thu.plusDays(2), thu)).isEqualTo("모레");
         assertThat(SpokenDate.labelAsAsked("내일 날씨", thu.plusDays(1), thu)).isEqualTo("내일");
         assertThat(SpokenDate.labelAsAsked("목요일 날씨", thu, thu)).isEqualTo("오늘");
+    }
+
+    @org.junit.jupiter.api.Test
+    void 없는_날짜를_말하면_impossible() {
+        var today = java.time.LocalDate.of(2026, 11, 23);
+        org.assertj.core.api.Assertions.assertThat(SpokenDate.impossible("2월 30일 일정", today)).isTrue();
+        org.assertj.core.api.Assertions.assertThat(SpokenDate.impossible("13월 5일 날씨", today)).isTrue();
+        org.assertj.core.api.Assertions.assertThat(SpokenDate.impossible("12월 5일 날씨", today)).isFalse();
+        org.assertj.core.api.Assertions.assertThat(SpokenDate.impossible("내일 날씨", today)).isFalse();
     }
 }

@@ -31,9 +31,9 @@ final class ClosetView {
     /** 말에 종류가 있으면 closet_list의 category. 없으면 null(전부). */
     private static final Map<String, List<String>> CATEGORY_WORDS = new LinkedHashMap<>();
     static {
-        CATEGORY_WORDS.put("outer", List.of("겉옷", "외투", "아우터", "자켓", "재킷", "코트", "패딩", "점퍼"));
+        CATEGORY_WORDS.put("outer", List.of("겉옷", "외투", "아우터", "자켓", "재킷", "코트", "패딩", "점퍼", "가디건", "블레이저", "야상", "정장", "바람막이"));
         CATEGORY_WORDS.put("dress", List.of("원피스"));
-        CATEGORY_WORDS.put("bottom", List.of("바지", "하의", "치마", "스커트", "청바지"));
+        CATEGORY_WORDS.put("bottom", List.of("바지", "하의", "치마", "스커트", "청바지", "슬랙스", "레깅스"));
         CATEGORY_WORDS.put("shoes", List.of("신발", "운동화", "구두"));
         CATEGORY_WORDS.put("top", List.of("상의", "윗옷", "셔츠", "티셔츠", "니트", "블라우스", "맨투맨"));
     }

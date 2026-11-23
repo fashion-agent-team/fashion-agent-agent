@@ -33,7 +33,10 @@ class IntentTest {
         assertThat(Intent.of("입고 볼게", true)).isEqualTo(Intent.MODE);
         assertThat(Intent.of("내려놓고 보여줄게", true)).isEqualTo(Intent.MODE);
         assertThat(Intent.of("흰 셔츠 입고 갈게", true)).isNotEqualTo(Intent.MODE);
+        assertThat(Intent.of("내려놓고", true)).isEqualTo(Intent.MODE);   // 2026-11-23: 짧게 방식만
         assertThat(Intent.of("입고 볼게", false)).isNotEqualTo(Intent.MODE);
+        assertThat(Intent.of("입고 볼게", false)).isEqualTo(Intent.CHECK);   // 2026-11-23: 처음부터 방식만 말해도 옷 보기
+        assertThat(Intent.of("흰 셔츠 입고 갈게", false)).isNotEqualTo(Intent.CHECK);
         assertThat(Intent.of("내려놓고 볼게, 내일 뭐 입지?", true)).isEqualTo(Intent.OUTFIT);   // 2026-11-20: 새 추천
     }
 
@@ -58,8 +61,13 @@ class IntentTest {
         // 2026-11-12 시뮬 2회차
         assertThat(Intent.of("어제 뭐 입었지?", false)).isEqualTo(Intent.CLOSET_HISTORY);
         assertThat(Intent.of("지난주에 무슨 옷 입었어", false)).isEqualTo(Intent.CLOSET_HISTORY);
+        // 2026-11-23 점검: "입은 옷"이 옷 검사로 가서 카메라가 켜졌음
+        assertThat(Intent.of("어제 입은 옷 뭐야?", false)).isEqualTo(Intent.CLOSET_HISTORY);
+        assertThat(Intent.of("그저께 입은 거 알려 줘", false)).isEqualTo(Intent.CLOSET_HISTORY);
+        assertThat(Intent.of("지난주에 입은 옷 다시 입을까?", false)).isNotEqualTo(Intent.CLOSET_HISTORY);
         assertThat(Intent.of("옷장에서 원피스 지워줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
         assertThat(Intent.of("옷장에서 버린 바지 빼 줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
+        assertThat(Intent.of("옷장 비워 줘", false)).isEqualTo(Intent.CLOSET_REMOVE);
         assertThat(Intent.of("내일 뭐 입지?", false)).isEqualTo(Intent.OUTFIT);
     }
 
@@ -117,5 +125,62 @@ class IntentTest {
         assertThat(Intent.of("일정 없애 줘", true)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("내일 일정 없애줘", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("일정 지우고 싶어", false)).isEqualTo(Intent.OTHER);
+    }
+
+    @Test
+    void 자주_하는_말이_키워드에_걸린다_2026_11_23_시뮬() {
+        assertThat(Intent.of("얼룩 있는지 봐줘", false)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("셔츠에 뭐 묻었는지 봐줘", false)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("입술에 뭐 묻었어?", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("이에 뭐 묻었어?", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("립스틱 번졌어?", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("눈썹 짝짝이야?", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("파란색이야?", false)).isEqualTo(Intent.COLOR);
+        assertThat(Intent.of("오늘 약속 있어?", false)).isEqualTo(Intent.SCHEDULE);
+        assertThat(Intent.of("약속 잡아 줘", false)).isEqualTo(Intent.OTHER);
+        assertThat(Intent.of("패딩 입어야 돼?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("내일 뭐 입어야 해?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("지금 몇 도야?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("오늘 반팔 입어도 돼?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("반팔 뭐 입지?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("목도리 해야 돼?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("장갑 챙길까?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("바지 몇 벌 있어?", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("자켓 있어?", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("니트 몇 벌이야?", false)).isEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("내일 몇 시에 나가야 돼?", false)).isEqualTo(Intent.SCHEDULE);
+        assertThat(Intent.of("12월 25일에 뭐 있어?", false)).isEqualTo(Intent.SCHEDULE);
+        assertThat(Intent.of("치마 입어도 돼?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("청바지 괜찮아?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("니트 입어도 될까?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("치마 입어도 돼?", true)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("장화 신어야 돼?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("목도리도?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("내일 비 온대?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("바람막이 챙길까?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("겉옷 챙길까?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("제일 많이 입은 옷 뭐야?", false)).isEqualTo(Intent.OTHER);
+        assertThat(Intent.of("양말 무슨 색 신을까?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("신발은 뭐 신지?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("운동화 신을까?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("토요일에 눈 온다던데", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("운동화 신어도 돼?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("오늘 겉옷 필요 없지?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("반팔 입을까?", true)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("토요일 비", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("오늘이랑 내일 날씨 비교해줘", false)).isEqualTo(Intent.OTHER);
+        assertThat(Intent.of("청바지에 니트 어때?", true)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("내일 눈?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("눈", false)).isNotEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("추천 다시 해줘", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("이 닦았는데 봐줘", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("치마 입을까?", true)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("내일 무슨 바지 입을까?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("이거 어때?", false)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("우비 필요해?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("검정 정장 괜찮아?", true)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("내일 뭐 있어?", false)).isEqualTo(Intent.SCHEDULE);
+        assertThat(Intent.of("내일 겉옷 있어야 돼?", false)).isNotEqualTo(Intent.CLOSET);
+        assertThat(Intent.of("바지에 얼룩 있어?", false)).isEqualTo(Intent.CHECK);
     }
 }

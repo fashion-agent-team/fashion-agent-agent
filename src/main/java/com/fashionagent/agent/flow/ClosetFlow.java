@@ -73,7 +73,11 @@ public class ClosetFlow {
         LocalDate from = null;
         LocalDate to = null;
         String when;
-        if (s.contains("그제") || s.contains("그저께")) {
+        LocalDate past = pastDay(s, today);
+        if (past != null) {
+            from = to = past;
+            when = dayLabel(past, today);
+        } else if (s.contains("그제") || s.contains("그저께")) {
             from = to = today.minusDays(2);
             when = "그저께";
         } else if (s.contains("어제")) {
@@ -103,9 +107,43 @@ public class ClosetFlow {
         }
     }
 
+    private static final java.util.regex.Pattern MONTH_DAY = java.util.regex.Pattern.compile("(\\d{1,2})월(\\d{1,2})일");
+    private static final java.util.regex.Pattern WEEKDAY =
+            java.util.regex.Pattern.compile("(지난주|저번주|지난|저번)?(월|화|수|목|금|토|일)요일");
+    private static final String WEEKDAYS = "월화수목금토일";
+
+    /**
+     * 입은 옷을 물을 때의 지난 하루("11월 20일", "지난 월요일", "지난주 금요일"). 없으면 null.
+     * 2026-11-23 시뮬: 이런 말에 "오늘은 …을 입으셨어요"라고 오늘 기록을 읽었음. 추천용 SpokenDate는 앞날을 보므로 따로 둡니다.
+     */
+    static LocalDate pastDay(String s, LocalDate today) {
+        var md = MONTH_DAY.matcher(s);
+        if (md.find()) {
+            try {
+                LocalDate d = LocalDate.of(today.getYear(), Integer.parseInt(md.group(1)), Integer.parseInt(md.group(2)));
+                return d.isAfter(today) ? d.minusYears(1) : d;
+            } catch (java.time.DateTimeException e) {
+                return null;
+            }
+        }
+        var wd = WEEKDAY.matcher(s);
+        if (wd.find()) {
+            var dow = java.time.DayOfWeek.of(WEEKDAYS.indexOf(wd.group(2)) + 1);
+            String which = wd.group(1);
+            if ("지난주".equals(which) || "저번주".equals(which)) {
+                return today.with(java.time.DayOfWeek.MONDAY).minusWeeks(1).with(dow);
+            }
+            LocalDate d = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(dow));
+            // "지난 월요일"은 오늘이 월요일이어도 한 주 전입니다.
+            return which != null && d.equals(today) ? d.minusWeeks(1) : d;
+        }
+        return null;
+    }
+
     static String historySpeech(JsonNode outfits, String when, LocalDate today) {
         if (outfits == null || !outfits.isArray() || outfits.isEmpty()) {
-            return (when == null ? "아직 입은 옷 기록이 없어요. " : when + " 입은 옷 기록이 없어요. ")
+            return (when == null ? "아직 입은 옷 기록이 없어요. "
+                    : when + (when.contains("월") ? "에" : "") + " 입은 옷 기록이 없어요. ")
                     + "옷 추천을 받고 \"이걸로 할게\"라고 하시면 그날 입은 옷으로 기록돼요.";
         }
         List<String> parts = new ArrayList<>();
@@ -149,7 +187,11 @@ public class ClosetFlow {
         } catch (ToolException e) {
             return say(session, "미안해요, 지금은 옷장을 못 열었어요. 조금 있다가 다시 말씀해 주실래요?", null);
         }
-        List<JsonNode> found = matches(list.path("garments"), utterance, category != null);
+        List<JsonNode> found = matches(list.path("garments"), utterance, category != null || unspecified(utterance));
+        // 2026-11-23 시뮬: 빈 옷장에서 "첫째 거 지워 줘"에 "그 옷을 찾지 못했어요"라고 답했음.
+        if (found.isEmpty() && category == null && list.path("garments").isEmpty()) {
+            return say(session, "옷장이 아직 비어 있어요.", null);
+        }
         if (found.isEmpty()) {
             return say(session, "옷장에서 그 옷을 찾지 못했어요. \"옷장 확인해 줘\"라고 하시면 있는 옷을 읽어 드려요.", null);
         }
@@ -157,13 +199,14 @@ public class ClosetFlow {
             return askConfirm(session, found.get(0));
         }
         if (found.size() > MAX_CHOICES) {
-            return say(session, "옷장에 비슷한 옷이 " + found.size() + "벌 있어요. 색이나 이름을 더 말씀해 주실래요? "
+            return say(session, (unspecified(utterance) ? "옷장에 옷이 " : "옷장에 비슷한 옷이 ") + found.size() + "벌 있어요. 색이나 이름을 더 말씀해 주실래요? "
                     + "예를 들어 \"옷장에서 검정 패딩 지워 줘\"처럼요.", null);
         }
         session.closetRemoveIds = new ArrayList<>(found.stream().map(g -> g.path("garmentId").asString()).toList());
         session.closetRemoveNames = new ArrayList<>(found.stream().map(ClosetView::label).toList());
         session.closetRemoveConfirm = false;
-        StringBuilder sb = new StringBuilder("옷장에 비슷한 옷이 ").append(found.size()).append("벌 있어요.");
+        StringBuilder sb = new StringBuilder(unspecified(utterance) ? "옷장에 옷이 " : "옷장에 비슷한 옷이 ")
+                .append(found.size()).append("벌 있어요.");
         String[] nth = {"첫째", "둘째", "셋째", "넷째"};
         for (int i = 0; i < found.size(); i++) {
             sb.append(' ').append(nth[i]).append(", ").append(session.closetRemoveNames.get(i)).append('.');
@@ -235,7 +278,7 @@ public class ClosetFlow {
             if (!color.isBlank() && s.contains(color)) {
                 score++;
             }
-            if (!name.isBlank() && s.contains(name)) {
+            if (!name.isBlank() && (s.contains(name) || sameName(s, name))) {
                 score++;
             }
             if (score > best) {
@@ -250,6 +293,42 @@ public class ClosetFlow {
             return saidCategory ? all : List.of();
         }
         return out;
+    }
+
+    /**
+     * "옷장에서 옷 지워 줘"처럼 어떤 옷인지 말하지 않았으면 true. 그때는 옷장 옷을 다 후보로 두고 몇째인지 묻습니다.
+     * 2026-11-23 시뮬: 옷이 3벌 있는데 "그 옷을 찾지 못했어요"라고 답했음.
+     */
+    static boolean unspecified(String utterance) {
+        String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        String rest = s.replaceAll("옷장|에서|에|옷|좀|하나|한벌|지워|지우|비워|비우|삭제|없애|빼|버렸|줘|주세요|주라|해|할래|싶어|요|거|것|를|을", "");
+        return rest.isEmpty();
+    }
+
+    /**
+     * 같은 옷을 다르게 부르는 말. 2026-11-23 시뮬: 옷장에 "자켓"으로 저장된 옷을 "블레이저 지워 줘"로 못 찾았음.
+     */
+    private static final List<List<String>> SAME_NAMES = List.of(
+            List.of("자켓", "재킷", "블레이저", "잠바", "점퍼"),
+            List.of("티셔츠", "티", "반팔티", "긴팔티"),
+            List.of("후드티", "후드", "후디"),
+            List.of("맨투맨", "스웻셔츠"),
+            List.of("청바지", "데님", "진"),
+            List.of("운동화", "스니커즈"),
+            List.of("패딩", "패딩점퍼", "롱패딩", "숏패딩"),
+            List.of("가디건", "카디건"));
+
+    /** 옷장 이름(name)과 같은 뜻의 말이 utterance에 있으면 true. 한 글자 말("티", "진")은 이름과 똑같을 때만 씁니다. */
+    static boolean sameName(String utterance, String name) {
+        for (List<String> group : SAME_NAMES) {
+            if (group.stream().noneMatch(name::contains)) {
+                continue;
+            }
+            if (group.stream().filter(w -> w.length() >= 2).anyMatch(utterance::contains)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void clear(AgentSession session) {

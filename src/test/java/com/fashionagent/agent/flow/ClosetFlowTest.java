@@ -115,6 +115,25 @@ class ClosetFlowTest {
     }
 
     @Test
+    @DisplayName("어떤 옷인지 말하지 않으면 옷장 옷을 다 후보로 둔다")
+    void unspecified() {
+        assertThat(ClosetFlow.unspecified("옷장에서 옷 지워 줘")).isTrue();
+        assertThat(ClosetFlow.unspecified("옷장에서 하나 삭제해 줘")).isTrue();
+        assertThat(ClosetFlow.unspecified("옷장 비워 줘")).isTrue();
+        assertThat(ClosetFlow.unspecified("옷장에서 빨간 니트 지워 줘")).isFalse();
+        assertThat(ClosetFlow.unspecified("옷장에서 바지 빼 줘")).isFalse();
+    }
+
+    @Test
+    @DisplayName("같은 옷을 다르게 불러도 찾는다(블레이저 → 자켓, 데님 → 청바지)")
+    void sameName() {
+        assertThat(ClosetFlow.sameName("옷장에서블레이저지워줘", "자켓")).isTrue();
+        assertThat(ClosetFlow.sameName("옷장에서데님지워줘", "청바지")).isTrue();
+        assertThat(ClosetFlow.sameName("옷장에서패딩지워줘", "패딩점퍼")).isTrue();
+        assertThat(ClosetFlow.sameName("옷장에서코트지워줘", "자켓")).isFalse();
+    }
+
+    @Test
     @DisplayName("색만 말해도 그 색 옷만, 없는 옷이면 못 찾았다고 한다")
     void match() {
         var all = json.readTree(CLOSET).path("garments");
@@ -132,5 +151,17 @@ class ClosetFlowTest {
         f.startRemove(s, "옷장에서 겉옷 빼 줘");
         assertThat(f.answerRemove(s, "오늘 날씨 어때")).isNull();
         assertThat(s.closetRemoveIds).isNull();
+    }
+
+    @Test
+    void pastDay() {
+        var mon = java.time.LocalDate.of(2026, 11, 23); // 월요일
+        assertThat(ClosetFlow.pastDay("11월20일에뭐입었지?", mon)).isEqualTo(java.time.LocalDate.of(2026, 11, 20));
+        assertThat(ClosetFlow.pastDay("12월25일에뭐입었지?", mon)).isEqualTo(java.time.LocalDate.of(2025, 12, 25));
+        assertThat(ClosetFlow.pastDay("지난월요일에뭐입었어?", mon)).isEqualTo(java.time.LocalDate.of(2026, 11, 16));
+        assertThat(ClosetFlow.pastDay("금요일에뭐입었어?", mon)).isEqualTo(java.time.LocalDate.of(2026, 11, 20));
+        assertThat(ClosetFlow.pastDay("지난주금요일에뭐입었어?", mon)).isEqualTo(java.time.LocalDate.of(2026, 11, 20));
+        assertThat(ClosetFlow.pastDay("2월30일에뭐입었어?", mon)).isNull();
+        assertThat(ClosetFlow.pastDay("어제뭐입었지?", mon)).isNull();
     }
 }
