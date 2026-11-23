@@ -115,6 +115,15 @@ class ClosetFlowTest {
     }
 
     @Test
+    @DisplayName("어떤 옷인지 말하지 않으면 옷장 옷을 다 후보로 둔다")
+    void unspecified() {
+        assertThat(ClosetFlow.unspecified("옷장에서 옷 지워 줘")).isTrue();
+        assertThat(ClosetFlow.unspecified("옷장에서 하나 삭제해 줘")).isTrue();
+        assertThat(ClosetFlow.unspecified("옷장에서 빨간 니트 지워 줘")).isFalse();
+        assertThat(ClosetFlow.unspecified("옷장에서 바지 빼 줘")).isFalse();
+    }
+
+    @Test
     @DisplayName("같은 옷을 다르게 불러도 찾는다(블레이저 → 자켓, 데님 → 청바지)")
     void sameName() {
         assertThat(ClosetFlow.sameName("옷장에서블레이저지워줘", "자켓")).isTrue();
