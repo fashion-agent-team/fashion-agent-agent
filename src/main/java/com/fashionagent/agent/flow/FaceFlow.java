@@ -86,6 +86,11 @@ public class FaceFlow {
             session.faceChoiceAsked = 0;
             return null;
         }
+        // "그만할래", "됐어": 같은 질문을 되풀이하지 않고 멈춥니다(2026-11-23 시뮬).
+        if (s.matches(".*(그만|취소|안할래|안할게|됐어|됐다|나중에|안볼래|필요없).*")) {
+            session.faceChoiceAsked = 0;
+            return reply(session, "네, 알겠어요. 필요하면 다시 불러 주세요.", Next.listen, null);
+        }
         if (isTeeth(s) || TEETH_ANSWERS.contains(s) || s.startsWith("이를") || s.startsWith("이요")) {
             return startTeeth(session);
         }
@@ -94,7 +99,7 @@ public class FaceFlow {
         }
         if (session.faceChoiceAsked < MAX_CHOICE_ASKS && s.length() <= 6) {
             session.faceChoiceAsked++;
-            return reply(session, "얼굴이라고 하시면 화장을, 이라고 하시면 치아를 볼게요. " + ASK_CHOICE, Next.listen, null);
+            return reply(session, "화장이라고 하시면 얼굴 화장을, 치아라고 하시면 이를 볼게요. " + ASK_CHOICE, Next.listen, null);
         }
         session.faceChoiceAsked = 0;
         return null;
