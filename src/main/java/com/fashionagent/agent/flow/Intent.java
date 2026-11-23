@@ -197,7 +197,7 @@ public enum Intent {
                         && s.matches(".*(오늘|내일|모레|글피|요일).*")                // "오늘 겉옷 필요 없지?"(2026-11-23 시뮬)
                 || (s.matches(".*(겉옷|외투|패딩|코트|점퍼|바람막이).*") && s.matches(".*(필요|없지|안입어도|안챙겨도|챙겨야|챙길까|가져갈까).*"))) {
             // "이번 주 날씨"처럼 여러 날은 GPT가 날짜를 하나씩 봅니다. 하루("내일", "토요일")는 바로 답합니다.
-            if (containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일")) {
+            if (containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일") && !s.matches(".*(이번달|다음달|담달)\\d{1,2}일.*")) {
                 return OTHER;
             }
             // "오늘이랑 내일 날씨 비교해 줘": 두 날을 같이 물으면 GPT가 하나씩 봅니다(2026-11-23 시뮬: 내일만 답했음).
@@ -214,7 +214,7 @@ public enum Intent {
                 || (s.matches(".*(오늘|내일|모레|글피|어제|그제|그저께|요일|\\d{1,2}월\\d{1,2}일).*")
                         && s.matches(".*(뭐있|무슨일있|뭐가있|무슨일정).*")))
                 && !containsAny(s, SCHEDULE_CHANGE_WORDS)
-                && !(containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일"))) {
+                && !(containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일") && !s.matches(".*(이번달|다음달|담달)\\d{1,2}일.*"))) {
             return SCHEDULE;
         }
         if (containsAny(s, HELP_WORDS)) {
