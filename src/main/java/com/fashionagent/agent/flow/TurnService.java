@@ -456,11 +456,15 @@ public class TurnService {
             sb.append(feel).append(" ");
         }
         // "패딩 입어야 돼?", "겉옷 챙겨야 해?": 날씨를 읽기 전에 네/아니요부터(2026-11-23 시뮬).
-        if (!askedRain && (u.contains("입어야") || u.contains("챙겨야") || u.contains("필요해") || u.contains("필요할"))
+        if (!askedRain && (u.contains("입어야") || u.contains("챙겨야") || u.contains("필요")
+                || u.contains("없지") || u.contains("안입어도") || u.contains("안챙겨도"))
                 && (u.contains("겉옷") || u.contains("외투") || u.contains("패딩") || u.contains("코트")
                         || u.contains("자켓") || u.contains("재킷") || u.contains("점퍼") || u.contains("입어야"))
                 && w.has("needsOuter")) {
-            sb.append(w.path("needsOuter").asBoolean() ? "네, 겉옷을 챙기세요. " : "아니요, 겉옷은 없어도 돼요. ");
+            boolean neg = u.matches(".*(없지|없겠지|필요없|안입어도|안챙겨도).*");
+            boolean need = w.path("needsOuter").asBoolean();
+            sb.append(need ? (neg ? "아니요, 겉옷을 챙기세요. " : "네, 겉옷을 챙기세요. ")
+                    : (neg ? "네, 겉옷은 없어도 돼요. " : "아니요, 겉옷은 없어도 돼요. "));
         }
         // "반팔 입어도 돼?": 겉옷이 필요하면 아니요, 최고 24도 이상이면 네(2026-11-23 시뮬).
         if (!askedRain && Intent.LIGHT_WORDS.stream().anyMatch(u::contains)
@@ -512,6 +516,10 @@ public class TurnService {
         boolean laterToday = day == null && !(condition.contains("비") || condition.contains("눈")
                 || condition.contains("소나기") || condition.contains("뇌우"));
         if (askedRain) {
+            // "우산 안 챙겨도 되지?"처럼 거꾸로 물으면 네/아니요를 먼저(2026-11-23 시뮬).
+            if (u.matches(".*(안챙겨도|안가져가도|필요없|없어도|안써도).*")) {
+                sb.append(umbrella ? "아니요, " : "네, ");
+            }
             sb.append(umbrella
                     ? "우산 챙기세요. " + (laterToday ? "지금은 안 오지만 오늘 중에 " : "") + "비나 눈 올 확률이 " + rain + "%예요. "
                     : "우산은 안 챙기셔도 돼요. 비 올 확률이 " + rain + "%예요. ");

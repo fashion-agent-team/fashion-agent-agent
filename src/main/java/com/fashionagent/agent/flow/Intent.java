@@ -137,7 +137,9 @@ public enum Intent {
         if (s.contains("날씨") || containsAny(s.replace("준비", ""), WEATHER_WORDS)
                 || (containsAny(s, LIGHT_WORDS) && containsAny(s, MAY_WORDS))
                 || (containsAny(s, WARM_ITEMS) && (containsAny(s, NEED_WORDS) || s.replaceAll("[?.!~]", "").length() <= 5))
-                || wearMay(s)) {
+                || wearMay(s)
+                // "오늘 겉옷 필요 없지?"(2026-11-23 시뮬)
+                || (s.matches(".*(겉옷|외투|패딩|코트|점퍼).*") && s.matches(".*(필요|없지|안입어도|안챙겨도|챙겨야).*"))) {
             // "이번 주 날씨"처럼 여러 날은 GPT가 날짜를 하나씩 봅니다. 하루("내일", "토요일")는 바로 답합니다.
             if (containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일")) {
                 return OTHER;

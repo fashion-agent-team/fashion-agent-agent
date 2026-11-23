@@ -41,7 +41,8 @@ public class FaceFlow {
     static final String START_TEETH = "좋아요, 이 같이 볼게요. 폰을 입 가까이 대고 '이' 하고 입을 벌린 채 비춰 주고 계시면 제가 봐 드릴게요.";
 
     /** 처음 말에서 치아를 알아보는 말. "이쪽 옷"처럼 흔한 말과 겹치지 않게 좁게 둡니다. */
-    private static final List<String> TEETH_WORDS = List.of("치아", "이빨", "이사이", "이확인", "이에낀", "이에뭐", "입안");
+    private static final List<String> TEETH_WORDS = List.of("치아", "이빨", "이사이", "이확인", "이에낀", "이에뭐", "입안",
+            "이닦", "양치", "이좀봐", "이봐줘");
     /** "얼굴을 볼까요, 이를 확인할까요?"에 대한 답에서만 쓰는 짧은 말. */
     private static final List<String> TEETH_ANSWERS = List.of("이", "이요", "이를", "이로", "이부터", "이확인해줘");
     private static final List<String> MAKEUP_WORDS = List.of("화장", "얼굴", "눈썹", "입술", "메이크업",

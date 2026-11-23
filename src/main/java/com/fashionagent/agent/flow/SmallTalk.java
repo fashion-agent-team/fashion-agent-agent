@@ -58,6 +58,11 @@ public final class SmallTalk {
             int h12 = h % 12 == 0 ? 12 : h % 12;
             return "지금은 " + half + " " + h12 + "시 " + now.getMinute() + "분이에요.";
         }
+        if (containsAny(s, DATE) && (s.contains("내일") || s.contains("모레"))) {
+            ZonedDateTime d = now.plusDays(s.contains("모레") ? 2 : 1);
+            return (s.contains("모레") ? "모레는 " : "내일은 ") + d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 "
+                    + d.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN) + "이에요.";
+        }
         if (containsAny(s, DATE)) {
             return "오늘은 " + now.getMonthValue() + "월 " + now.getDayOfMonth() + "일 "
                     + now.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN) + "이에요.";
