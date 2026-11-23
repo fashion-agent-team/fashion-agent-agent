@@ -26,6 +26,8 @@ public enum Intent {
      */
     private static final List<String> CHECK_WORDS = List.of("옷검사", "옷확인", "옷체크", "옷상태", "옷봐", "옷좀봐",
             "입은옷", "입은거", "입은모습", "옷차림", "검사해", "검사좀", "옷어때", "옷어떄", "옷괜찮", "옷어울");
+    private static final List<String> STAIN_WORDS = List.of("얼룩", "묻었", "묻은", "찢어", "찢어진", "구멍", "보풀", "올나간");
+
     /** "옷장에서 검정 패딩 지워 줘", "옷장에서 버린 바지 빼 줘". */
     private static final List<String> CLOSET_REMOVE_WORDS = List.of("지워", "지우", "삭제", "빼줘", "빼", "버렸", "없애");
     /** 일정 등록·삭제는 GPT로 보냅니다. 2026-11-12: "일정 없애 줘"가 오늘 일정 읽기로 갔습니다. */
@@ -43,6 +45,7 @@ public enum Intent {
      */
     private static final List<String> WEATHER_WORDS = List.of("우산", "비와", "비가", "비올", "비오", "눈와", "눈이와",
             "눈올", "눈이올", "눈오", "추워", "추운", "춥", "더워", "더운", "덥", "기온", "온도", "일교차", "쌀쌀", "겉옷챙",
+            "입어야돼", "입어야해", "입어야하", "입어야될", "입어야할",
             "겉옷입어야", "외투챙");
 
     /** "할 줄 아는 거 말해 봐", "기능 설명해 줘" 같은 말. 2026-11-06 진행 님 폰 확인에서 못 알아들었던 말. */
@@ -91,6 +94,10 @@ public enum Intent {
         if (containsAny(s, CHECK_WORDS) && !s.contains("얼굴") && !FaceFlow.isTeeth(s)) {
             return CHECK;
         }
+        // "얼룩 있는지 봐 줘", "셔츠에 뭐 묻었는지 봐 줘": 2026-11-23 시뮬에서 키워드에 안 걸렸음(GPT는 옷 검사를 고를 수 없음).
+        if (containsAny(s, STAIN_WORDS) && !FaceFlow.isTeeth(s) && !FaceFlow.isMakeup(s)) {
+            return CHECK;
+        }
         // 추천 없이 처음부터 "입고 볼게", "내려놓고 보여줄게": 2026-11-23 시뮬에서 "할 수 없는 일이에요"로 답했음.
         // 옷 검사처럼 그 방식으로 바로 카메라를 켭니다.
         if (!inOutfitSession && OutfitFlow.switchFrom(s) != null && !containsAny(s, OUTFIT_WORDS)
@@ -100,7 +107,7 @@ public enum Intent {
         if (containsAny(s, OUTFIT_WORDS)) {
             return OUTFIT;
         }
-        if (s.contains("얼굴") || s.contains("화장") || FaceFlow.isTeeth(s)) {
+        if (s.contains("얼굴") || s.contains("화장") || FaceFlow.isTeeth(s) || FaceFlow.isMakeup(s)) {
             return FACE;
         }
         if (s.contains("날씨") || containsAny(s.replace("준비", ""), WEATHER_WORDS)) {
@@ -110,7 +117,8 @@ public enum Intent {
             }
             return WEATHER;
         }
-        if ((s.contains("일정") || s.contains("스케줄")) && !containsAny(s, SCHEDULE_CHANGE_WORDS)
+        // "오늘 약속 있어?" 2026-11-23 시뮬
+        if ((s.contains("일정") || s.contains("스케줄") || s.contains("약속")) && !containsAny(s, SCHEDULE_CHANGE_WORDS)
                 && !(containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일"))) {
             return SCHEDULE;
         }
