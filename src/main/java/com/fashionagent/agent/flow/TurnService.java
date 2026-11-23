@@ -123,6 +123,46 @@ public class TurnService {
         };
     }
 
+    /** 날씨·일정·옷 추천을 답했으면 무엇을 어느 날로 물었는지 남깁니다("모레는?"에 이어 답하려고). */
+    private TurnResponse remember(AgentSession session, String topic, String utterance, TurnResponse res) {
+        session.lastTopic = topic;
+        var d = SpokenDate.from(utterance, today());
+        session.lastTopicDate = d == null || d.equals(today()) ? null : d.toString();
+        sessions.save(session);
+        return res;
+    }
+
+    private java.time.LocalDate today() {
+        return java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("Asia/Seoul")));
+    }
+
+    /** 이어 묻는 말이면 {주제, 다시 쓴 말("11월 25일 날씨")}, 아니면 null. */
+    String[] followUp(AgentSession session, String utterance, Intent intent) {
+        if (session.lastTopic == null || utterance == null) {
+            return null;
+        }
+        String s = utterance.replaceAll("[\\s?.!,~]+", "");
+        var today = today();
+        var day = SpokenDate.from(s, today);
+        // 날짜 말과 "은/는/요" 말고 다른 말이 있으면("내일 3시 치과") 이어 묻기가 아닙니다(GPT가 일정 등록 등으로 봄).
+        String rest = s.replaceAll("그럼|그러면|다다음주|다음주|이번주|담주|오늘|내일|모레|글피|[월화수목금토일]요일"
+                + "|\\d{1,2}월|\\d{1,2}일|\\d{1,2}/\\d{1,2}", "").replaceAll("[은는요도]", "");
+        if (intent == Intent.OTHER && day != null && rest.isEmpty()) {
+            String date = day.getMonthValue() + "월 " + day.getDayOfMonth() + "일";
+            return new String[] {session.lastTopic, switch (session.lastTopic) {
+                case "weather" -> date + " 날씨";
+                case "schedule" -> date + " 일정";
+                default -> date + " 뭐 입지";
+            }};
+        }
+        if (intent == Intent.OUTFIT && day == null && "weather".equals(session.lastTopic) && session.lastTopicDate != null
+                && (s.startsWith("그럼") || s.startsWith("그러면") || s.startsWith("그날"))) {
+            var d = java.time.LocalDate.parse(session.lastTopicDate);
+            return new String[] {"outfit", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 뭐 입지"};
+        }
+        return null;
+    }
+
     /** 지난 턴에 카메라(옷)를 켜 둔 상태였으면 그 카메라, 아니면 null. */
     static Next outfitCamera(AgentSession session) {
         return session.lastNext == Next.camera_outfit || session.lastNext == Next.camera_worn ? session.lastNext : null;
@@ -257,8 +297,22 @@ public class TurnService {
             return say(session, waiting, session.lastNext);
         }
 
-        return switch (Intent.of(req.utterance(), inOutfit)) {
-            case OUTFIT -> outfit.start(session, req.location(), req.utterance());
+        // "내일 날씨 어때?" 뒤 "모레는?", "토요일은?": 날짜만 말하면 방금 물은 것(날씨·옷·일정)을 그날로 다시 답합니다.
+        // "그럼 뭐 입지?"는 방금 물은 날로 추천합니다. 2026-11-23 시뮬: "할 수 없는 일이에요", 오늘 추천으로 답했음.
+        Intent intent = Intent.of(req.utterance(), inOutfit);
+        String[] follow = followUp(session, req.utterance(), intent);
+        if (follow != null) {
+            String said = follow[1];
+            return switch (follow[0]) {
+                case "weather" -> remember(session, "weather", said, weather(session, req.location(), said));
+                case "schedule" -> remember(session, "schedule", said, schedule(session, said));
+                default -> remember(session, "outfit", said, outfit.start(session, req.location(), said));
+            };
+        }
+
+        return switch (intent) {
+            case OUTFIT -> remember(session, "outfit", req.utterance(),
+                    outfit.start(session, req.location(), req.utterance()));
             case CHECK -> outfit.startCheck(session, req.location(), req.utterance());
             case COLOR -> color.start(session);
             case MODE -> outfit.switchMode(session, OutfitFlow.switchFrom(req.utterance()));
@@ -268,8 +322,8 @@ public class TurnService {
             case CLOSET -> closetFlow.list(session, req.utterance());
             case CLOSET_HISTORY -> closetFlow.history(session, req.utterance());
             case CLOSET_REMOVE -> closetFlow.startRemove(session, req.utterance());
-            case WEATHER -> weather(session, req.location(), req.utterance());
-            case SCHEDULE -> schedule(session, req.utterance());
+            case WEATHER -> remember(session, "weather", req.utterance(), weather(session, req.location(), req.utterance()));
+            case SCHEDULE -> remember(session, "schedule", req.utterance(), schedule(session, req.utterance()));
             case FACE -> face.start(session, req.utterance());
             // "할 줄 아는 거 말해 봐": GPT 여부와 상관없이 매번 같은 안내
             case HELP -> say(session, SmallTalk.CAPABILITIES, Next.listen);
