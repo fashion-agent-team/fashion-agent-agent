@@ -377,6 +377,19 @@ class TurnFlowTest {
     }
 
     @Test
+    void 추천_뒤_좀_더_캐주얼하게는_같은_자리로_다시_추천한다() throws Exception {
+        JsonNode advice = turn("u_casual", """
+                {"utterance": "결혼식 가는데 뭐 입지?"}""");
+        String sid = advice.path("sessionId").asString();
+        JsonNode again = turn("u_casual", """
+                {"sessionId": "%s", "utterance": "좀 더 캐주얼하게"}""".formatted(sid));
+        assertThat(again.path("speech").asString()).contains("결혼식");
+        JsonNode warm = turn("u_casual", """
+                {"sessionId": "%s", "utterance": "더 따뜻하게"}""".formatted(sid));
+        assertThat(warm.path("speech").asString()).contains("결혼식");
+    }
+
+    @Test
     void 옷을_안_찍었는데_어디냐고_물으면_아직_본_옷이_없다고_한다() throws Exception {
         JsonNode start = turn("u_where0", """
                 {"utterance": "옷 검사해 줘"}""");
