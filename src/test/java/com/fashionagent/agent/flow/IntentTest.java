@@ -152,6 +152,8 @@ class IntentTest {
         assertThat(Intent.of("추천 좀", false)).isEqualTo(Intent.OUTFIT);
         assertThat(Intent.of("옷 고르는 거 도와줘", false)).isEqualTo(Intent.OUTFIT);
         assertThat(Intent.of("출근룩", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("그럼 뭐 신어", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("내일 뭐 입고 뭐 신지", false)).isEqualTo(Intent.OUTFIT);
         assertThat(Intent.of("이거 쓰는 법 알려줘", false)).isEqualTo(Intent.HELP);
         assertThat(Intent.of("바지 몇 벌 있어?", false)).isEqualTo(Intent.CLOSET);
         assertThat(Intent.of("자켓 있어?", false)).isEqualTo(Intent.CLOSET);
@@ -175,7 +177,7 @@ class IntentTest {
         assertThat(Intent.of("겉옷 챙길까?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("제일 많이 입은 옷 뭐야?", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("양말 무슨 색 신을까?", false)).isEqualTo(Intent.OUTFIT);
-        assertThat(Intent.of("신발은 뭐 신지?", false)).isEqualTo(Intent.OUTFIT);
+        assertThat(Intent.of("신발은 뭐 신지?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("운동화 신을까?", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("토요일에 눈 온다던데", false)).isEqualTo(Intent.WEATHER);
         assertThat(Intent.of("운동화 신어도 돼?", false)).isEqualTo(Intent.WEATHER);
