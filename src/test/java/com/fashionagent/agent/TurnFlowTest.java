@@ -668,6 +668,16 @@ class TurnFlowTest {
     }
 
     @Test
+    void 다음주_날씨_뒤_그럼_화요일_뭐_입지는_다음주_화요일로_추천한다() throws Exception {
+        JsonNode first = turn("u_nextweek", """
+                {"utterance": "다음주 월요일 날씨"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_nextweek", """
+                {"sessionId": "%s", "utterance": "그럼 화요일 뭐 입지"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).doesNotStartWith("내일의 패션").contains("화요일");
+    }
+
+    @Test
     void 추천_뒤_또_다른_거도_다시_추천한다() throws Exception {
         JsonNode first = turn("u_again3", """
                 {"utterance": "추천해줘"}""");
