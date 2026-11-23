@@ -73,7 +73,11 @@ public class ClosetFlow {
         LocalDate from = null;
         LocalDate to = null;
         String when;
-        if (s.contains("그제") || s.contains("그저께")) {
+        LocalDate past = pastDay(s, today);
+        if (past != null) {
+            from = to = past;
+            when = dayLabel(past, today);
+        } else if (s.contains("그제") || s.contains("그저께")) {
             from = to = today.minusDays(2);
             when = "그저께";
         } else if (s.contains("어제")) {
@@ -103,9 +107,43 @@ public class ClosetFlow {
         }
     }
 
+    private static final java.util.regex.Pattern MONTH_DAY = java.util.regex.Pattern.compile("(\\d{1,2})월(\\d{1,2})일");
+    private static final java.util.regex.Pattern WEEKDAY =
+            java.util.regex.Pattern.compile("(지난주|저번주|지난|저번)?(월|화|수|목|금|토|일)요일");
+    private static final String WEEKDAYS = "월화수목금토일";
+
+    /**
+     * 입은 옷을 물을 때의 지난 하루("11월 20일", "지난 월요일", "지난주 금요일"). 없으면 null.
+     * 2026-11-23 시뮬: 이런 말에 "오늘은 …을 입으셨어요"라고 오늘 기록을 읽었음. 추천용 SpokenDate는 앞날을 보므로 따로 둡니다.
+     */
+    static LocalDate pastDay(String s, LocalDate today) {
+        var md = MONTH_DAY.matcher(s);
+        if (md.find()) {
+            try {
+                LocalDate d = LocalDate.of(today.getYear(), Integer.parseInt(md.group(1)), Integer.parseInt(md.group(2)));
+                return d.isAfter(today) ? d.minusYears(1) : d;
+            } catch (java.time.DateTimeException e) {
+                return null;
+            }
+        }
+        var wd = WEEKDAY.matcher(s);
+        if (wd.find()) {
+            var dow = java.time.DayOfWeek.of(WEEKDAYS.indexOf(wd.group(2)) + 1);
+            String which = wd.group(1);
+            if ("지난주".equals(which) || "저번주".equals(which)) {
+                return today.with(java.time.DayOfWeek.MONDAY).minusWeeks(1).with(dow);
+            }
+            LocalDate d = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(dow));
+            // "지난 월요일"은 오늘이 월요일이어도 한 주 전입니다.
+            return which != null && d.equals(today) ? d.minusWeeks(1) : d;
+        }
+        return null;
+    }
+
     static String historySpeech(JsonNode outfits, String when, LocalDate today) {
         if (outfits == null || !outfits.isArray() || outfits.isEmpty()) {
-            return (when == null ? "아직 입은 옷 기록이 없어요. " : when + " 입은 옷 기록이 없어요. ")
+            return (when == null ? "아직 입은 옷 기록이 없어요. "
+                    : when + (when.contains("월") ? "에" : "") + " 입은 옷 기록이 없어요. ")
                     + "옷 추천을 받고 \"이걸로 할게\"라고 하시면 그날 입은 옷으로 기록돼요.";
         }
         List<String> parts = new ArrayList<>();
