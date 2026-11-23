@@ -98,6 +98,20 @@ public class TurnService {
     private static final java.util.List<String> ACK_PREFIX = java.util.List.of("알겠", "알았", "잠깐", "잠시만", "기다려",
             "준비됐", "비출게", "비춰볼게", "보여줄게", "다입었", "입었어", "입었다", "다했어");
 
+    /** 카메라를 켠 채 그만두자는 말이면 true. 옷 카메라의 "그만", "됐어"는 옷 마치기(FINISH)가 먼저 가져갑니다. */
+    static boolean cameraCancel(AgentSession session, String utterance) {
+        Next cam = session.lastNext;
+        if (cam != Next.camera_outfit && cam != Next.camera_worn && cam != Next.camera_face
+                && cam != Next.camera_teeth) {
+            return false;
+        }
+        String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        if (s.matches("(취소|취소해|취소할래|그만할래|안할래|나중에할래|나중에|카메라꺼|카메라꺼줘|꺼줘|끌래|안볼래)(줘|요)?")) {
+            return true;
+        }
+        return (cam == Next.camera_face || cam == Next.camera_teeth) && s.matches("(그만|됐어|그만해|됐어요|그만해줘)");
+    }
+
     /** 카메라를 켜 둔 채 짧게 대답만 했으면 카메라를 이어 갈 말, 아니면 null. */
     static String cameraWaitSpeech(AgentSession session, String utterance) {
         Next cam = session.lastNext;
@@ -145,7 +159,9 @@ public class TurnService {
         var today = today();
         var day = SpokenDate.from(s, today);
         // "나 오늘 면접이야" → "뭐 입고 가면 좋을까?": 자리·날을 이어 받아 추천(2026-11-23 시뮬: 면접을 잊고 편한 옷 추천).
-        if (intent == Intent.OTHER && SpokenOccasion.from(utterance) != null && !s.contains("일정")) {
+        // "토요일에 데이트 있어"처럼 자리 말이 없어도 날과 계획만 말했으면 그 날을 이어 받습니다.
+        if (intent == Intent.OTHER && !s.contains("일정") && (SpokenOccasion.from(utterance) != null
+                || (day != null && s.length() <= 15 && s.matches(".*(있어|있음|이야|예요|가|가요|가야돼|간다|가는데|해|해요)$")))) {
             session.statedPlan = utterance;
         } else if (intent == Intent.OUTFIT && session.statedPlan != null && day == null
                 && SpokenOccasion.from(utterance) == null) {
@@ -319,6 +335,10 @@ public class TurnService {
 
         // 카메라를 켜 둔 채 "응", "알겠어", "뒤도 볼게": 2026-11-23 시뮬에서 "할 수 없는 일이에요"로 답하고 카메라를 껐음.
         // 위의 네/아니요 질문들이 먼저 답을 가져가고, 남은 짧은 대답만 여기서 카메라를 이어 갑니다.
+        // 카메라를 켠 채 "취소", "그만할래": 2026-11-23 시뮬에서 "할 수 없는 일이에요"로 답했음. 카메라를 끄고 멈춥니다.
+        if (cameraCancel(session, req.utterance())) {
+            return say(session, "네, 알겠어요. 필요하면 다시 불러 주세요.", Next.listen);
+        }
         String waiting = cameraWaitSpeech(session, req.utterance());
         if (waiting != null) {
             return say(session, waiting, session.lastNext);
@@ -403,7 +423,7 @@ public class TurnService {
             String speech = weatherSpeech(w, otherDay ? label : null, utterance);
             String manner = occasionColorAdvice(session.spokenOccasion, utterance);
             if (manner != null) {
-                speech = manner + " " + speech.replaceFirst("^네, 입어도 돼요\\. (다만 )?", "");
+                speech = manner + " " + speech.replaceFirst("^네, (입어|신어)도 돼요\\. (다만 )?", "");
             }
             if (city != null) {
                 speech = city.name() + " 날씨예요. " + speech;
@@ -457,15 +477,16 @@ public class TurnService {
         if (!askedRain && Intent.wearMay(u)) {
             boolean skirt = u.contains("치마") || u.contains("스커트") || u.contains("원피스");
             boolean outer = "outer".equals(ClosetView.category(u));
+            String wear = "shoes".equals(ClosetView.category(u)) ? "신어도" : "입어도";
             boolean cold = w.path("needsOuter").asBoolean(false);
             if (skirt && min <= 5) {
-                sb.append("네, 입어도 돼요. 다만 최저 ").append(min).append("도라 두꺼운 스타킹을 신고 겉옷을 챙기세요. ");
+                sb.append("네, " + wear + " 돼요. 다만 최저 ").append(min).append("도라 두꺼운 스타킹을 신고 겉옷을 챙기세요. ");
             } else if (outer && !cold && max >= 22) {
-                sb.append("입어도 되지만 최고 ").append(max).append("도라 낮에는 더울 수 있어요. ");
+                sb.append(wear + " 되지만 최고 ").append(max).append("도라 낮에는 더울 수 있어요. ");
             } else if (cold && !outer) {
-                sb.append("네, 입어도 돼요. 다만 추우니 겉옷을 챙기세요. ");
+                sb.append("네, " + wear + " 돼요. 다만 추우니 겉옷을 챙기세요. ");
             } else {
-                sb.append("네, 입어도 돼요. ");
+                sb.append("네, " + wear + " 돼요. ");
             }
         }
         // "목도리 해야 돼?", "장갑 챙길까?": 지금은 체감, 다른 날은 최저 기온으로(2026-11-23 시뮬).
