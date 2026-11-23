@@ -32,6 +32,9 @@ public final class SpokenOccasion {
         WORDS.put(Occasion.active, List.of("운동", "헬스", "등산", "러닝", "조깅", "요가", "필라테스", "축구", "농구", "체육",
                 // 2026-11-23 시뮬: "오늘 소풍 가" 뒤 추천이 자리를 몰랐음
                 "소풍", "나들이", "캠핑", "산책", "체험학습"));
+        // "오늘 데이트인데 뭐 입지": 2026-11-23 시뮬에서 "일정은 없어요, 편한 상의"로 답했음.
+        // 자리 종류는 평상복(casual)이지만 평소보다 깔끔하게 입는 자리입니다(RuleOutfitJudge.DRESSY).
+        WORDS.put(Occasion.casual, List.of("데이트", "소개팅", "기념일", "생일파티", "돌잔치", "파티"));
     }
 
     private SpokenOccasion() {

@@ -19,6 +19,7 @@ class SpokenOccasionTest {
     void fromUtterance() {
         assertThat(SpokenOccasion.from("결혼식에 뭐 입지?")).isEqualTo(new SpokenOccasion.Spoken(Occasion.wedding, "결혼식"));
         assertThat(SpokenOccasion.from("내일 면접인데 뭐 입을까")).isEqualTo(new SpokenOccasion.Spoken(Occasion.formal, "면접"));
+        assertThat(SpokenOccasion.from("오늘 데이트인데 뭐 입지")).isEqualTo(new SpokenOccasion.Spoken(Occasion.casual, "데이트"));
         assertThat(SpokenOccasion.from("친구 장례식 가는데").occasion()).isEqualTo(Occasion.mourning);
         assertThat(SpokenOccasion.from("운동화 젖어?")).isNull();
         assertThat(SpokenOccasion.from("운동화 신고 운동 가").occasion()).isEqualTo(Occasion.active);
