@@ -98,6 +98,9 @@ public class TurnService {
     private static final java.util.List<String> ACK_PREFIX = java.util.List.of("알겠", "알았", "잠깐", "잠시만", "기다려",
             "준비됐", "비출게", "비춰볼게", "보여줄게", "다입었", "입었어", "입었다", "다했어", "괜찮아", "괜찮지",
             "어때", "이상해", "이상하지", "봐줘", "보여", "번졌", "묻었", "꼈어", "삐뚤", "짝짝", "다됐", "끝났", "깨끗", "번진");
+    /** 화장 카메라 중 "너무 진해?", "어색해?"도 화면을 보고 답할 말입니다(2026-11-23 시뮬: 카메라가 꺼지고 "할 수 없는 일"). */
+    private static final java.util.List<String> FACE_ACK_PREFIX = java.util.List.of("너무", "진해", "진하", "연해", "연하",
+            "티나", "티가", "자연스러", "어색", "과해", "과하", "번져", "지워졌", "뭉쳤", "떴어");
 
     /** 카메라를 켠 채 그만두자는 말이면 true. 옷 카메라의 "그만", "됐어"는 옷 마치기(FINISH)가 먼저 가져갑니다. */
     static boolean cameraCancel(AgentSession session, String utterance) {
@@ -127,7 +130,9 @@ public class TurnService {
         if (cam == Next.camera_worn && java.util.List.of("뒤도", "뒤로", "뒷모습", "돌았", "돌게", "돌아").stream().anyMatch(s::contains)) {
             return "네, 뒤로 돌아서 그대로 서 계시면 찍을게요.";
         }
-        if (!ACK_EXACT.contains(s) && ACK_PREFIX.stream().noneMatch(s::startsWith)) {
+        boolean faceAck = (cam == Next.camera_face || cam == Next.camera_teeth)
+                && FACE_ACK_PREFIX.stream().anyMatch(s::startsWith);
+        if (!faceAck && !ACK_EXACT.contains(s) && ACK_PREFIX.stream().noneMatch(s::startsWith)) {
             return null;
         }
         return switch (cam) {

@@ -632,11 +632,14 @@ class TurnFlowTest {
                 {"sessionId": "%s", "utterance": "괜찮아?"}""".formatted(sid));
         assertThat(r.path("speech").asString()).contains("비춰").doesNotContain("할 수 없는");
 
-        for (String u : new String[] {"번졌어?", "다 됐어"}) {
+        for (String u : new String[] {"번졌어?", "너무 진해?", "어색해?", "다 됐어"}) {
             JsonNode q = turn("u_face_ok", """
                     {"sessionId": "%s", "utterance": "%s"}""".formatted(sid, u));
             assertThat(q.path("speech").asString()).contains("비춰");
         }
+        JsonNode end = turn("u_face_ok", """
+                {"sessionId": "%s", "utterance": "됐어"}""".formatted(sid));
+        assertThat(end.path("next").asString()).isNotEqualTo("camera_face");
     }
 
     @Test
