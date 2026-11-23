@@ -174,7 +174,9 @@ public enum Intent {
             return WEATHER;
         }
         // "장화 신을까?": "신을까"가 추천으로 갔음(2026-11-23 시뮬). 비 오는지로 답합니다.
-        if (containsAny(s, OUTFIT_WORDS) && !wearMay(s) && !lightMay(s) && !s.matches(".*(장화|우비|레인부츠|레인코트).*")) {
+        // "히트텍 입을까?": '입을까'가 추천으로 갔음(2026-11-23 시뮬). 방한 소품은 체감 온도로 답합니다.
+        if (containsAny(s, OUTFIT_WORDS) && !wearMay(s) && !lightMay(s) && !s.matches(".*(장화|우비|레인부츠|레인코트).*")
+                && !(containsAny(s, WARM_ITEMS) && containsAny(s, NEED_WORDS))) {
             return OUTFIT;
         }
         if (s.contains("얼굴") || s.contains("화장") || FaceFlow.isTeeth(s) || FaceFlow.isMakeup(s)) {
