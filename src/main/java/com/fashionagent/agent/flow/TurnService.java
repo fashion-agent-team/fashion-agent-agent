@@ -96,7 +96,7 @@ public class TurnService {
     private static final java.util.List<String> ACK_EXACT = java.util.List.of("응", "어", "네", "예", "넵", "응응", "네네",
             "오케이", "그래");
     private static final java.util.List<String> ACK_PREFIX = java.util.List.of("알겠", "알았", "잠깐", "잠시만", "기다려",
-            "준비됐", "비출게", "비춰볼게", "보여줄게");
+            "준비됐", "비출게", "비춰볼게", "보여줄게", "다입었", "입었어", "입었다", "다했어");
 
     /** 카메라를 켜 둔 채 짧게 대답만 했으면 카메라를 이어 갈 말, 아니면 null. */
     static String cameraWaitSpeech(AgentSession session, String utterance) {
@@ -401,6 +401,10 @@ public class TurnService {
                     ? tools.call(ToolNames.WEATHER_FORECAST, Map.of("lat", at.lat(), "lon", at.lon(), "date", asked.toString()))
                     : tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", at.lat(), "lon", at.lon()));
             String speech = weatherSpeech(w, otherDay ? label : null, utterance);
+            String manner = occasionColorAdvice(session.spokenOccasion, utterance);
+            if (manner != null) {
+                speech = manner + " " + speech.replaceFirst("^네, 입어도 돼요\\. (다만 )?", "");
+            }
             if (city != null) {
                 speech = city.name() + " 날씨예요. " + speech;
             }
@@ -466,7 +470,7 @@ public class TurnService {
         }
         // "목도리 해야 돼?", "장갑 챙길까?": 지금은 체감, 다른 날은 최저 기온으로(2026-11-23 시뮬).
         if (!askedRain && Intent.WARM_ITEMS.stream().anyMatch(u::contains)
-                && Intent.NEED_WORDS.stream().anyMatch(u::contains)) {
+                && (Intent.NEED_WORDS.stream().anyMatch(u::contains) || u.replaceAll("\\d{1,2}월\\d{1,2}일|[?.!~]", "").length() <= 5)) {
             // 오늘은 지금 체감과 최저 중 더 추운 쪽(아래 옷차림 말 "목도리처럼 따뜻한 옷"이 최저 기준이라 맞춥니다).
             long feels = Math.round(w.path("apparentTemperature").asDouble());
             boolean byFeel = day == null && feels <= min;
@@ -580,6 +584,27 @@ public class TurnService {
         } catch (ToolException e) {
             return say(session, "미안해요, 지금은 일정을 못 가져왔어요. 조금 있다가 다시 물어봐 주실래요?", Next.listen);
         }
+    }
+
+    /**
+     * 결혼식 추천 뒤 "흰 셔츠 입어도 돼?": 날씨만 보고 "네"라고 했음(2026-11-23 시뮬, 추천은 "흰색 상의를 피하세요").
+     * 말한 자리에 맞지 않는 색이면 그 까닭을 먼저 말합니다.
+     */
+    static String occasionColorAdvice(String occasion, String utterance) {
+        String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        if (occasion == null || !Intent.wearMay(u)) {
+            return null;
+        }
+        boolean white = u.matches(".*(흰|하얀|화이트|흰색|아이보리).*");
+        boolean bright = u.matches(".*(빨간|빨강|주황|노란|노랑|분홍|핑크|형광|하늘색|민트|화려).*");
+        String kind = ClosetView.category(u);
+        if ("wedding".equals(occasion) && white && !"bottom".equals(kind) && !"shoes".equals(kind)) {
+            return "결혼식에는 흰색 옷은 신부와 겹쳐서 피하는 게 좋아요. 다른 색으로 입으세요.";
+        }
+        if ("mourning".equals(occasion) && (bright || white)) {
+            return "조문 자리에는 검정이나 어두운 색이 좋아요. 밝은 색은 피하세요.";
+        }
+        return null;
     }
 
     /** 지난 날을 말했으면 "어제"/"그제"/"지난", 아니면 null. */
