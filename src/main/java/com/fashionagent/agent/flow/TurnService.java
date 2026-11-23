@@ -345,6 +345,12 @@ public class TurnService {
         }
 
         // "어떻게 보여 주실래요?"에 대한 답
+        // 방식을 묻는 중 "옷장에 셔츠 있어?", "내일 날씨"처럼 다른 일을 말하면 묻기를 접고 그 일로(2026-11-23 시뮬).
+        if (session.modeAsked > 0 && java.util.Set.of(Intent.CLOSET, Intent.CLOSET_REMOVE, Intent.CLOSET_HISTORY,
+                Intent.WEATHER, Intent.SCHEDULE, Intent.FACE, Intent.OUTFIT, Intent.COLOR)
+                .contains(Intent.of(req.utterance(), true))) {
+            session.modeAsked = 0;
+        }
         if (session.modeAsked > 0) {
             TurnResponse chosen = outfit.answerMode(session, req.utterance());
             if (chosen != null) {
