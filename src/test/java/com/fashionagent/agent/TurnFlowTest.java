@@ -618,6 +618,19 @@ class TurnFlowTest {
     }
 
     @Test
+    void 결혼식_추천_뒤_넥타이_색과_가방을_답한다() throws Exception {
+        JsonNode first = turn("u_tie2", """
+                {"utterance": "결혼식 하객룩 추천"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode color = turn("u_tie2", """
+                {"sessionId": "%s", "utterance": "흰 넥타이 괜찮아?"}""".formatted(sid));
+        assertThat(color.path("speech").asString()).startsWith("결혼식에는 네이비나 회색");
+        JsonNode bag = turn("u_tie2", """
+                {"sessionId": "%s", "utterance": "가방은 뭐 들어"}""".formatted(sid));
+        assertThat(bag.path("speech").asString()).startsWith("결혼식에는 단정한 손가방");
+    }
+
+    @Test
     void 추천_뒤_음_별로야는_다시_추천한다() throws Exception {
         JsonNode first = turn("u_meh", """
                 {"utterance": "오늘 뭐입지?"}""");
