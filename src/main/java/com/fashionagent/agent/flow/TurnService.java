@@ -262,8 +262,9 @@ public class TurnService {
         }
         // "내일 뭐 입지?" 뒤 "치마 입어도 돼?": 오늘이 아니라 그날 날씨로 답합니다.
         // "장화 신어야 돼?", "추워?"도 마찬가지(날을 안 말했고 "지금"도 아니면 방금 말한 날).
+        // "내일 일정" 뒤 "그날 부산 날씨는?"처럼 도시를 말해도 "그날"이면 그날로(2026-11-23 시뮬: 오늘 부산 날씨로 답함).
         if (intent == Intent.WEATHER && day == null && session.lastTopicDate != null && !s.contains("지금")
-                && !s.contains("밖에") && Cities.in(utterance) == null
+                && !s.contains("밖에") && (Cities.in(utterance) == null || s.contains("그날"))
                 && ("outfit".equals(session.lastTopic) || "weather".equals(session.lastTopic)
                         || ("schedule".equals(session.lastTopic) && s.contains("그날")))) {
             var d = java.time.LocalDate.parse(session.lastTopicDate);

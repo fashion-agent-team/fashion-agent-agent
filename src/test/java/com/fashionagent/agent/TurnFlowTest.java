@@ -630,6 +630,16 @@ class TurnFlowTest {
     }
 
     @Test
+    void 일정_뒤_그날_부산_날씨는은_그날_부산으로() throws Exception {
+        JsonNode first = turn("u_sched_city", """
+                {"utterance": "모레 일정 알려줘"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_sched_city", """
+                {"sessionId": "%s", "utterance": "그날 부산 날씨는?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("부산 날씨예요. 모레").doesNotContain("지금");
+    }
+
+    @Test
     void 추천_뒤_다른_도시는은_그_도시로_다시_추천() throws Exception {
         JsonNode first = turn("u_city_switch", """
                 {"utterance": "내일 뭐 입지"}""");
