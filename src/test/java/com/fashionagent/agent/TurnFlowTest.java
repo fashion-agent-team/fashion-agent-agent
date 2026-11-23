@@ -581,6 +581,36 @@ class TurnFlowTest {
     }
 
     @Test
+    void 날씨_뒤_저녁엔은_같은_날_예보로() throws Exception {
+        JsonNode first = turn("u_evening", """
+                {"utterance": "모레 아침 추워?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_evening", """
+                {"sessionId": "%s", "utterance": "저녁엔?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레").doesNotContain("할 수 없는");
+    }
+
+    @Test
+    void 추천_뒤_그날_일정은은_그날로() throws Exception {
+        JsonNode first = turn("u_xmas_sched", """
+                {"utterance": "모레 뭐 입지"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_xmas_sched", """
+                {"sessionId": "%s", "utterance": "그날 일정은?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레").doesNotContain("오늘");
+    }
+
+    @Test
+    void 날씨_뒤_거기_뭐_입어는_그날로() throws Exception {
+        JsonNode first = turn("u_there_day", """
+                {"utterance": "모레 날씨 어때"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_there_day", """
+                {"sessionId": "%s", "utterance": "거기 뭐 입어"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레의 패션");
+    }
+
+    @Test
     void 토요일_결혼식이라고_말한_뒤_흰_블라우스를_물으면_피하라고_한다() throws Exception {
         JsonNode plan = turn("u_plan_white", """
                 {"utterance": "이번주 토요일 결혼식이야"}""");
@@ -632,11 +662,14 @@ class TurnFlowTest {
                 {"sessionId": "%s", "utterance": "괜찮아?"}""".formatted(sid));
         assertThat(r.path("speech").asString()).contains("비춰").doesNotContain("할 수 없는");
 
-        for (String u : new String[] {"번졌어?", "다 됐어"}) {
+        for (String u : new String[] {"번졌어?", "너무 진해?", "어색해?", "오른쪽 봐줘", "다 됐어"}) {
             JsonNode q = turn("u_face_ok", """
                     {"sessionId": "%s", "utterance": "%s"}""".formatted(sid, u));
             assertThat(q.path("speech").asString()).contains("비춰");
         }
+        JsonNode end = turn("u_face_ok", """
+                {"sessionId": "%s", "utterance": "됐어"}""".formatted(sid));
+        assertThat(end.path("next").asString()).isNotEqualTo("camera_face");
     }
 
     @Test
