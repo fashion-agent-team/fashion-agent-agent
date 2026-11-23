@@ -220,6 +220,10 @@ public class TurnService {
                     && s.replaceAll("^(그럼|그러면)", "").length() <= named.name().length() + 3) {
                 return new String[] {"weather", named.name() + " " + prefix + "날씨"};
             }
+            // "추워?" 뒤 "얼마나?": 같은 날 기온을 다시 말합니다(2026-11-23 시뮬에서 GPT로 갔음).
+            if (intent == Intent.OTHER && s.matches("(그럼|그러면)?(얼마나|몇도)(추워|더워|춥|덥)?(야|요|예요|인데)?")) {
+                return new String[] {"weather", (session.lastCity == null ? "" : session.lastCity + " ") + prefix + "몇 도야?"};
+            }
             // "치마 입어도 돼?" 뒤 "흰 원피스는?", "레깅스는?": 같은 날 그 옷을 입어도 되는지(2026-11-23 시뮬).
             if (intent == Intent.OTHER && named == null && ClosetView.category(s) != null
                     && s.replaceAll("(은|는|요|도|은요|는요)$", "").length() <= 8) {
