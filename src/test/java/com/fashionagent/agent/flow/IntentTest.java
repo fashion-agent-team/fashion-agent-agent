@@ -125,4 +125,19 @@ class IntentTest {
         assertThat(Intent.of("내일 일정 없애줘", false)).isEqualTo(Intent.OTHER);
         assertThat(Intent.of("일정 지우고 싶어", false)).isEqualTo(Intent.OTHER);
     }
+
+    @Test
+    void 자주_하는_말이_키워드에_걸린다_2026_11_23_시뮬() {
+        assertThat(Intent.of("얼룩 있는지 봐줘", false)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("셔츠에 뭐 묻었는지 봐줘", false)).isEqualTo(Intent.CHECK);
+        assertThat(Intent.of("입술에 뭐 묻었어?", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("이에 뭐 묻었어?", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("립스틱 번졌어?", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("눈썹 짝짝이야?", false)).isEqualTo(Intent.FACE);
+        assertThat(Intent.of("파란색이야?", false)).isEqualTo(Intent.COLOR);
+        assertThat(Intent.of("오늘 약속 있어?", false)).isEqualTo(Intent.SCHEDULE);
+        assertThat(Intent.of("약속 잡아 줘", false)).isEqualTo(Intent.OTHER);
+        assertThat(Intent.of("패딩 입어야 돼?", false)).isEqualTo(Intent.WEATHER);
+        assertThat(Intent.of("내일 뭐 입어야 해?", false)).isEqualTo(Intent.OUTFIT);
+    }
 }

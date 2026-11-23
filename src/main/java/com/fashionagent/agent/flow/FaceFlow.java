@@ -44,7 +44,9 @@ public class FaceFlow {
     private static final List<String> TEETH_WORDS = List.of("치아", "이빨", "이사이", "이확인", "이에낀", "이에뭐", "입안");
     /** "얼굴을 볼까요, 이를 확인할까요?"에 대한 답에서만 쓰는 짧은 말. */
     private static final List<String> TEETH_ANSWERS = List.of("이", "이요", "이를", "이로", "이부터", "이확인해줘");
-    private static final List<String> MAKEUP_WORDS = List.of("화장", "얼굴", "눈썹", "입술", "메이크업");
+    private static final List<String> MAKEUP_WORDS = List.of("화장", "얼굴", "눈썹", "입술", "메이크업",
+            // 2026-11-23 시뮬: "립스틱 번졌어?", "눈썹 짝짝이야?"가 키워드에 안 걸렸음
+            "립스틱", "틴트", "아이라인", "아이섀도", "블러셔", "볼터치");
 
     private final AgentTools tools;
     private final SessionStore sessions;
@@ -68,7 +70,8 @@ public class FaceFlow {
         if (isTeeth(s)) {
             return startTeeth(session);
         }
-        if (s.contains("화장") || s.contains("눈썹") || s.contains("입술") || s.contains("메이크업")) {
+        // "얼굴"만 말하면 화장·이 중에 고르게 묻고, 화장 쪽 말(눈썹·립스틱 등)이 있으면 바로 화장으로.
+        if (isMakeup(s.replace("얼굴", ""))) {
             return startMakeup(session);
         }
         session.faceChoiceAsked = 1;
