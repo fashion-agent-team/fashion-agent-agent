@@ -198,6 +198,13 @@ public class TurnService {
                     && s.replaceAll("^(그럼|그러면)", "").length() <= named.name().length() + 3) {
                 return new String[] {"weather", named.name() + " " + prefix + "날씨"};
             }
+            // "치마 입어도 돼?" 뒤 "흰 원피스는?", "레깅스는?": 같은 날 그 옷을 입어도 되는지(2026-11-23 시뮬).
+            if (intent == Intent.OTHER && named == null && ClosetView.category(s) != null
+                    && s.replaceAll("(은|는|요|도|은요|는요)$", "").length() <= 8) {
+                String garment = utterance.replaceAll("[?？.!~]", "").trim().replaceAll("(은|는|도)(요)?$", "");
+                return new String[] {"weather", (session.lastCity == null ? "" : session.lastCity + " ") + prefix
+                        + garment + " 입어도 돼?"};
+            }
             if (intent == Intent.WEATHER && named == null && session.lastCity != null
                     && !s.matches(".*(여기|우리동네|이동네|내위치|집).*")) {
                 return new String[] {"weather", session.lastCity + " " + (day == null ? prefix : "") + utterance};
@@ -443,6 +450,12 @@ public class TurnService {
                     ? tools.call(ToolNames.WEATHER_FORECAST, Map.of("lat", at.lat(), "lon", at.lon(), "date", asked.toString()))
                     : tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", at.lat(), "lon", at.lon()));
             String speech = weatherSpeech(w, otherDay ? label : null, utterance);
+            // "내일 결혼식 가는데 원피스 입어도 돼?"처럼 같은 말에 자리가 있으면 그 자리로, 다음 "흰 원피스는?"에도 이어 씁니다.
+            SpokenOccasion.Spoken said = SpokenOccasion.from(utterance);
+            if (said != null) {
+                session.spokenOccasion = said.occasion().name();
+                session.spokenTitle = said.title();
+            }
             String manner = occasionColorAdvice(session.spokenOccasion, utterance);
             if (manner != null) {
                 speech = manner + " " + speech.replaceFirst("^네, (입어|신어)도 돼요\\. (다만 )?", "");
@@ -469,6 +482,7 @@ public class TurnService {
         boolean umbrella = w.path("needsUmbrella").asBoolean(false);
         String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
         boolean askedRain = u.contains("우산") || u.contains("비") || u.contains("장화") || u.contains("우비")
+                || u.replaceAll("[?？.!~]", "").endsWith("눈")
                 || u.contains("레인") || u.contains("눈와") || u.contains("눈올")
                 || u.contains("눈오") || u.contains("눈이");
 
