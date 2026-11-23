@@ -51,6 +51,13 @@ public final class SpokenDate {
         if (m.find()) {
             return weekday(m.group(1), DAYS.get(m.group(2)), today);
         }
+        // "주말에 결혼식 가는데 뭐 입지?": 오늘로 추천했음(2026-11-23 시뮬). 주말은 토요일(주말이면 오늘)로 봅니다.
+        if (s.contains("주말")) {
+            if (s.contains("다음주말") || s.contains("담주말")) {
+                return weekday("다음주", DayOfWeek.SATURDAY, today);
+            }
+            return today.getDayOfWeek() == DayOfWeek.SUNDAY ? today : today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+        }
         m = DAY_ONLY.matcher(s);
         if (m.find()) {
             return dayOfMonth(Integer.parseInt(m.group(1)), today);
