@@ -955,7 +955,8 @@ public class TurnService {
     static String occasionAccessoryAdvice(String occasion, String utterance) {
         String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
         if (occasion == null || !(occasion.equals("formal") || occasion.equals("wedding") || occasion.equals("mourning"))
-                || !u.matches(".*(해야|매야|메야|들어야|할까|맬까|멜까|괜찮|돼|되나|어때|필요|는|은|도)[?？.!~]*")) {
+                || !(u.matches(".*(해야|매야|메야|들어야|할까|맬까|멜까|괜찮|돼|되나|어때|필요|뭐|무슨|어떤|색).*")
+                        || u.matches(".*(는|은|도)[?？.!~]*"))) {
             return null;
         }
         String place = switch (occasion) {
@@ -963,6 +964,14 @@ public class TurnService {
             case "wedding" -> "결혼식";
             default -> "조문 자리";
         };
+        if (u.contains("넥타이") && u.matches(".*(색|흰|하얀|검정|검은|빨간|네이비|회색|무늬|화려).*")) {
+            // "결혼식 넥타이 색은?"(2026-11-23 시뮬: 색은 말하지 않고 매라는 말만 했음).
+            return switch (occasion) {
+                case "mourning" -> "조문 자리에는 검은색 넥타이가 좋아요.";
+                case "wedding" -> "결혼식에는 네이비나 회색처럼 은은한 색 넥타이가 무난해요. 너무 화려한 무늬는 피하세요.";
+                default -> "격식 있는 자리에는 네이비나 어두운 색 넥타이가 단정해 보여요.";
+            };
+        }
         if (u.contains("넥타이")) {
             return occasion.equals("mourning")
                     ? "조문 자리라면 검은색이나 어두운 무늬 없는 넥타이가 좋아요."
@@ -970,6 +979,9 @@ public class TurnService {
         }
         if (u.matches(".*(백팩|배낭|에코백|크로스백).*")) {
             return place + "에는 백팩보다 단정한 손가방이나 서류 가방이 좋아요.";
+        }
+        if (u.contains("가방")) {
+            return place + "에는 단정한 손가방이나 작은 숄더백이 좋아요. " + (occasion.equals("mourning") ? "검은색이 좋아요." : "옷과 어울리는 무난한 색이면 돼요.");
         }
         return null;
     }
