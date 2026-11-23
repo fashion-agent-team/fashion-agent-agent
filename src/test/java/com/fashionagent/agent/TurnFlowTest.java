@@ -482,6 +482,30 @@ class TurnFlowTest {
         JsonNode r = turn("u_skirt", """
                 {"sessionId": "%s", "utterance": "치마 입어도 돼?"}""".formatted(sid));
         assertThat(r.path("speech").asString()).contains("입어도 돼요").doesNotContain("지금 ");
+        JsonNode boots = turn("u_skirt", """
+                {"sessionId": "%s", "utterance": "장화 신어야 돼?"}""".formatted(sid));
+        assertThat(boots.path("speech").asString()).doesNotContain("지금 ");
+    }
+
+    @Test
+    void 면접이라고_말한_뒤_뭐_입을지_물으면_면접에_맞춘다() throws Exception {
+        JsonNode first = turn("u_plan", """
+                {"utterance": "나 모레 면접이야"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_plan", """
+                {"sessionId": "%s", "utterance": "뭐 입고 가면 좋을까?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("모레의 패션");
+    }
+
+    @Test
+    void 추천_뒤_괜찮아_질문은_대화를_끝내지_않는다() throws Exception {
+        JsonNode first = turn("u_suit", """
+                {"utterance": "오늘 뭐 입지?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_suit", """
+                {"sessionId": "%s", "utterance": "검정 정장 괜찮아?"}""".formatted(sid));
+        assertThat(r.path("next").asString()).isNotEqualTo("done");
+        assertThat(r.path("speech").asString()).startsWith("네, 입어도 돼요.");
     }
 
     @Test

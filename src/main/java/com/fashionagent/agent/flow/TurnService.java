@@ -138,12 +138,26 @@ public class TurnService {
 
     /** 이어 묻는 말이면 {주제, 다시 쓴 말("11월 25일 날씨")}, 아니면 null. */
     String[] followUp(AgentSession session, String utterance, Intent intent) {
-        if (session.lastTopic == null || utterance == null) {
+        if (utterance == null) {
             return null;
         }
         String s = utterance.replaceAll("[\\s?.!,~]+", "");
         var today = today();
         var day = SpokenDate.from(s, today);
+        // "나 오늘 면접이야" → "뭐 입고 가면 좋을까?": 자리·날을 이어 받아 추천(2026-11-23 시뮬: 면접을 잊고 편한 옷 추천).
+        if (intent == Intent.OTHER && SpokenOccasion.from(utterance) != null && !s.contains("일정")) {
+            session.statedPlan = utterance;
+        } else if (intent == Intent.OUTFIT && session.statedPlan != null && day == null
+                && SpokenOccasion.from(utterance) == null) {
+            String plan = session.statedPlan;
+            session.statedPlan = null;
+            return new String[] {"outfit", plan + " " + utterance};
+        } else if (intent != Intent.OTHER) {
+            session.statedPlan = null;
+        }
+        if (session.lastTopic == null) {
+            return null;
+        }
         // 날짜 말과 "은/는/요" 말고 다른 말이 있으면("내일 3시 치과") 이어 묻기가 아닙니다(GPT가 일정 등록 등으로 봄).
         String rest = s.replaceAll("그럼|그러면|다다음주|다음주|이번주|담주|오늘|내일|모레|글피|[월화수목금토일]요일"
                 + "|\\d{1,2}월|\\d{1,2}일|\\d{1,2}/\\d{1,2}", "").replaceAll("[은는요도]", "");
@@ -156,7 +170,9 @@ public class TurnService {
             }};
         }
         // "내일 뭐 입지?" 뒤 "치마 입어도 돼?": 오늘이 아니라 그날 날씨로 답합니다.
-        if (intent == Intent.WEATHER && day == null && session.lastTopicDate != null && Intent.wearMay(s)
+        // "장화 신어야 돼?", "추워?"도 마찬가지(날을 안 말했고 "지금"도 아니면 방금 말한 날).
+        if (intent == Intent.WEATHER && day == null && session.lastTopicDate != null && !s.contains("지금")
+                && !s.contains("밖에") && Cities.in(utterance) == null
                 && ("outfit".equals(session.lastTopic) || "weather".equals(session.lastTopic))) {
             var d = java.time.LocalDate.parse(session.lastTopicDate);
             return new String[] {"weather", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 " + utterance};
@@ -406,7 +422,8 @@ public class TurnService {
         int rain = w.path("precipitationProbability").asInt(0);
         boolean umbrella = w.path("needsUmbrella").asBoolean(false);
         String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
-        boolean askedRain = u.contains("우산") || u.contains("비") || u.contains("눈와") || u.contains("눈올")
+        boolean askedRain = u.contains("우산") || u.contains("비") || u.contains("장화") || u.contains("우비")
+                || u.contains("레인") || u.contains("눈와") || u.contains("눈올")
                 || u.contains("눈오") || u.contains("눈이");
 
         StringBuilder sb = new StringBuilder();
@@ -455,12 +472,14 @@ public class TurnService {
             boolean byFeel = day == null && feels <= min;
             long cold = byFeel ? feels : min;
             String basis = (byFeel ? "체감 " : "최저 ") + cold + "도";
+            // "목도리 필요 없지?"처럼 거꾸로 물으면 네/아니요도 거꾸로(2026-11-23 시뮬: "네, 챙기세요"가 헷갈림).
+            boolean negative = u.matches(".*(없지|없겠지|안해도|안챙겨도|안껴도|필요없|안해도돼).*");
             if (cold <= 3) {
-                sb.append("네, 챙기세요. ").append(basis).append("라 추워요. ");
+                sb.append(negative ? "아니요, 챙기세요. " : "네, 챙기세요. ").append(basis).append("라 추워요. ");
             } else if (cold <= 8) {
                 sb.append("있으면 좋아요. ").append(basis).append("라 조금 쌀쌀해요. ");
             } else {
-                sb.append("아니요, 없어도 돼요. ").append(basis).append("예요. ");
+                sb.append(negative ? "네, 없어도 돼요. " : "아니요, 없어도 돼요. ").append(basis).append("예요. ");
             }
         }
         // 오늘 비 확률은 하루 중 가장 높은 값입니다. 지금 하늘이 맑으면 "맑음, 비 100%"가 헷갈려서(2026-11-23 젯슨 확인)
