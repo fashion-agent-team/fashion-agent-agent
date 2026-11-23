@@ -38,6 +38,16 @@ public final class SpokenDate {
         if (m.find()) {
             return monthDay(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), today);
         }
+        // "크리스마스에 뭐 입지?": 2026-11-23 시뮬에서 오늘로 추천했음.
+        if (s.contains("크리스마스이브") || s.contains("성탄전야")) {
+            return monthDay(12, 24, today);
+        }
+        if (s.contains("크리스마스") || s.contains("성탄절")) {
+            return monthDay(12, 25, today);
+        }
+        if (s.contains("새해첫날") || s.contains("신정")) {
+            return monthDay(1, 1, today);
+        }
         // "100일 뒤 날씨", "2주 후": 2026-11-23 시뮬에서 오늘 날씨로 답했음.
         Matcher after = Pattern.compile("(\\d{1,3})(일|주)(뒤|후|있다가)").matcher(s);
         if (after.find()) {
