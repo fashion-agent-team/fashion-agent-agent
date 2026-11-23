@@ -122,7 +122,7 @@ public class TurnService {
         }
         // "알겠어 고마워"도 끝내는 말(2026-11-23 시뮬: "알겠"이 카메라 유지 대답으로 잡혀 카메라가 계속 켜짐).
         return (cam == Next.camera_face || cam == Next.camera_teeth)
-                && s.matches("(알았어|알겠어|알겠어요|응|네|그래)?(그만|됐어|그만해|됐어요|그만해줘|고마워|고마워요|감사해|감사해요|감사합니다|땡큐)");
+                && s.matches("(알았어|알겠어|알겠어요|응|네|그래|좋아|좋아요|오케이)?(그만|됐어|그만해|됐어요|그만해줘|고마워|고마워요|감사해|감사해요|감사합니다|땡큐)");
     }
 
     /** 카메라를 켜 둔 채 짧게 대답만 했으면 카메라를 이어 갈 말, 아니면 null. */
@@ -272,7 +272,9 @@ public class TurnService {
                 return new String[] {"weather", (session.lastCity == null ? "" : session.lastCity + " ") + prefix + "몇 도야?"};
             }
             // "치마 입어도 돼?" 뒤 "흰 원피스는?", "레깅스는?": 같은 날 그 옷을 입어도 되는지(2026-11-23 시뮬).
-            if (intent == Intent.OTHER && named == null && ClosetView.category(s) != null
+            // "몇 도야?" 뒤 "그럼 반팔?"도(2026-11-23 시뮬에서 GPT로 갔음).
+            if (intent == Intent.OTHER && named == null
+                    && (ClosetView.category(s) != null || Intent.LIGHT_WORDS.stream().anyMatch(s::contains))
                     && s.replaceAll("(은|는|요|도|은요|는요)$", "").length() <= 8) {
                 String garment = utterance.replaceAll("[?？.!~]", "").trim().replaceAll("(은|는|도)(요)?$", "");
                 // "우산?" 뒤 "겉옷은?": 입어도 되냐가 아니라 챙겨야 하냐로(2026-11-23 시뮬: "네, 입어도 돼요"로 답함).

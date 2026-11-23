@@ -117,6 +117,7 @@ class ColorFlowTest {
         flow.start(session);
 
         assertThat(flow.answer(session, "이건?").next()).isEqualTo(Next.camera_outfit);
+        assertThat(flow.answer(session, "이 신발은?").next()).isEqualTo(Next.camera_outfit);
         TurnResponse shorter = flow.answer(session, "짧게 말해줘");
         assertThat(shorter.next()).isEqualTo(Next.camera_outfit);
         assertThat(shorter.colorDetail()).isFalse();
