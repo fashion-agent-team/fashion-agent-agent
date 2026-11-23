@@ -163,7 +163,7 @@ public class TurnService {
                 && said.matches(".*(우산|비와|비가|비올|비오|비온|비소식|장화|우비).*");
         // "내일 영하야?" 뒤 "모레는?"도 영하인지로(2026-11-23 시뮬: 날씨만 읽었음).
         session.lastWeatherFreeze = "weather".equals(topic) && said.contains("영하");
-        session.lastWearAsk = "weather".equals(topic) && Intent.wearMay(said) ? utterance : null;
+        session.lastWearAsk = "weather".equals(topic) && (Intent.wearMay(said) || Intent.lightMay(said)) ? utterance : null;
         var d = SpokenDate.from(utterance, today());
         session.lastTopicDate = d == null || d.equals(today()) ? null : d.toString();
         sessions.save(session);
@@ -251,7 +251,10 @@ public class TurnService {
         if (intent == Intent.OTHER && day != null && (rest.isEmpty() || nextDay)) {
             String date = day.getMonthValue() + "월 " + day.getDayOfMonth() + "일";
             return new String[] {"history".equals(session.lastTopic) ? "outfit" : session.lastTopic, switch (session.lastTopic) {
-                case "weather" -> date + (session.lastWeatherRain ? " 비 와?" : session.lastWeatherFreeze ? " 영하야?" : " 날씨");
+                // "반바지 입어도 돼?" 뒤 "내일은?": 그날도 그 옷을 입어도 되는지(2026-11-23 시뮬: 날씨만 읽었음).
+                case "weather" -> session.lastWearAsk != null
+                        ? date + " " + session.lastWearAsk.replaceAll("(오늘|내일|모레|글피|지금|\\d{1,2}월\\s*\\d{1,2}일|(이번주|다음주)?\\s*[월화수목금토일]요일)(은|는|에|엔)?\\s*", "").trim()
+                        : date + (session.lastWeatherRain ? " 비 와?" : session.lastWeatherFreeze ? " 영하야?" : " 날씨");
                 case "schedule" -> date + " 일정";
                 default -> date + " 뭐 입지";
             }};
