@@ -663,7 +663,7 @@ public class TurnService {
         boolean askedRain = u.contains("우산") || u.contains("비") || u.contains("장화") || u.contains("우비")
                 || u.replaceAll("[?？.!~]", "").endsWith("눈")
                 || u.contains("레인") || u.contains("눈와") || u.contains("눈올")
-                || u.contains("눈오") || u.contains("눈이");
+                || u.contains("눈오") || u.contains("눈이") || u.contains("젖");
 
         StringBuilder sb = new StringBuilder();
         // "오늘 영하야?": 최저 기온으로 네/아니요(2026-11-23 시뮬에서 GPT로 갔음).
@@ -745,6 +745,9 @@ public class TurnService {
             // "우산 안 챙겨도 되지?"처럼 거꾸로 물으면 네/아니요를 먼저(2026-11-23 시뮬).
             if (u.matches(".*(안챙겨도|안가져가도|필요없|없어도|안써도).*")) {
                 sb.append(umbrella ? "아니요, " : "네, ");
+            } else if (u.contains("젖")) {
+                // "운동화 젖어?": 2026-11-23 시뮬에서 "네, 신어도 돼요"로 답했음.
+                sb.append(umbrella ? "네, 비가 와서 젖을 수 있어요. 방수 신발이나 장화가 좋아요. " : "아니요, 비 소식이 없어서 괜찮아요. ");
             } else if (u.matches(".*(장화|우비|레인).*")) {
                 // "장화 신을까?": 우산 답만 하면 장화를 신으라는지 몰랐음.
                 sb.append(umbrella ? "네, 비가 와서 신는 게 좋아요. " : "아니요, 필요 없어요. ");
