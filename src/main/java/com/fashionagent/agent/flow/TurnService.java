@@ -96,7 +96,8 @@ public class TurnService {
     private static final java.util.List<String> ACK_EXACT = java.util.List.of("응", "어", "네", "예", "넵", "응응", "네네",
             "오케이", "그래");
     private static final java.util.List<String> ACK_PREFIX = java.util.List.of("알겠", "알았", "잠깐", "잠시만", "기다려",
-            "준비됐", "비출게", "비춰볼게", "보여줄게", "다입었", "입었어", "입었다", "다했어");
+            "준비됐", "비출게", "비춰볼게", "보여줄게", "다입었", "입었어", "입었다", "다했어", "괜찮아", "괜찮지",
+            "어때", "이상해", "이상하지", "봐줘", "보여");
 
     /** 카메라를 켠 채 그만두자는 말이면 true. 옷 카메라의 "그만", "됐어"는 옷 마치기(FINISH)가 먼저 가져갑니다. */
     static boolean cameraCancel(AgentSession session, String utterance) {
@@ -193,7 +194,12 @@ public class TurnService {
         // 날짜 말과 "은/는/요" 말고 다른 말이 있으면("내일 3시 치과") 이어 묻기가 아닙니다(GPT가 일정 등록 등으로 봄).
         String rest = s.replaceAll("그럼|그러면|다다음주|다음주|이번주|담주|오늘|내일|모레|글피|[월화수목금토일]요일"
                 + "|\\d{1,2}월|\\d{1,2}일|\\d{1,2}/\\d{1,2}", "").replaceAll("[은는요도]", "");
-        if (intent == Intent.OTHER && day != null && rest.isEmpty()) {
+        // "내일 일정 뭐 있어?" 뒤 "그 다음날은?": 방금 말한 날의 다음 날(2026-11-23 시뮬에서 GPT로 갔음).
+        boolean nextDay = intent == Intent.OTHER && s.matches("(그럼|그러면)?(그)?다음날(은|는|요|은요|는요)?");
+        if (nextDay) {
+            day = (session.lastTopicDate == null ? today : java.time.LocalDate.parse(session.lastTopicDate)).plusDays(1);
+        }
+        if (intent == Intent.OTHER && day != null && (rest.isEmpty() || nextDay)) {
             String date = day.getMonthValue() + "월 " + day.getDayOfMonth() + "일";
             return new String[] {"history".equals(session.lastTopic) ? "outfit" : session.lastTopic, switch (session.lastTopic) {
                 case "weather" -> date + (session.lastWeatherRain ? " 비 와?" : " 날씨");
@@ -230,7 +236,8 @@ public class TurnService {
         // "장화 신어야 돼?", "추워?"도 마찬가지(날을 안 말했고 "지금"도 아니면 방금 말한 날).
         if (intent == Intent.WEATHER && day == null && session.lastTopicDate != null && !s.contains("지금")
                 && !s.contains("밖에") && Cities.in(utterance) == null
-                && ("outfit".equals(session.lastTopic) || "weather".equals(session.lastTopic))) {
+                && ("outfit".equals(session.lastTopic) || "weather".equals(session.lastTopic)
+                        || ("schedule".equals(session.lastTopic) && s.contains("그날")))) {
             var d = java.time.LocalDate.parse(session.lastTopicDate);
             return new String[] {"weather", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 " + utterance};
         }

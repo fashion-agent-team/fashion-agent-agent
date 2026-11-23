@@ -611,6 +611,29 @@ class TurnFlowTest {
     }
 
     @Test
+    void 일정_뒤_그_다음날은과_그날_날씨는을_이어_답한다() throws Exception {
+        JsonNode first = turn("u_nextday", """
+                {"utterance": "내일 일정 뭐 있어?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode next = turn("u_nextday", """
+                {"sessionId": "%s", "utterance": "그 다음날은?"}""".formatted(sid));
+        assertThat(next.path("speech").asString()).contains("모레").doesNotContain("할 수 없는");
+        JsonNode w = turn("u_nextday", """
+                {"sessionId": "%s", "utterance": "그날 날씨는?"}""".formatted(sid));
+        assertThat(w.path("speech").asString()).startsWith("모레").doesNotContain("지금");
+    }
+
+    @Test
+    void 화장_카메라_중_괜찮아는_비춰_달라고_한다() throws Exception {
+        JsonNode first = turn("u_face_ok", """
+                {"utterance": "화장 좀 봐줘"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode r = turn("u_face_ok", """
+                {"sessionId": "%s", "utterance": "괜찮아?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).contains("비춰").doesNotContain("할 수 없는");
+    }
+
+    @Test
     void 결혼식_원피스_뒤_흰_원피스는_피하라고_한다() throws Exception {
         JsonNode first = turn("u_dress", """
                 {"utterance": "모레 결혼식 가는데 원피스 입어도 돼?"}""");
