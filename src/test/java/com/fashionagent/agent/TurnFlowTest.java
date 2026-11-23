@@ -475,6 +475,13 @@ class TurnFlowTest {
     }
 
     @Test
+    void 어제_일정을_물으면_어제_일정을_읽는다() throws Exception {
+        JsonNode r = turn("u_past_sched", """
+                {"utterance": "어제 일정 뭐였지?"}""");
+        assertThat(r.path("speech").asString()).startsWith("어제");
+    }
+
+    @Test
     void 얼굴_고르기_중_그만할래면_멈춘다() throws Exception {
         JsonNode ask = turn("u_face_stop", """
                 {"utterance": "얼굴 봐줘"}""");
