@@ -38,6 +38,13 @@ public final class SpokenDate {
         if (m.find()) {
             return monthDay(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), today);
         }
+        // "다음달 3일 날씨": 2026-11-23 시뮬에서 GPT로 갔음. 다음 달(이번 달)의 그날.
+        Matcher month = Pattern.compile("(이번달|다음달|담달)(\\d{1,2})일").matcher(s);
+        if (month.find()) {
+            LocalDate base = "이번달".equals(month.group(1)) ? today : today.plusMonths(1);
+            int dom = Integer.parseInt(month.group(2));
+            return dom >= 1 && dom <= base.lengthOfMonth() ? base.withDayOfMonth(dom) : null;
+        }
         // "크리스마스에 뭐 입지?": 2026-11-23 시뮬에서 오늘로 추천했음.
         if (s.contains("크리스마스이브") || s.contains("성탄전야")) {
             return monthDay(12, 24, today);

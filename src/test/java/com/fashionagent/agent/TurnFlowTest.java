@@ -678,6 +678,18 @@ class TurnFlowTest {
     }
 
     @Test
+    void 회식_추천_뒤_후드티는_그날_자리에_맞춰_답한다() throws Exception {
+        JsonNode first = turn("u_hoodie", """
+                {"utterance": "모레 회식인데 뭐 입지"}""");
+        String sid = first.path("sessionId").asString();
+        turn("u_hoodie", """
+                {"sessionId": "%s", "utterance": "다른 거"}""".formatted(sid));
+        JsonNode r = turn("u_hoodie", """
+                {"sessionId": "%s", "utterance": "후드티 괜찮아?"}""".formatted(sid));
+        assertThat(r.path("speech").asString()).startsWith("일하는 자리라").contains("모레");
+    }
+
+    @Test
     void 추천_뒤_또_다른_거도_다시_추천한다() throws Exception {
         JsonNode first = turn("u_again3", """
                 {"utterance": "추천해줘"}""");

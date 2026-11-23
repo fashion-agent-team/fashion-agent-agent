@@ -159,6 +159,8 @@ public class TurnService {
 
     /** 날씨·일정·옷 추천을 답했으면 무엇을 어느 날로 물었는지 남깁니다("모레는?"에 이어 답하려고). */
     private TurnResponse remember(AgentSession session, String topic, String utterance, TurnResponse res) {
+        String prevTopic = session.lastTopic;
+        String prevDate = session.lastTopicDate;
         session.lastTopic = topic;
         String said = utterance == null ? "" : utterance.replaceAll("\\s+", "");
         session.lastWeatherRain = "weather".equals(topic)
@@ -168,6 +170,11 @@ public class TurnService {
         session.lastWearAsk = "weather".equals(topic) && (Intent.wearMay(said) || Intent.lightMay(said)) ? utterance : null;
         var d = SpokenDate.from(utterance, today());
         session.lastTopicDate = d == null || d.equals(today()) ? null : d.toString();
+        // "금요일 회식 뭐 입지" 뒤 "편하게 입어도 돼?": 추천은 금요일로 이어 했는데 날을 잊어 다음 "후드티 괜찮아?"를 오늘 날씨로 답했음(2026-11-23 시뮬).
+        if (d == null && "outfit".equals(topic) && "outfit".equals(prevTopic) && prevDate != null
+                && !said.matches(".*(오늘|지금).*")) {
+            session.lastTopicDate = prevDate;
+        }
         sessions.save(session);
         return res;
     }
@@ -939,6 +946,10 @@ public class TurnService {
      */
     static String occasionFitAdvice(String occasion, String utterance) {
         String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+        // 회식 추천 뒤 "후드티 괜찮아?"(2026-11-23 시뮬: "네, 입어도 돼요")
+        if ("business".equals(occasion) && u.matches(".*(후드|트레이닝|추리닝|운동복|슬리퍼|쪼리|반바지).*")) {
+            return "일하는 자리라 너무 편한 옷보다 니트나 셔츠처럼 단정한 옷이 무난해요.";
+        }
         // "내일 회사 가는데" 뒤 "청바지 돼?"(2026-11-23 시뮬)
         if ("business".equals(occasion) && u.matches(".*(청바지|데님).*")) {
             return "네, 회사라면 청바지도 괜찮아요. 중요한 회의가 있으면 슬랙스가 더 단정해요.";
