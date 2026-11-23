@@ -43,8 +43,12 @@ class ColorFlowTest {
     @BeforeEach
     void setUp() {
         AgentTools tools = (tool, args) -> {
-            assertThat(tool).isEqualTo(ToolNames.CLOTHES_INSPECT);
             calls.add(args);
+            if (ToolNames.OUTFIT_COLOR_CHECK.equals(tool)) {
+                return json.readTree("""
+                        {"score":88,"scoreReason":"기본색에 강한 색 하나라 포인트가 있어요."}""");
+            }
+            assertThat(tool).isEqualTo(ToolNames.CLOTHES_INSPECT);
             if (fail) {
                 throw new ToolException(tool, "upstream_failed", "모델 서버가 꺼짐");
             }
@@ -219,5 +223,24 @@ class ColorFlowTest {
         assertThat(ColorFlow.ieyo("셔츠")).isEqualTo("셔츠예요");
         assertThat(ColorFlow.ieyo("청바지 한 벌")).isEqualTo("청바지 한 벌이에요");
         assertThat(ColorFlow.ieyo("모르겠어요")).isEqualTo("모르겠어요");
+    }
+
+    @Test
+    @DisplayName("Given 색 확인으로 두 벌을 봄 When \"이 두 개 어울려?\" Then 어울림 점수, 카메라 유지")
+    void harmonyOfTwo() {
+        flow.start(session);
+        assertThat(flow.answer(session, "이 두 개 어울려?").speech()).contains("두 벌 이상");
+        inspectJson = """
+                {"lighting":"ok","garments":[{"id":"g1","category":"top","name":"티셔츠","colorName":"주황","colorFamily":"orange"}]}""";
+        flow.check(session, "jpeg");
+        inspectJson = """
+                {"lighting":"ok","garments":[{"id":"g1","category":"outer","name":"자켓","colorName":"갈색","colorFamily":"brown"}]}""";
+        flow.check(session, "jpeg");
+
+        TurnResponse res = flow.answer(session, "이 두 개 어울려?");
+
+        assertThat(res.speech()).isEqualTo("주황 티셔츠와 갈색 자켓은 어울림 88점이에요. 기본색에 강한 색 하나라 포인트가 있어요.");
+        assertThat(res.next()).isEqualTo(Next.camera_outfit);
+        assertThat(session.colorCheck).isTrue();
     }
 }
