@@ -115,7 +115,9 @@ public class OutfitFlow {
     /** 옷 추천 중 "입고 볼게"처럼 방식을 바꾸는 말이면 그 방식, 아니면 null. */
     public static String switchFrom(String utterance) {
         String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
-        return SWITCH_WORDS.stream().anyMatch(s::contains) ? modeFrom(s) : null;
+        // "내려놓고", "입고"처럼 짧게 방식만 말해도 바꿉니다(2026-11-23 시뮬: 방식을 두 번 물은 뒤 "내려놓고"를 못 알아들음).
+        boolean shortAnswer = s.replaceAll("[?.!,~]", "").length() <= 5;
+        return shortAnswer || SWITCH_WORDS.stream().anyMatch(s::contains) ? modeFrom(s) : null;
     }
 
     /** 앱이 보낸 outfitMode. laid·worn이 아니면 null. */
@@ -218,6 +220,13 @@ public class OutfitFlow {
         String mode = modeFrom(utterance);
         if (mode == null) {
             String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
+            // "봐 줘" 뒤 "아니, 됐어": 2026-11-23 시뮬에서 "내려놓고 볼게 또는 입고 볼게"를 다시 물었음.
+            if (NO.stream().anyMatch(s::contains)) {
+                session.modeAsked = 0;
+                sessions.save(session);
+                return new TurnResponse(session.sessionId, "알겠어요. 옷을 봐 드릴 게 생기면 언제든 불러 주세요.",
+                        Next.listen, null);
+            }
             if (session.modeAsked < MAX_MODE_ASKS && s.length() <= 10) {
                 session.modeAsked++;
                 sessions.save(session);

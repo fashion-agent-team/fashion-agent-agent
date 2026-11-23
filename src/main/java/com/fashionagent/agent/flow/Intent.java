@@ -49,6 +49,9 @@ public enum Intent {
     private static final List<String> HELP_WORDS = List.of("기능", "할줄", "할수있", "뭐해줄", "뭘해줄", "뭐도와", "뭘도와",
             "무엇을도와", "뭐할수", "뭘할수", "무엇을할", "능력", "너소개", "자기소개", "사용법", "어떻게써");
 
+    private static final List<String> PAST_DAY_WORDS = List.of("어제", "그제", "그저께", "지난주", "저번주", "지난번",
+            "저번에", "일주일");
+
     /** inOutfitSession: 옷 추천 대화 중인지 (마무리·"어디야?"는 그때만). */
     public static Intent of(String utterance, boolean inOutfitSession) {
         String s = utterance == null ? "" : utterance.replaceAll("\\s+", "");
@@ -74,6 +77,10 @@ public enum Intent {
         if (s.contains("입었") && containsAny(s, List.of("뭐", "뭘", "무슨", "어떤", "무엇"))) {
             return CLOSET_HISTORY;
         }
+        // "어제 입은 옷 뭐야?"는 '입은옷'(옷 검사)에 걸려 카메라가 켜졌습니다(2026-11-23 점검). 지난날 + 입은 = 기록.
+        if (s.contains("입은") && containsAny(s, PAST_DAY_WORDS) && !containsAny(s, OUTFIT_WORDS)) {
+            return CLOSET_HISTORY;
+        }
         if (s.contains("옷장") && !containsAny(s, OUTFIT_WORDS) && !containsAny(s, SCHEDULE_CHANGE_WORDS)) {
             return CLOSET;
         }
@@ -82,6 +89,12 @@ public enum Intent {
             return COLOR;
         }
         if (containsAny(s, CHECK_WORDS) && !s.contains("얼굴") && !FaceFlow.isTeeth(s)) {
+            return CHECK;
+        }
+        // 추천 없이 처음부터 "입고 볼게", "내려놓고 보여줄게": 2026-11-23 시뮬에서 "할 수 없는 일이에요"로 답했음.
+        // 옷 검사처럼 그 방식으로 바로 카메라를 켭니다.
+        if (!inOutfitSession && OutfitFlow.switchFrom(s) != null && !containsAny(s, OUTFIT_WORDS)
+                && !s.contains("얼굴") && !FaceFlow.isTeeth(s)) {
             return CHECK;
         }
         if (containsAny(s, OUTFIT_WORDS)) {

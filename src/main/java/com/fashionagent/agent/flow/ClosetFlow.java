@@ -235,7 +235,7 @@ public class ClosetFlow {
             if (!color.isBlank() && s.contains(color)) {
                 score++;
             }
-            if (!name.isBlank() && s.contains(name)) {
+            if (!name.isBlank() && (s.contains(name) || sameName(s, name))) {
                 score++;
             }
             if (score > best) {
@@ -250,6 +250,32 @@ public class ClosetFlow {
             return saidCategory ? all : List.of();
         }
         return out;
+    }
+
+    /**
+     * 같은 옷을 다르게 부르는 말. 2026-11-23 시뮬: 옷장에 "자켓"으로 저장된 옷을 "블레이저 지워 줘"로 못 찾았음.
+     */
+    private static final List<List<String>> SAME_NAMES = List.of(
+            List.of("자켓", "재킷", "블레이저", "잠바", "점퍼"),
+            List.of("티셔츠", "티", "반팔티", "긴팔티"),
+            List.of("후드티", "후드", "후디"),
+            List.of("맨투맨", "스웻셔츠"),
+            List.of("청바지", "데님", "진"),
+            List.of("운동화", "스니커즈"),
+            List.of("패딩", "패딩점퍼", "롱패딩", "숏패딩"),
+            List.of("가디건", "카디건"));
+
+    /** 옷장 이름(name)과 같은 뜻의 말이 utterance에 있으면 true. 한 글자 말("티", "진")은 이름과 똑같을 때만 씁니다. */
+    static boolean sameName(String utterance, String name) {
+        for (List<String> group : SAME_NAMES) {
+            if (group.stream().noneMatch(name::contains)) {
+                continue;
+            }
+            if (group.stream().filter(w -> w.length() >= 2).anyMatch(utterance::contains)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void clear(AgentSession session) {

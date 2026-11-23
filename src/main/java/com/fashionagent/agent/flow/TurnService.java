@@ -68,6 +68,13 @@ public class TurnService {
         return res;
     }
 
+    /** "봐 줘", "봐 주세요", "확인해 줘"처럼 짧게 봐 달라는 말. */
+    static boolean isLookRequest(String utterance) {
+        String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        return s.length() <= 7 && (s.startsWith("봐줘") || s.startsWith("봐주") || s.startsWith("확인해줘")
+                || s.startsWith("옷봐줘"));
+    }
+
     /** 지난 턴에 카메라(옷)를 켜 둔 상태였으면 그 카메라, 아니면 null. */
     static Next outfitCamera(AgentSession session) {
         return session.lastNext == Next.camera_outfit || session.lastNext == Next.camera_worn ? session.lastNext : null;
@@ -182,6 +189,16 @@ public class TurnService {
             TurnResponse chosen = face.answerChoice(session, req.utterance());
             if (chosen != null) {
                 return chosen;
+            }
+        }
+
+        // 추천을 듣고 날씨를 물은 뒤 "봐 줘": 2026-11-23 시뮬에서 "그건 할 수 없는 일이에요"로 답했음.
+        // 추천을 들은 대화이고 카메라를 아직 안 켰으면 "봐 드릴까요?"에 답한 것처럼 이어 갑니다.
+        if (inOutfit && session.advice != null && session.seen.isEmpty() && outfitCamera(session) == null
+                && isLookRequest(req.utterance())) {
+            TurnResponse answered = outfit.answerCheckOffer(session, req.utterance());
+            if (answered != null) {
+                return answered;
             }
         }
 
@@ -330,7 +347,7 @@ public class TurnService {
             JsonNode r = tools.callForUser(ToolNames.SCHEDULE_LIST, session.userId, Map.of("date", day.toString()));
             JsonNode events = r.path("events");
             if (events.isEmpty()) {
-                return say(session, label + "은 일정이 없어요.", Next.listen);
+                return say(session, Korean.josa(label, "은", "는") + " 일정이 없어요.", Next.listen);
             }
             StringBuilder sb = new StringBuilder(label + " 일정은 ");
             for (int i = 0; i < events.size(); i++) {
