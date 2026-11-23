@@ -52,4 +52,17 @@ class WeatherSpeechTest {
     void 장화_우비는_비로_답한다() {
         assertThat(TurnService.weatherSpeech(w("비"), null, "장화 신어야 돼?")).startsWith("우산 챙기세요.");
     }
+
+    @Test
+    void 결혼식에_흰_옷은_피하라고_한다() {
+        assertThat(TurnService.occasionColorAdvice("wedding", "흰 셔츠 입어도 돼?")).startsWith("결혼식에는 흰색 옷은");
+        assertThat(TurnService.occasionColorAdvice("wedding", "검정 바지 입어도 돼?")).isNull();
+        assertThat(TurnService.occasionColorAdvice("mourning", "빨간 니트 괜찮아?")).startsWith("조문 자리에는");
+        assertThat(TurnService.occasionColorAdvice(null, "흰 셔츠 입어도 돼?")).isNull();
+    }
+
+    @Test
+    void 목도리도_짧게_물어도_답한다() {
+        assertThat(TurnService.weatherSpeech(w("맑음"), "모레", "목도리도?")).startsWith("네, 챙기세요.");
+    }
 }

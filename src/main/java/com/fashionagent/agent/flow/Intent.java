@@ -25,7 +25,7 @@ public enum Intent {
      * 2026-11-13 실서버 시뮬: "이 옷 어때"가 GPT로 가서 카메라 대신 오늘 추천을 길게 말했습니다.
      */
     private static final List<String> CHECK_WORDS = List.of("옷검사", "옷확인", "옷체크", "옷상태", "옷봐", "옷좀봐",
-            "입은옷", "입은거", "입은모습", "옷차림", "검사해", "검사좀", "옷어때", "옷어떄", "옷괜찮", "옷어울");
+            "입은옷", "입은거", "입은모습", "옷차림", "검사해", "검사좀", "옷어때", "옷어떄", "옷괜찮", "옷어울", "이거어때", "이건어때", "이옷어때", "이거괜찮", "이건괜찮");
     private static final List<String> STAIN_WORDS = List.of("얼룩", "묻었", "묻은", "찢어", "찢어진", "구멍", "보풀", "올나간");
 
     /** "옷장에서 검정 패딩 지워 줘", "옷장에서 버린 바지 빼 줘". */
@@ -132,7 +132,7 @@ public enum Intent {
         }
         if (s.contains("날씨") || containsAny(s.replace("준비", ""), WEATHER_WORDS)
                 || (containsAny(s, LIGHT_WORDS) && containsAny(s, MAY_WORDS))
-                || (containsAny(s, WARM_ITEMS) && containsAny(s, NEED_WORDS))
+                || (containsAny(s, WARM_ITEMS) && (containsAny(s, NEED_WORDS) || s.replaceAll("[?.!~]", "").length() <= 5))
                 || wearMay(s)) {
             // "이번 주 날씨"처럼 여러 날은 GPT가 날짜를 하나씩 봅니다. 하루("내일", "토요일")는 바로 답합니다.
             if (containsAny(s, MULTI_DAY_WORDS) && !s.contains("요일")) {
