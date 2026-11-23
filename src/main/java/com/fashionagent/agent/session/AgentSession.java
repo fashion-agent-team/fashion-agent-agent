@@ -120,6 +120,8 @@ public class AgentSession {
     public String lastTopicDate;
     /** "나 오늘 면접이야"처럼 자리만 말한 말. 다음 "뭐 입고 가면 좋을까?"에 그 자리·날로 추천합니다. */
     public String statedPlan;
+    /** 마지막 날씨를 물은 도시("제주"). 이어서 "거기 우산 필요해?"에 그 도시로 답합니다. 내 위치면 null. */
+    public String lastCity;
 
     /** "이거 무슨 색이야?"로 카메라를 켠 중. 이때 온 옷 사진은 색·무늬만 읽어 줍니다(2026-11-13). */
     public boolean colorCheck;

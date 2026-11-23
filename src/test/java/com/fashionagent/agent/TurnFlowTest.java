@@ -541,6 +541,20 @@ class TurnFlowTest {
     }
 
     @Test
+    void 도시_날씨_뒤_거기와_다른_도시를_이어_묻는다() throws Exception {
+        JsonNode first = turn("u_city", """
+                {"utterance": "부산 날씨 어때?"}""");
+        assertThat(first.path("speech").asString()).startsWith("부산 날씨예요.");
+        String sid = first.path("sessionId").asString();
+        JsonNode there = turn("u_city", """
+                {"sessionId": "%s", "utterance": "거기 우산 필요해?"}""".formatted(sid));
+        assertThat(there.path("speech").asString()).startsWith("부산 날씨예요.");
+        JsonNode seoul = turn("u_city", """
+                {"sessionId": "%s", "utterance": "서울은?"}""".formatted(sid));
+        assertThat(seoul.path("speech").asString()).startsWith("서울 날씨예요.");
+    }
+
+    @Test
     void 어제_일정을_물으면_어제_일정을_읽는다() throws Exception {
         JsonNode r = turn("u_past_sched", """
                 {"utterance": "어제 일정 뭐였지?"}""");

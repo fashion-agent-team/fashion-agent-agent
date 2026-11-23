@@ -185,6 +185,20 @@ public class TurnService {
                 default -> date + " 뭐 입지";
             }};
         }
+        // "제주 내일 날씨" 뒤 "거기 우산 필요해?", "서울은?": 2026-11-23 시뮬에서 내 위치(서울) 날씨로 답하거나 GPT로 갔음.
+        if ("weather".equals(session.lastTopic)) {
+            String prefix = session.lastTopicDate == null ? "" : java.time.LocalDate.parse(session.lastTopicDate)
+                    .getMonthValue() + "월 " + java.time.LocalDate.parse(session.lastTopicDate).getDayOfMonth() + "일 ";
+            Cities.City named = Cities.in(utterance);
+            if (intent == Intent.OTHER && named != null && day == null
+                    && s.replaceAll("^(그럼|그러면)", "").length() <= named.name().length() + 3) {
+                return new String[] {"weather", named.name() + " " + prefix + "날씨"};
+            }
+            if (intent == Intent.WEATHER && named == null && session.lastCity != null
+                    && !s.matches(".*(여기|우리동네|이동네|내위치|집).*")) {
+                return new String[] {"weather", session.lastCity + " " + (day == null ? prefix : "") + utterance};
+            }
+        }
         // "내일 뭐 입지?" 뒤 "치마 입어도 돼?": 오늘이 아니라 그날 날씨로 답합니다.
         // "장화 신어야 돼?", "추워?"도 마찬가지(날을 안 말했고 "지금"도 아니면 방금 말한 날).
         if (intent == Intent.WEATHER && day == null && session.lastTopicDate != null && !s.contains("지금")
@@ -409,6 +423,7 @@ public class TurnService {
         if (city != null) {
             at = city.at();
         }
+        session.lastCity = city == null ? null : city.name();
         var today = java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("Asia/Seoul")));
         if (SpokenDate.impossible(utterance, today)) {
             return say(session, SpokenDate.SAY_IMPOSSIBLE, Next.listen);
@@ -467,8 +482,7 @@ public class TurnService {
                     : (neg ? "네, 겉옷은 없어도 돼요. " : "아니요, 겉옷은 없어도 돼요. "));
         }
         // "반팔 입어도 돼?": 겉옷이 필요하면 아니요, 최고 24도 이상이면 네(2026-11-23 시뮬).
-        if (!askedRain && Intent.LIGHT_WORDS.stream().anyMatch(u::contains)
-                && Intent.MAY_WORDS.stream().anyMatch(u::contains)) {
+        if (!askedRain && Intent.lightMay(u)) {
             if (w.path("needsOuter").asBoolean(false)) {
                 sb.append("아니요, 그렇게 입기엔 추워요. 겉옷을 챙기세요. ");
             } else if (max >= 24) {
@@ -519,6 +533,9 @@ public class TurnService {
             // "우산 안 챙겨도 되지?"처럼 거꾸로 물으면 네/아니요를 먼저(2026-11-23 시뮬).
             if (u.matches(".*(안챙겨도|안가져가도|필요없|없어도|안써도).*")) {
                 sb.append(umbrella ? "아니요, " : "네, ");
+            } else if (u.matches(".*(장화|우비|레인).*")) {
+                // "장화 신을까?": 우산 답만 하면 장화를 신으라는지 몰랐음.
+                sb.append(umbrella ? "네, 비가 와서 신는 게 좋아요. " : "아니요, 필요 없어요. ");
             }
             sb.append(umbrella
                     ? "우산 챙기세요. " + (laterToday ? "지금은 안 오지만 오늘 중에 " : "") + "비나 눈 올 확률이 " + rain + "%예요. "

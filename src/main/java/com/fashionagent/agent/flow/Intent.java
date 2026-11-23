@@ -18,7 +18,7 @@ public enum Intent {
     private static final List<String> SHOWN_WORDS = List.of("다보여", "다보였", "다찍", "다봤", "더없어", "이게다", "이거다야",
             "이게전부", "이거전부");
     private static final List<String> OUTFIT_WORDS = List.of("뭐입", "뭘입", "옷추천", "추천해", "코디", "입을까", "입지",
-            "옷골라");
+            "옷골라", "추천다시", "다시추천", "추천또");
     /**
      * "옷 검사해 줘"처럼 꺼낸 옷을 바로 봐 달라는 말. 추천을 길게 말하지 않고 바로 카메라로 갑니다.
      * 2026-11-09 리허설: "옷 검사"가 키워드에 없어 GPT로 갔고, 얼굴 확인으로 넘어갔습니다.
@@ -67,12 +67,20 @@ public enum Intent {
             "저번에", "일주일");
 
     /** inOutfitSession: 옷 추천 대화 중인지 (마무리·"어디야?"는 그때만). */
+    /** "치마 입을까?", "반팔 입을까?": 뭐/무슨이 없으면 고를 옷이 아니라 그 옷을 입어도 되는지 물은 말. */
+    static boolean shall(String s) {
+        return (s.contains("입을까") || s.contains("신을까")) && !s.matches(".*(뭐|뭘|무슨|어떤|어느|무엇|추천).*");
+    }
+
+    /** "반팔 입어도 돼?", "반팔 입을까?" */
+    static boolean lightMay(String s) {
+        return containsAny(s, LIGHT_WORDS) && (containsAny(s, MAY_WORDS) || shall(s));
+    }
+
     /** "치마 입어도 돼?", "청바지 괜찮아?": 2026-11-23 시뮬에서 GPT로 갔음. 날씨로 네/아니요를 답합니다. */
     static boolean wearMay(String s) {
         // "치마 입을까?"도(뭐/무슨이 없으면 고를 옷을 물은 게 아니라 그 옷을 입어도 되는지 물은 말).
-        boolean shall = (s.contains("입을까") || s.contains("신을까"))
-                && !s.matches(".*(뭐|뭘|무슨|어떤|어느|무엇|추천).*");
-        return ClosetView.category(s) != null && (containsAny(s, MAY_WORDS) || shall) && !containsAny(s, LIGHT_WORDS)
+        return ClosetView.category(s) != null && (containsAny(s, MAY_WORDS) || shall(s)) && !containsAny(s, LIGHT_WORDS)
                 && !s.contains("어울") && !s.contains("옷장");
     }
 
@@ -128,14 +136,14 @@ public enum Intent {
                 && !s.contains("얼굴") && !FaceFlow.isTeeth(s)) {
             return CHECK;
         }
-        if (containsAny(s, OUTFIT_WORDS) && !wearMay(s)) {
+        if (containsAny(s, OUTFIT_WORDS) && !wearMay(s) && !lightMay(s)) {
             return OUTFIT;
         }
         if (s.contains("얼굴") || s.contains("화장") || FaceFlow.isTeeth(s) || FaceFlow.isMakeup(s)) {
             return FACE;
         }
         if (s.contains("날씨") || containsAny(s.replace("준비", ""), WEATHER_WORDS)
-                || (containsAny(s, LIGHT_WORDS) && containsAny(s, MAY_WORDS))
+                || lightMay(s)
                 || (containsAny(s, WARM_ITEMS) && (containsAny(s, NEED_WORDS) || s.replaceAll("[?.!~]", "").length() <= 5))
                 || wearMay(s)
                 // "오늘 겉옷 필요 없지?"(2026-11-23 시뮬)

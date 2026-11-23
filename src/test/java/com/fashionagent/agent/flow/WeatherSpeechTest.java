@@ -50,7 +50,7 @@ class WeatherSpeechTest {
 
     @Test
     void 장화_우비는_비로_답한다() {
-        assertThat(TurnService.weatherSpeech(w("비"), null, "장화 신어야 돼?")).startsWith("우산 챙기세요.");
+        assertThat(TurnService.weatherSpeech(w("비"), null, "장화 신어야 돼?")).startsWith("네, 비가 와서 신는 게 좋아요.");
     }
 
     @Test
