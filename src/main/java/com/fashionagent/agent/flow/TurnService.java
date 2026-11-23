@@ -249,6 +249,9 @@ public class TurnService {
     private TurnResponse weather(AgentSession session, Location location, String utterance) {
         Location at = location == null ? Location.SEOUL : location;
         var today = java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("Asia/Seoul")));
+        if (SpokenDate.impossible(utterance, today)) {
+            return say(session, SpokenDate.SAY_IMPOSSIBLE, Next.listen);
+        }
         var asked = SpokenDate.from(utterance, today);
         boolean otherDay = asked != null && !asked.equals(today);
         String label = SpokenDate.labelAsAsked(utterance, asked, today);
@@ -340,6 +343,9 @@ public class TurnService {
     /** "오늘 일정 뭐야?", "11월 20일 일정 뭐야?" */
     private TurnResponse schedule(AgentSession session, String utterance) {
         var today = java.time.LocalDate.now(clock.withZone(java.time.ZoneId.of("Asia/Seoul")));
+        if (SpokenDate.impossible(utterance, today)) {
+            return say(session, SpokenDate.SAY_IMPOSSIBLE, Next.listen);
+        }
         var asked = SpokenDate.from(utterance, today);
         var day = asked == null ? today : asked;
         String label = SpokenDate.label(day, today);

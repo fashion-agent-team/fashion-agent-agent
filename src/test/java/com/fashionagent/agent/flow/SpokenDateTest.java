@@ -72,4 +72,13 @@ class SpokenDateTest {
         assertThat(SpokenDate.labelAsAsked("내일 날씨", thu.plusDays(1), thu)).isEqualTo("내일");
         assertThat(SpokenDate.labelAsAsked("목요일 날씨", thu, thu)).isEqualTo("오늘");
     }
+
+    @org.junit.jupiter.api.Test
+    void 없는_날짜를_말하면_impossible() {
+        var today = java.time.LocalDate.of(2026, 11, 23);
+        org.assertj.core.api.Assertions.assertThat(SpokenDate.impossible("2월 30일 일정", today)).isTrue();
+        org.assertj.core.api.Assertions.assertThat(SpokenDate.impossible("13월 5일 날씨", today)).isTrue();
+        org.assertj.core.api.Assertions.assertThat(SpokenDate.impossible("12월 5일 날씨", today)).isFalse();
+        org.assertj.core.api.Assertions.assertThat(SpokenDate.impossible("내일 날씨", today)).isFalse();
+    }
 }

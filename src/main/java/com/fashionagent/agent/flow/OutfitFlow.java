@@ -135,6 +135,10 @@ public class OutfitFlow {
      * 말에 방식이 있으면("입고 볼게, 뭐 입지?") 기억해 두었다가 방식은 묻지 않습니다. 앱이 기억한 방식은 쓰지 않고 매번 고릅니다.
      */
     public TurnResponse start(AgentSession session, Location location, String utterance) {
+        if (SpokenDate.impossible(utterance, today())) {
+            sessions.save(session);
+            return new TurnResponse(session.sessionId, SpokenDate.SAY_IMPOSSIBLE, Next.listen, null);
+        }
         // 같은 대화(30분)에서 "내일 뭐 입지?"를 다시 물으면 새 코디라 다시 기록합니다(2026-11-20 점검:
         // 첫 코디만 기록되고 두 번째로 고른 옷은 "정했어요"로 끝났음).
         session.recorded = false;

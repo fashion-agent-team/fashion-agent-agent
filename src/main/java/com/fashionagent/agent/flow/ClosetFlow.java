@@ -149,7 +149,10 @@ public class ClosetFlow {
         } catch (ToolException e) {
             return say(session, "미안해요, 지금은 옷장을 못 열었어요. 조금 있다가 다시 말씀해 주실래요?", null);
         }
-        List<JsonNode> found = matches(list.path("garments"), utterance, category != null);
+        List<JsonNode> found = matches(list.path("garments"), utterance, category != null || unspecified(utterance));
+        if (found.isEmpty() && unspecified(utterance) && list.path("garments").isEmpty()) {
+            return say(session, "옷장이 아직 비어 있어요.", null);
+        }
         if (found.isEmpty()) {
             return say(session, "옷장에서 그 옷을 찾지 못했어요. \"옷장 확인해 줘\"라고 하시면 있는 옷을 읽어 드려요.", null);
         }
@@ -157,13 +160,14 @@ public class ClosetFlow {
             return askConfirm(session, found.get(0));
         }
         if (found.size() > MAX_CHOICES) {
-            return say(session, "옷장에 비슷한 옷이 " + found.size() + "벌 있어요. 색이나 이름을 더 말씀해 주실래요? "
+            return say(session, (unspecified(utterance) ? "옷장에 옷이 " : "옷장에 비슷한 옷이 ") + found.size() + "벌 있어요. 색이나 이름을 더 말씀해 주실래요? "
                     + "예를 들어 \"옷장에서 검정 패딩 지워 줘\"처럼요.", null);
         }
         session.closetRemoveIds = new ArrayList<>(found.stream().map(g -> g.path("garmentId").asString()).toList());
         session.closetRemoveNames = new ArrayList<>(found.stream().map(ClosetView::label).toList());
         session.closetRemoveConfirm = false;
-        StringBuilder sb = new StringBuilder("옷장에 비슷한 옷이 ").append(found.size()).append("벌 있어요.");
+        StringBuilder sb = new StringBuilder(unspecified(utterance) ? "옷장에 옷이 " : "옷장에 비슷한 옷이 ")
+                .append(found.size()).append("벌 있어요.");
         String[] nth = {"첫째", "둘째", "셋째", "넷째"};
         for (int i = 0; i < found.size(); i++) {
             sb.append(' ').append(nth[i]).append(", ").append(session.closetRemoveNames.get(i)).append('.');
@@ -250,6 +254,16 @@ public class ClosetFlow {
             return saidCategory ? all : List.of();
         }
         return out;
+    }
+
+    /**
+     * "옷장에서 옷 지워 줘"처럼 어떤 옷인지 말하지 않았으면 true. 그때는 옷장 옷을 다 후보로 두고 몇째인지 묻습니다.
+     * 2026-11-23 시뮬: 옷이 3벌 있는데 "그 옷을 찾지 못했어요"라고 답했음.
+     */
+    static boolean unspecified(String utterance) {
+        String s = utterance == null ? "" : utterance.replaceAll("[\\s?.!,~]+", "");
+        String rest = s.replaceAll("옷장|에서|에|옷|좀|하나|한벌|지워|지우|삭제|없애|빼|버렸|줘|주세요|주라|해|할래|싶어|요|거|것|를|을", "");
+        return rest.isEmpty();
     }
 
     /**
