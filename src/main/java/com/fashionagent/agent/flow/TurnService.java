@@ -163,6 +163,10 @@ public class TurnService {
         // "내일 출근하는데 비 와?" → "그럼 뭐 입지?"도 출근에 맞춰(2026-11-23 시뮬).
         if (intent == Intent.WEATHER && SpokenOccasion.from(utterance) != null) {
             session.statedPlan = utterance;
+        } else if (intent == Intent.WEATHER && session.statedPlan != null && day == null
+                && (Intent.wearMay(s) || Intent.lightMay(s))) {
+            // "토요일 결혼식이야" → "흰 블라우스 입어도 돼?": 그날 날씨와 자리로 답합니다(2026-11-23 시뮬: 오늘 날씨로 "네"라고 함).
+            return new String[] {"weather", session.statedPlan + " " + utterance};
         } else if (intent == Intent.OTHER && !s.contains("일정") && (SpokenOccasion.from(utterance) != null
                 || (day != null && s.length() <= 15 && s.matches(".*(있어|있음|이야|예요|가|가요|가야돼|간다|가는데|해|해요)$")))) {
             session.statedPlan = utterance;
