@@ -115,6 +115,9 @@ public class AgentSession {
     public com.fashionagent.agent.api.TurnResponse.Next lastNext;
     /** 지난 턴에 한 말. "뭐라고?", "다시 말해 줘"에 그대로 다시 읽어 줍니다. */
     public String lastSpeech;
+    /** 마지막으로 답한 날씨·일정·옷 추천("weather"·"schedule"·"outfit")과 그 날(오늘이면 null). "모레는?"에 이어 답합니다. */
+    public String lastTopic;
+    public String lastTopicDate;
 
     /** "이거 무슨 색이야?"로 카메라를 켠 중. 이때 온 옷 사진은 색·무늬만 읽어 줍니다(2026-11-13). */
     public boolean colorCheck;

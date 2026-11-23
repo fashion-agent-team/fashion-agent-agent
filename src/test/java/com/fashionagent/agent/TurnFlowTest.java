@@ -390,6 +390,25 @@ class TurnFlowTest {
     }
 
     @Test
+    void 날씨_뒤_날짜만_말하면_그날_날씨를_답하고_그럼_뭐_입지는_그날로_추천한다() throws Exception {
+        JsonNode first = turn("u_follow", """
+                {"utterance": "내일 날씨 어때?"}""");
+        String sid = first.path("sessionId").asString();
+        JsonNode next = turn("u_follow", """
+                {"sessionId": "%s", "utterance": "모레는?"}""".formatted(sid));
+        assertThat(next.path("speech").asString()).startsWith("모레는");
+        JsonNode wear = turn("u_follow", """
+                {"sessionId": "%s", "utterance": "그럼 뭐 입지?"}""".formatted(sid));
+        assertThat(wear.path("speech").asString()).startsWith("모레의 패션을 추천해 드릴게요.");
+        JsonNode sat = turn("u_follow", """
+                {"sessionId": "%s", "utterance": "토요일은?"}""".formatted(sid));
+        assertThat(sat.path("speech").asString()).contains("의 패션을 추천해 드릴게요.");
+        JsonNode add = turn("u_follow", """
+                {"sessionId": "%s", "utterance": "내일 3시 치과"}""".formatted(sid));
+        assertThat(add.path("speech").asString()).doesNotContain("패션을 추천");
+    }
+
+    @Test
     void 날씨를_물으면_읽어준다() throws Exception {
         JsonNode r = turn("u5", """
                 {"utterance": "오늘 날씨 어때?"}""");
