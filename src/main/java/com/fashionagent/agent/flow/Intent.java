@@ -57,7 +57,7 @@ public enum Intent {
     static final List<String> MAY_WORDS = List.of("입어도", "입고가도", "입고나가도", "괜찮", "될까", "되나", "신어도",
             "신고가도", "신어야");
     /** "목도리 해야 돼?", "장갑 챙길까?": 2026-11-23 시뮬에서 GPT로 갔음. 체감 온도로 네/아니요를 바로 답합니다. */
-    static final List<String> WARM_ITEMS = List.of("목도리", "머플러", "장갑", "털모자", "귀마개", "핫팩", "내복", "히트텍", "비니", "스타킹");
+    static final List<String> WARM_ITEMS = List.of("목도리", "머플러", "장갑", "털모자", "귀마개", "핫팩", "내복", "히트텍", "비니", "스타킹", "모자");
     static final List<String> NEED_WORDS = List.of("해야", "챙길", "챙겨", "필요", "할까", "낄까", "껴야", "쓸까", "써야",
             "입을까", "입어야", "가져갈", "가져가", "안껴도", "안해도", "안써도", "안챙겨도", "안입어도", "써도", "신어야");
     /** "바지 몇 벌 있어?", "자켓 있어?": 2026-11-23 시뮬에서 GPT로 갔음. 옷장의 그 종류 목록을 읽어 줍니다. */
@@ -85,6 +85,12 @@ public enum Intent {
     }
 
     /** "반팔 입어도 돼?", "반팔 입을까?" */
+    /** "바람 많이 불어?", "바람 세?"(바람막이는 옷이라 뺍니다). */
+    static boolean asksWind(String s) {
+        String t = s.replaceAll("\\s+", "").replace("바람막이", "");
+        return t.matches(".*바람(이|은|도)?(많이|세게|강하게|엄청|좀)?(불|세|강해|많|심해|어때).*");
+    }
+
     static boolean lightMay(String s) {
         return containsAny(s, LIGHT_WORDS) && (containsAny(s, MAY_WORDS) || shall(s));
     }
@@ -189,8 +195,11 @@ public enum Intent {
             return FACE;
         }
         if (s.contains("날씨") || containsAny(s.replace("준비", ""), WEATHER_WORDS)
+                // "바람 많이 불어?": 2026-11-23 시뮬에서 GPT로 갔음. 바람 세기는 아직 없지만 날씨·체감으로 답합니다.
+                || asksWind(s)
                 || lightMay(s)
-                || (containsAny(s, WARM_ITEMS) && (containsAny(s, NEED_WORDS) || s.replaceAll("[?.!~]", "").length() <= 5))
+                || (containsAny(s, WARM_ITEMS) && (containsAny(s, NEED_WORDS) || (s.replaceAll("[?.!~]", "").length() <= 5
+                        && !s.matches(".*(있어|있나|있니|있지|있음|몇).*"))))
                 || wearMay(s)
                 // "토요일 비", "내일 눈": 날 + 비/눈만 말한 것(2026-11-23 시뮬)
                 || s.matches("(오늘|내일|모레|글피|이번주|다음주)?[월화수목금토일]?(요일)?(에)?(비|눈)[?？]*")

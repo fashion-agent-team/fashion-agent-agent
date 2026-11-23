@@ -731,6 +731,14 @@ public class TurnService {
                 || u.contains("눈오") || u.contains("눈이") || u.contains("젖");
 
         StringBuilder sb = new StringBuilder();
+        if (Intent.asksWind(u)) {
+            sb.append("바람 세기는 아직 못 알려 드려요. 대신 기온을 알려 드릴게요. ");
+        }
+        // "모자 써야 돼?": 더운 날엔 햇볕 가리기로 답합니다.
+        if (!askedRain && u.contains("모자") && !u.contains("털모자") && max >= 25) {
+            sb.append("햇볕이 강하니 챙 있는 모자를 쓰면 좋아요. 최고 ").append(max).append("도예요. ");
+            u = u.replace("모자", "");
+        }
         // "오늘 영하야?": 최저 기온으로 네/아니요(2026-11-23 시뮬에서 GPT로 갔음).
         if (u.contains("영하") && w.has("minTemperature")) {
             sb.append(min < 0 ? "네, 최저 " + min + "도로 영하예요. " : "아니요, 최저 " + min + "도라 영하는 아니에요. ");
