@@ -29,7 +29,9 @@ public final class SpokenOccasion {
         WORDS.put(Occasion.wedding, List.of("결혼식", "웨딩", "예식", "하객"));
         WORDS.put(Occasion.formal, List.of("면접", "발표", "상견례", "시상식", "졸업식", "입학식", "세미나"));
         WORDS.put(Occasion.business, List.of("회의", "미팅", "출근", "거래처", "수업", "강의", "회사", "출장", "사무실"));
-        WORDS.put(Occasion.active, List.of("운동", "헬스", "등산", "러닝", "조깅", "요가", "필라테스", "축구", "농구", "체육"));
+        WORDS.put(Occasion.active, List.of("운동", "헬스", "등산", "러닝", "조깅", "요가", "필라테스", "축구", "농구", "체육",
+                // 2026-11-23 시뮬: "오늘 소풍 가" 뒤 추천이 자리를 몰랐음
+                "소풍", "나들이", "캠핑", "산책", "체험학습"));
     }
 
     private SpokenOccasion() {
