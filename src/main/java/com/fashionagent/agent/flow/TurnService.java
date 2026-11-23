@@ -110,7 +110,7 @@ public class TurnService {
         if (s.matches("(취소|취소해|취소할래|그만할래|안할래|나중에할래|나중에|카메라꺼|카메라꺼줘|꺼줘|끌래|안볼래)(줘|요)?")) {
             return true;
         }
-        return (cam == Next.camera_face || cam == Next.camera_teeth) && s.matches("(그만|됐어|그만해|됐어요|그만해줘)");
+        return (cam == Next.camera_face || cam == Next.camera_teeth) && s.matches("(알았어|알겠어|응|네|그래)?(그만|됐어|그만해|됐어요|그만해줘)");
     }
 
     /** 카메라를 켜 둔 채 짧게 대답만 했으면 카메라를 이어 갈 말, 아니면 null. */
@@ -260,6 +260,14 @@ public class TurnService {
                         + "[가-힣]{0,8}[?？!.~]*")
                 && !s.contains("않") && !s.contains("같") && s.length() <= 16) {
             return new String[] {"outfit", "다른 거 추천해 줘"};
+        }
+        // "내일 뭐 입지?" 뒤 "교복 위에 뭐 입어?": 날을 다시 말하지 않았으면 방금 말한 날(2026-11-23 시뮬: 오늘로 추천).
+        // "다른 거", "다시"는 OutfitFlow가 날·자리를 이어 씁니다.
+        if (intent == Intent.OUTFIT && day == null && "outfit".equals(session.lastTopic)
+                && session.lastTopicDate != null && !s.contains("오늘") && !s.startsWith("또")
+                && !s.matches(".*(다른|다시|말고|딴).*")) {
+            var d = java.time.LocalDate.parse(session.lastTopicDate);
+            return new String[] {"outfit", d.getMonthValue() + "월 " + d.getDayOfMonth() + "일 " + utterance};
         }
         // 일정 뒤 "그날 뭐 입지?"도(2026-11-23 시뮬: "모레는 일정이 없어요" 뒤 오늘로 추천).
         if (intent == Intent.OUTFIT && day == null
