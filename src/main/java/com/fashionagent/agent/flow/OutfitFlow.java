@@ -147,7 +147,7 @@ public class OutfitFlow {
         // 2026-11-23 시뮬: 결혼식 추천 뒤 "다른 거 추천해 줘"에 "일정은 없어요, 편한 상의"로 답했음.
         String u = utterance == null ? "" : utterance.replaceAll("\\s+", "");
         boolean again = session.advice != null && day == null && SpokenOccasion.from(utterance) == null
-                && (u.contains("다른") || u.contains("다시") || u.startsWith("또"));
+                && (u.contains("다른") || u.contains("다시") || u.startsWith("또") || u.contains("말고"));
         if (!again) {
             session.targetDate = day == null || day.equals(today()) ? null : day.toString();
             rememberSpoken(session, utterance);
