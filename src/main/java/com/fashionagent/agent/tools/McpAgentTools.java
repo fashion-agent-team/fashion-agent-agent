@@ -165,7 +165,8 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
         String endpoint = uri.getPath() == null || uri.getPath().isBlank() ? "/mcp" : uri.getPath();
         var builder = HttpClientStreamableHttpTransport.builder(base).endpoint(endpoint);
         if (!mcpKey.isEmpty()) {
-            builder.customizeRequest(r -> r.header(KEY_HEADER, mcpKey));
+            // 요청마다 이 기본 빌더를 복사해 쓰므로 모든 MCP 요청에 헤더가 붙습니다.
+            builder.requestBuilder(java.net.http.HttpRequest.newBuilder().header(KEY_HEADER, mcpKey));
         }
         var transport = builder.build();
         McpSyncClient client = McpClient.sync(transport)
