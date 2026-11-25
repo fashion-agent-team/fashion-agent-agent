@@ -31,16 +31,28 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
     private final JsonMapper json;
     private final Duration timeout;
     private final Map<String, McpSyncClient> clients = new ConcurrentHashMap<>();
+    /** MCP 서버마다 같은 MCP_SHARED_KEY를 X-Mcp-Key 헤더로 보냅니다(2026-11-25 보안 점검). 비우면 안 보냄. */
+    private final String mcpKey;
+    public static final String KEY_HEADER = "X-Mcp-Key";
 
     public McpAgentTools(Map<String, String> serverUrls, JsonMapper json) {
-        this(serverUrls, json, REQUEST_TIMEOUT);
+        this(serverUrls, json, REQUEST_TIMEOUT, "");
+    }
+
+    public McpAgentTools(Map<String, String> serverUrls, JsonMapper json, String mcpKey) {
+        this(serverUrls, json, REQUEST_TIMEOUT, mcpKey);
     }
 
     /** 시험용: 기다리는 시간을 짧게. */
     McpAgentTools(Map<String, String> serverUrls, JsonMapper json, Duration timeout) {
+        this(serverUrls, json, timeout, "");
+    }
+
+    McpAgentTools(Map<String, String> serverUrls, JsonMapper json, Duration timeout, String mcpKey) {
         this.serverUrls = serverUrls;
         this.json = json;
         this.timeout = timeout;
+        this.mcpKey = mcpKey == null ? "" : mcpKey.strip();
     }
 
     @Override
@@ -151,7 +163,12 @@ public class McpAgentTools implements AgentTools, AutoCloseable {
         URI uri = URI.create(url);
         String base = uri.getScheme() + "://" + uri.getAuthority();
         String endpoint = uri.getPath() == null || uri.getPath().isBlank() ? "/mcp" : uri.getPath();
-        var transport = HttpClientStreamableHttpTransport.builder(base).endpoint(endpoint).build();
+        var builder = HttpClientStreamableHttpTransport.builder(base).endpoint(endpoint);
+        if (!mcpKey.isEmpty()) {
+            // 요청마다 이 기본 빌더를 복사해 쓰므로 모든 MCP 요청에 헤더가 붙습니다.
+            builder.requestBuilder(java.net.http.HttpRequest.newBuilder().header(KEY_HEADER, mcpKey));
+        }
+        var transport = builder.build();
         McpSyncClient client = McpClient.sync(transport)
                 .clientInfo(McpSchema.Implementation.builder("fashion-agent-agent", "0.0.1").title("패션 에이전트 agent").build())
                 .requestTimeout(timeout)
