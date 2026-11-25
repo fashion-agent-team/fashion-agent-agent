@@ -62,6 +62,19 @@ class McpAgentToolsIntegrationTest {
             }
         }
 
+        /** 들어온 X-Mcp-Key 헤더를 적어 둡니다(MCP 서버의 키 확인 필터 자리). */
+        static final java.util.concurrent.atomic.AtomicReference<String> SEEN_KEY =
+                new java.util.concurrent.atomic.AtomicReference<>();
+
+        @Bean
+        org.springframework.boot.web.servlet.FilterRegistrationBean<jakarta.servlet.Filter> keyRecorder() {
+            jakarta.servlet.Filter f = (req, res, chain) -> {
+                SEEN_KEY.set(((jakarta.servlet.http.HttpServletRequest) req).getHeader(McpAgentTools.KEY_HEADER));
+                chain.doFilter(req, res);
+            };
+            return new org.springframework.boot.web.servlet.FilterRegistrationBean<>(f);
+        }
+
         @Bean
         ToolCallbackProvider weatherTools() {
             return MethodToolCallbackProvider.builder().toolObjects(new WeatherTools()).build();
@@ -105,5 +118,13 @@ class McpAgentToolsIntegrationTest {
         assertThatThrownBy(() -> tools.call(ToolNames.CLOSET_SEARCH, Map.of()))
                 .isInstanceOf(ToolException.class)
                 .hasMessageContaining("not_configured");
+    }
+
+    @Test
+    void MCP_SHARED_KEY가_있으면_X_Mcp_Key_헤더로_보낸다() {
+        String url = "http://localhost:" + port + "/mcp";
+        var tools = new McpAgentTools(Map.of("weather", url), json, "inner-key-1");
+        tools.call(ToolNames.WEATHER_TODAY, Map.of("lat", 37.5, "lon", 127.0));
+        assertThat(WeatherServer.SEEN_KEY.get()).isEqualTo("inner-key-1");
     }
 }
